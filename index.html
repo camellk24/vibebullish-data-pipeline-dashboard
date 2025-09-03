@@ -3,10 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moodvestor Dashboard</title>
-    <meta http-equiv="refresh" content="0; url=dashboard.html">
+    <title>Moodvestor Data Pipeline Dashboard</title>
+    <link rel="stylesheet" href="styles/dashboard.css">
 </head>
 <body>
-    <p>Redirecting to <a href="dashboard.html">Moodvestor Data Pipeline Dashboard</a>...</p>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Moodvestor Data Pipeline</h1>
+            <p>Real-time monitoring and analysis of data ingestion processes</p>
+        </div>
+        
+        <div class="nav">
+            <a href="#" class="nav-link active" data-page="overview">📊 Overview</a>
+            <a href="#" class="nav-link" data-page="reports">📋 Report History</a>
+            <a href="#" class="nav-link" data-page="tickers">📈 Ticker Analysis</a>
+            <a href="#" class="nav-link" data-page="schedule">⏰ Schedule</a>
+        </div>
+        
+        <!-- Overview Page -->
+        <div id="overview" class="page active">
+            <div class="card">
+                <h2>System Status</h2>
+                <div id="system-status" class="loading">Loading system status...</div>
+            </div>
+            
+            <div class="card">
+                <h2>Latest Report</h2>
+                <div id="latest-report" class="loading">Loading latest report...</div>
+            </div>
+        </div>
+        
+        <!-- Reports Page -->
+        <div id="reports" class="page">
+            <div class="card">
+                <h2>Report History</h2>
+                <div id="report-list" class="loading">Loading reports...</div>
+                <div id="pagination"></div>
+            </div>
+        </div>
+        
+        <!-- Report Detail Page -->
+        <div id="report-detail" class="page">
+            <div class="card">
+                <button class="back-button" onclick="showPage('reports')">← Back to Reports</button>
+                <h2 id="report-detail-title">Report Details</h2>
+                <div id="report-detail-content" class="loading">Loading report details...</div>
+            </div>
+        </div>
+        
+        <!-- Ticker Analysis Page -->
+        <div id="tickers" class="page">
+            <div class="card">
+                <h2>Ticker Analysis</h2>
+                <input type="text" id="ticker-search" class="search-box" placeholder="Search tickers...">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-ticker-filter="all">All</button>
+                    <button class="filter-btn" data-ticker-filter="high-vibe">High Vibe</button>
+                    <button class="filter-btn" data-ticker-filter="buy-targets">Buy Targets</button>
+                    <button class="filter-btn" data-ticker-filter="high-upside">High Upside</button>
+                </div>
+                <div class="sort-buttons">
+                    <span class="sort-label">Sort by:</span>
+                    <button class="sort-btn active" data-sort="ticker">Ticker</button>
+                    <button class="sort-btn" data-sort="vibe-score">Vibe Score</button>
+                    <button class="sort-btn" data-sort="upside">Upside %</button>
+                    <button class="sort-btn" data-sort="price">Price</button>
+                    <button class="sort-btn" data-sort="volume">Volume</button>
+                </div>
+                <div id="ticker-list" class="loading">Loading ticker data...</div>
+            </div>
+        </div>
+        
+        <!-- Schedule Page -->
+        <div id="schedule" class="page">
+            <div class="card">
+                <h2>Data Ingestion Schedule</h2>
+                <button class="refresh-btn" onclick="loadSchedule()">🔄 Refresh Schedule</button>
+                <div id="schedule-content" class="loading">Loading schedule information...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard.js"></script>
 </body>
 </html>
