@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Test</title>
+</head>
+<body>
+    <h1>Dashboard Test</h1>
+    <p>Testing if the enhanced dashboard is working...</p>
+    
+    <script>
+        // Test the API connection
+        async function testAPI() {
+            try {
+                const response = await fetch('https://moodvestor-backend-production.up.railway.app/api/data-pipeline/reports?limit=1');
+                const data = await response.json();
+                
+                if (data.reports && data.reports.length > 0) {
+                    const report = data.reports[0];
+                    document.body.innerHTML += `
+                        <h2>✅ API Connection Working</h2>
+                        <p>Latest Report ID: ${report.report_id}</p>
+                        <p>Status: ${report.status}</p>
+                        <p>Ticker Details: ${report.ticker_details ? report.ticker_details.length : 0}</p>
+                        <p>Success Rate: ${report.summary.success_rate}%</p>
+                    `;
+                } else {
+                    document.body.innerHTML += '<h2>❌ No reports found</h2>';
+                }
+            } catch (error) {
+                document.body.innerHTML += `<h2>❌ API Error: ${error.message}</h2>`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>
