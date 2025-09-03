@@ -3,7 +3,7 @@
 ## ✅ Dashboard Code Updated
 
 The dashboard code has been updated to work with your new domain:
-- **New branding**: Changed from "Moodvestor" to "VibeBullish"
+- **New branding**: Changed from "VibeBullish" to "VibeBullish"
 - **Path configuration**: Set up to work with `/pipeline-dashboard` path
 - **Vercel config**: Updated to handle the new domain structure
 
@@ -13,7 +13,7 @@ To connect your new domain to the dashboard:
 
 ### 1. Add Domain in Vercel Dashboard
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Select your `moodvestor-dashboard` project
+2. Select your `vibebullish-dashboard` project
 3. Go to **Settings** → **Domains**
 4. Add your domains:
    - `vibebullish.com`

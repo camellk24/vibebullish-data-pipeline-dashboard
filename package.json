@@ -1,5 +1,5 @@
 {
-  "name": "moodvestor-dashboard",
+  "name": "vibebullish-dashboard",
   "version": "1.0.0",
   "description": "Data Pipeline Dashboard for Moodvestor",
   "main": "index.html",
@@ -13,7 +13,7 @@
     "dashboard",
     "monitoring",
     "data-pipeline",
-    "moodvestor",
+    "vibebullish",
     "vibe-scores"
   ],
   "author": "Moodvestor Team",

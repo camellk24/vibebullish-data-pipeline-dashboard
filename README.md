@@ -1,6 +1,6 @@
-# Moodvestor Data Pipeline Dashboard
+# VibeBullish Data Pipeline Dashboard
 
-A modern web dashboard for monitoring Moodvestor's data pipeline, vibe score calculations, and system health.
+A modern web dashboard for monitoring VibeBullish's data pipeline, vibe score calculations, and system health.
 
 ## 🚀 Features
 
@@ -59,8 +59,8 @@ npx serve .
 
 ```bash
 # Build and run
-docker build -t moodvestor-dashboard .
-docker run -p 8080:80 moodvestor-dashboard
+docker build -t vibebullish-dashboard .
+docker run -p 8080:80 vibebullish-dashboard
 ```
 
 ## ⚙️ Configuration
@@ -68,7 +68,7 @@ docker run -p 8080:80 moodvestor-dashboard
 Update the backend URL in `index.html`:
 
 ```javascript
-const BACKEND_URL = 'https://moodvestor-backend-production.up.railway.app';
+const BACKEND_URL = 'https://vibebullish-backend-production.up.railway.app';
 ```
 
 ## 🔗 API Endpoints
@@ -178,4 +178,4 @@ The dashboard will show alerts for:
 
 ## 📄 License
 
-This project is part of the Moodvestor ecosystem and follows the same licensing terms.
+This project is part of the VibeBullish ecosystem and follows the same licensing terms.

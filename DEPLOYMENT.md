@@ -1,6 +1,6 @@
-# Moodvestor Dashboard Deployment Guide
+# VibeBullish Dashboard Deployment Guide
 
-This guide covers multiple deployment options for the Moodvestor Dashboard.
+This guide covers multiple deployment options for the VibeBullish Dashboard.
 
 ## 🚀 Quick Deploy Options
 
@@ -9,7 +9,7 @@ This guide covers multiple deployment options for the Moodvestor Dashboard.
 1. **Via GitHub Integration (Easiest)**:
    - Go to [vercel.com](https://vercel.com)
    - Click "New Project"
-   - Import from GitHub: `camellk24/Moodvestor-dashboard`
+   - Import from GitHub: `camellk24/VibeBullish-dashboard`
    - Vercel will auto-detect the static site and deploy
 
 2. **Via CLI**:
@@ -24,7 +24,7 @@ This guide covers multiple deployment options for the Moodvestor Dashboard.
 1. **Via Railway Dashboard**:
    - Go to [railway.app](https://railway.app)
    - Click "New Project" → "Deploy from GitHub repo"
-   - Select `camellk24/Moodvestor-dashboard`
+   - Select `camellk24/VibeBullish-dashboard`
    - Railway will auto-detect the Dockerfile and deploy
 
 ### Option 3: Netlify
@@ -32,7 +32,7 @@ This guide covers multiple deployment options for the Moodvestor Dashboard.
 1. **Via GitHub Integration**:
    - Go to [netlify.com](https://netlify.com)
    - Click "New site from Git"
-   - Connect GitHub and select `camellk24/Moodvestor-dashboard`
+   - Connect GitHub and select `camellk24/VibeBullish-dashboard`
 
 ## 🔄 Automatic Deployments (CI/CD)
 
@@ -61,7 +61,7 @@ Once deployed, the dashboard will be available at:
 
 ## 🔗 Backend Integration
 
-The dashboard connects to the Moodvestor backend API:
+The dashboard connects to the VibeBullish backend API:
 - **Production**: `https://api.vibebullish.com`
 - **Endpoints**: 
   - `/api/data-pipeline/reports` - Get reports
