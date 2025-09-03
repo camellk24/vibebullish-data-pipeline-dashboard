@@ -564,7 +564,7 @@
                 const tickerCount = report.ticker_details ? report.ticker_details.length : 0;
                 
                 return `
-                    <div class="report-item" onclick="showReportDetail('${report.report_id}')">
+                    <div class="report-item" data-report-id="${report.report_id}">
                         <div class="report-header">
                             <div class="report-id">${report.report_id}</div>
                             <div class="report-timestamp">${new Date(report.timestamp).toLocaleString()}</div>
@@ -592,6 +592,15 @@
             }).join('');
             
             document.getElementById('report-list').innerHTML = `<div class="report-list">${reportsHTML}</div>`;
+            
+            // Add event listeners for report items
+            document.querySelectorAll('.report-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const reportId = item.dataset.reportId;
+                    showReportDetail(reportId);
+                });
+            });
+            
             updatePagination();
         }
 
@@ -616,8 +625,12 @@
             displayReports();
         }
 
+        // Make changePage globally available
+        window.changePage = changePage;
+
         // Report Detail Page
         async function showReportDetail(reportId) {
+            console.log('Showing report detail for:', reportId);
             showPage('report-detail');
             document.getElementById('report-detail-title').textContent = `Report: ${reportId}`;
             document.getElementById('report-detail-content').innerHTML = '<div class="loading">Loading report details...</div>';
@@ -637,6 +650,9 @@
                 document.getElementById('report-detail-content').innerHTML = '<div class="error">Failed to load report details</div>';
             }
         }
+
+        // Make showReportDetail globally available
+        window.showReportDetail = showReportDetail;
 
         function displayReportDetail(report) {
             const statusClass = report.status === 'success' ? 'status-success' : 
