@@ -38,8 +38,10 @@ Value: cname.vercel-dns.com
 
 ### 3. Access Your Dashboard
 Once configured, your dashboard will be available at:
-- **https://vibebullish.com/pipeline-dashboard**
-- **https://www.vibebullish.com/pipeline-dashboard**
+- **https://vibebullish.com/dashboard**
+- **https://www.vibebullish.com/dashboard**
+- **https://vibebullish.com/data-pipeline-dashboard**
+- **https://www.vibebullish.com/data-pipeline-dashboard**
 
 ## 🚀 Current Status
 
@@ -52,7 +54,8 @@ Once configured, your dashboard will be available at:
 ## 🔍 Testing
 
 After domain setup, test these URLs:
-- Main dashboard: `https://www.vibebullish.com/pipeline-dashboard`
+- Main dashboard: `https://www.vibebullish.com/dashboard`
+- Alternative dashboard: `https://www.vibebullish.com/data-pipeline-dashboard`
 - API endpoints: Should work automatically (CORS configured)
 - Static assets: CSS/JS should load correctly
 
@@ -60,4 +63,4 @@ After domain setup, test these URLs:
 
 - The dashboard will still work on the old Vercel URL during transition
 - All API calls will continue to work (backend CORS allows all origins)
-- The `/pipeline-dashboard` path is configured in `vercel.json`
+- The `/dashboard` and `/data-pipeline-dashboard` paths are configured in `vercel.json`

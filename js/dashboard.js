@@ -1,5 +1,5 @@
 // Dashboard JavaScript
-const API_BASE = 'https://moodvestor-backend-production.up.railway.app/api/data-pipeline';
+const API_BASE = 'https://api.vibebullish.com/api/data-pipeline';
 let currentReports = [];
 let currentTickers = [];
 let currentPage = 1;
@@ -126,7 +126,7 @@ function displayLatestReport(report) {
 // Load schedule summary for overview
 async function loadScheduleSummary() {
     try {
-        const response = await fetch('https://moodvestor-backend-production.up.railway.app/api/data-ingestion/status');
+        const response = await fetch('https://api.vibebullish.com/api/data-ingestion/status');
         const data = await response.json();
         
         if (data.status) {
@@ -394,7 +394,7 @@ function displayReportDetail(report) {
 async function loadTickers() {
     try {
         // Get the latest report to extract ticker details
-        const response = await fetch('https://moodvestor-backend-production.up.railway.app/api/data-pipeline/reports?limit=1');
+        const response = await fetch('https://api.vibebullish.com/api/data-pipeline/reports?limit=1');
         const data = await response.json();
         
         if (data.reports && data.reports.length > 0) {
@@ -524,8 +524,8 @@ function searchTickers(query) {
 async function loadSchedule() {
     try {
         const [statusResponse, statsResponse] = await Promise.all([
-            fetch('https://moodvestor-backend-production.up.railway.app/api/data-ingestion/status'),
-            fetch('https://moodvestor-backend-production.up.railway.app/api/data-ingestion/stats')
+            fetch('https://api.vibebullish.com/api/data-ingestion/status'),
+            fetch('https://api.vibebullish.com/api/data-ingestion/stats')
         ]);
         
         const statusData = await statusResponse.json();

@@ -20,7 +20,7 @@ app = Flask(__name__)
 # Configuration
 SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL')
 DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
-BACKEND_URL = os.getenv('BACKEND_URL', 'https://moodvestor-backend-production.up.railway.app')
+BACKEND_URL = os.getenv('BACKEND_URL', 'https://api.vibebullish.com')
 
 @app.route('/webhook/data-pipeline', methods=['POST'])
 def receive_data_pipeline_report():

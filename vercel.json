@@ -17,19 +17,35 @@
   ],
   "routes": [
     {
-      "src": "/pipeline-dashboard/styles/(.*)",
+      "src": "/dashboard/styles/(.*)",
       "dest": "/styles/$1"
     },
     {
-      "src": "/pipeline-dashboard/js/(.*)",
+      "src": "/dashboard/js/(.*)",
       "dest": "/js/$1"
     },
     {
-      "src": "/pipeline-dashboard",
+      "src": "/dashboard",
       "dest": "/index.html"
     },
     {
-      "src": "/pipeline-dashboard/",
+      "src": "/dashboard/",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/data-pipeline-dashboard/styles/(.*)",
+      "dest": "/styles/$1"
+    },
+    {
+      "src": "/data-pipeline-dashboard/js/(.*)",
+      "dest": "/js/$1"
+    },
+    {
+      "src": "/data-pipeline-dashboard",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/data-pipeline-dashboard/",
       "dest": "/index.html"
     },
     {

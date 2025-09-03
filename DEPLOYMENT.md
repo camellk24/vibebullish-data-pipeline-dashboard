@@ -55,14 +55,14 @@ The repository includes GitHub Actions workflows for automatic deployment:
 ## 🌐 Accessing the Dashboard
 
 Once deployed, the dashboard will be available at:
-- **Vercel**: `https://moodvestor-dashboard.vercel.app` (or custom domain)
-- **Railway**: `https://moodvestor-dashboard-production.up.railway.app` (or custom domain)
-- **Netlify**: `https://moodvestor-dashboard.netlify.app` (or custom domain)
+- **Vercel**: `https://www.vibebullish.com/dashboard` (or custom domain)
+- **Railway**: `https://www.vibebullish.com/dashboard` (or custom domain)
+- **Netlify**: `https://www.vibebullish.com/dashboard` (or custom domain)
 
 ## 🔗 Backend Integration
 
 The dashboard connects to the Moodvestor backend API:
-- **Production**: `https://moodvestor-backend-production.up.railway.app`
+- **Production**: `https://api.vibebullish.com`
 - **Endpoints**: 
   - `/api/data-pipeline/reports` - Get reports
   - `/api/data-pipeline/dashboard` - Dashboard data
