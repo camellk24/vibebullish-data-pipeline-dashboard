@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "moodvestor-dashboard",
+  "name": "vibebullish-dashboard",
   "builds": [
     {
       "src": "index.html",
@@ -16,6 +16,22 @@
     }
   ],
   "routes": [
+    {
+      "src": "/pipeline-dashboard/styles/(.*)",
+      "dest": "/styles/$1"
+    },
+    {
+      "src": "/pipeline-dashboard/js/(.*)",
+      "dest": "/js/$1"
+    },
+    {
+      "src": "/pipeline-dashboard",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/pipeline-dashboard/",
+      "dest": "/index.html"
+    },
     {
       "src": "/styles/(.*)",
       "dest": "/styles/$1"
