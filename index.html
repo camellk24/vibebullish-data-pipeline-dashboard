@@ -365,6 +365,7 @@
             <a href="#" class="nav-link active" data-page="overview">📊 Overview</a>
             <a href="#" class="nav-link" data-page="reports">📋 Report History</a>
             <a href="#" class="nav-link" data-page="tickers">📈 Ticker Analysis</a>
+            <a href="#" class="nav-link" data-page="schedule">⏰ Schedule</a>
         </div>
         
         <!-- Overview Page -->
@@ -419,6 +420,15 @@
                 <div id="ticker-list" class="loading">Loading ticker data...</div>
             </div>
         </div>
+        
+        <!-- Schedule Page -->
+        <div id="schedule" class="page">
+            <div class="card">
+                <h2>Data Ingestion Schedule</h2>
+                <button class="refresh-btn" onclick="loadSchedule()">🔄 Refresh Schedule</button>
+                <div id="schedule-content" class="loading">Loading schedule information...</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -459,6 +469,8 @@
                 loadReports();
             } else if (pageId === 'tickers') {
                 loadTickers();
+            } else if (pageId === 'schedule') {
+                loadSchedule();
             }
         }
 
@@ -476,6 +488,9 @@
                     document.getElementById('system-status').innerHTML = '<div class="error">No reports available</div>';
                     document.getElementById('latest-report').innerHTML = '<div class="error">No reports available</div>';
                 }
+                
+                // Load schedule summary
+                await loadScheduleSummary();
             } catch (error) {
                 console.error('Error loading overview:', error);
                 document.getElementById('system-status').innerHTML = '<div class="error">Failed to load system status</div>';
@@ -533,6 +548,69 @@
                     </div>
                 </div>
             `;
+        }
+
+        // Load schedule summary for overview
+        async function loadScheduleSummary() {
+            try {
+                const response = await fetch('https://moodvestor-backend-production.up.railway.app/api/data-ingestion/status');
+                const data = await response.json();
+                
+                if (data.status) {
+                    displayScheduleSummary(data.status);
+                }
+            } catch (error) {
+                console.error('Error loading schedule summary:', error);
+            }
+        }
+
+        function displayScheduleSummary(status) {
+            const nextRun = new Date(status.next_run);
+            const now = new Date();
+            const timeUntilNext = nextRun - now;
+            
+            const formatTime = (ms) => {
+                const hours = Math.floor(ms / (1000 * 60 * 60));
+                const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (hours > 0) return `${hours}h ${minutes}m`;
+                return `${minutes}m`;
+            };
+            
+            const statusClass = status.is_running ? 'status-success' : 'status-error';
+            
+            // Add schedule summary to overview
+            const scheduleHTML = `
+                <h3>Data Ingestion Schedule</h3>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">
+                            <span class="status-badge ${statusClass}">${status.is_running ? 'Running' : 'Stopped'}</span>
+                        </div>
+                        <div class="metric-label">Job Status</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${status.interval_hours}h</div>
+                        <div class="metric-label">Interval</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatTime(timeUntilNext)}</div>
+                        <div class="metric-label">Next Run In</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${status.tickers}</div>
+                        <div class="metric-label">Active Tickers</div>
+                    </div>
+                </div>
+            `;
+            
+            // Insert schedule summary after the latest report
+            const latestReportDiv = document.getElementById('latest-report');
+            if (latestReportDiv && latestReportDiv.parentNode) {
+                const scheduleDiv = document.createElement('div');
+                scheduleDiv.innerHTML = scheduleHTML;
+                latestReportDiv.parentNode.insertBefore(scheduleDiv, latestReportDiv.nextSibling);
+            }
         }
 
         // Reports Page
@@ -807,6 +885,132 @@
             
             document.getElementById('ticker-list').innerHTML = `<div class="ticker-grid">${tickersHTML}</div>`;
         }
+
+        // Schedule Page
+        async function loadSchedule() {
+            try {
+                const [statusResponse, statsResponse] = await Promise.all([
+                    fetch('https://moodvestor-backend-production.up.railway.app/api/data-ingestion/status'),
+                    fetch('https://moodvestor-backend-production.up.railway.app/api/data-ingestion/stats')
+                ]);
+                
+                const statusData = await statusResponse.json();
+                const statsData = await statsResponse.json();
+                
+                displaySchedule(statusData.status, statsData.stats);
+            } catch (error) {
+                console.error('Error loading schedule:', error);
+                document.getElementById('schedule-content').innerHTML = '<div class="error">Failed to load schedule information</div>';
+            }
+        }
+
+        function displaySchedule(status, stats) {
+            const nextRun = new Date(status.next_run);
+            const lastIngestion = new Date(stats.last_ingestion);
+            const now = new Date();
+            
+            const timeUntilNext = nextRun - now;
+            const timeSinceLast = now - lastIngestion;
+            
+            const formatTime = (ms) => {
+                const hours = Math.floor(ms / (1000 * 60 * 60));
+                const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+                
+                if (hours > 0) return `${hours}h ${minutes}m`;
+                if (minutes > 0) return `${minutes}m ${seconds}s`;
+                return `${seconds}s`;
+            };
+            
+            const statusClass = status.is_running ? 'status-success' : 'status-error';
+            const scheduleStatusClass = stats.schedule_status === 'active' ? 'status-success' : 'status-warning';
+            
+            document.getElementById('schedule-content').innerHTML = `
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">
+                            <span class="status-badge ${statusClass}">${status.is_running ? 'Running' : 'Stopped'}</span>
+                        </div>
+                        <div class="metric-label">Job Status</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${status.interval_hours}h</div>
+                        <div class="metric-label">Interval</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${status.tickers}</div>
+                        <div class="metric-label">Active Tickers</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">
+                            <span class="status-badge ${scheduleStatusClass}">${stats.schedule_status}</span>
+                        </div>
+                        <div class="metric-label">Schedule Status</div>
+                    </div>
+                </div>
+                
+                <h3>Next Run Information</h3>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${nextRun.toLocaleString()}</div>
+                        <div class="metric-label">Next Run Time</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatTime(timeUntilNext)}</div>
+                        <div class="metric-label">Time Until Next</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${lastIngestion.toLocaleString()}</div>
+                        <div class="metric-label">Last Ingestion</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${formatTime(timeSinceLast)}</div>
+                        <div class="metric-label">Time Since Last</div>
+                    </div>
+                </div>
+                
+                <h3>Performance Statistics</h3>
+                <div class="metric-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">${(stats.success_rate * 100).toFixed(1)}%</div>
+                        <div class="metric-label">Success Rate</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${stats.avg_duration}</div>
+                        <div class="metric-label">Avg Duration</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${stats.total_runs_today}</div>
+                        <div class="metric-label">Runs Today</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">${stats.avg_tickers_per_run}</div>
+                        <div class="metric-label">Avg Tickers/Run</div>
+                    </div>
+                </div>
+                
+                <h3>Schedule Details</h3>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h4>Configuration</h4>
+                            <p><strong>Schedule Type:</strong> ${status.schedule_type}</p>
+                            <p><strong>Dynamic Interval:</strong> ${status.dynamic ? 'Yes' : 'No'}</p>
+                            <p><strong>Interval:</strong> ${status.interval}</p>
+                        </div>
+                        <div>
+                            <h4>Recent Activity</h4>
+                            <p><strong>Total Snapshots:</strong> ${stats.total_snapshots}</p>
+                            <p><strong>Active Tickers:</strong> ${stats.active_tickers}</p>
+                            <p><strong>Time Since Last:</strong> ${stats.time_since_last}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Make loadSchedule globally available
+        window.loadSchedule = loadSchedule;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
