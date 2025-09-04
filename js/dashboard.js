@@ -78,7 +78,7 @@ function displaySystemStatus(report) {
     document.getElementById('system-status').innerHTML = `
         <div class="metric-grid">
             <div class="metric-card">
-                <div class="metric-value">${report.summary.success_rate}%</div>
+                <div class="metric-value">${report.summary.success_rate.toFixed(1)}%</div>
                 <div class="metric-label">Success Rate</div>
             </div>
             <div class="metric-card">
@@ -222,7 +222,7 @@ function displayReports() {
                 </div>
                 <div class="report-summary">
                     <div class="summary-item">
-                        <div class="summary-value">${report.summary.success_rate}%</div>
+                        <div class="summary-value">${report.summary.success_rate.toFixed(1)}%</div>
                         <div class="summary-label">Success Rate</div>
                     </div>
                     <div class="summary-item">
@@ -351,7 +351,7 @@ function displayReportDetail(report) {
     document.getElementById('report-detail-content').innerHTML = `
         <div class="metric-grid">
             <div class="metric-card">
-                <div class="metric-value">${report.summary.success_rate}%</div>
+                <div class="metric-value">${report.summary.success_rate.toFixed(1)}%</div>
                 <div class="metric-label">Success Rate</div>
             </div>
             <div class="metric-card">
