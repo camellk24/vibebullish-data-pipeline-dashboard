@@ -5,6 +5,29 @@ let currentTickers = [];
 let currentPage = 1;
 const reportsPerPage = 10;
 
+// Helper function to format processing time
+function formatProcessingTime(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return timeStr;
+    
+    // Parse format like "8m13.041751456s"
+    const match = timeStr.match(/(\d+)m(\d+\.?\d*)s/);
+    if (match) {
+        const minutes = parseInt(match[1]);
+        const seconds = parseFloat(match[2]);
+        const totalSeconds = minutes * 60 + seconds;
+        
+        if (totalSeconds >= 60) {
+            // Show as minutes with 1 decimal place
+            return `${(totalSeconds / 60).toFixed(1)}m`;
+        } else {
+            // Show as seconds with 1 decimal place
+            return `${totalSeconds.toFixed(1)}s`;
+        }
+    }
+    
+    return timeStr; // Return original if parsing fails
+}
+
 // Ticker Analysis Page
 let allTickers = [];
 let filteredTickers = [];
@@ -116,7 +139,7 @@ function displayLatestReport(report) {
                 <div class="metric-label">Detailed Tickers</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.processing_time}</div>
+                <div class="metric-value">${formatProcessingTime(report.summary.processing_time)}</div>
                 <div class="metric-label">Processing Time</div>
             </div>
         </div>
