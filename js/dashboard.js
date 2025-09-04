@@ -321,11 +321,13 @@ function displayReportDetail(report) {
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Buy Target:</span>
-                                <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 'N/A'}</span>
+                                <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
+                                    (ticker.buy_target_reason ? ticker.buy_target_reason : 'N/A')}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Sell Target:</span>
-                                <span class="detail-value">${ticker.sell_target ? '$' + ticker.sell_target.toFixed(2) : 'N/A'}</span>
+                                <span class="detail-value">${ticker.sell_target ? '$' + ticker.sell_target.toFixed(2) : 
+                                    (ticker.sell_target_reason ? ticker.sell_target_reason : 'N/A')}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Upside:</span>
@@ -420,7 +422,7 @@ function displayTickers() {
         <div class="ticker-card">
             <div class="ticker-header">
                 <h3>${ticker.ticker}</h3>
-                <span class="status-badge ${ticker.status === 'success' ? 'status-success' : 'status-warning'}">${ticker.status}</span>
+                <span class="status-badge ${ticker.status === 'success' ? 'status-success' : ticker.status === 'error' ? 'status-error' : 'status-warning'}">${ticker.status}</span>
             </div>
             <div class="ticker-metrics">
                 <div class="metric">
@@ -437,11 +439,13 @@ function displayTickers() {
                 </div>
                 <div class="metric">
                     <span class="label">Buy Target:</span>
-                    <span class="value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 'N/A'}</span>
+                    <span class="value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
+                        (ticker.buy_target_reason ? ticker.buy_target_reason : 'N/A')}</span>
                 </div>
                 <div class="metric">
                     <span class="label">Sell Target:</span>
-                    <span class="value">${ticker.sell_target ? '$' + ticker.sell_target.toFixed(2) : 'N/A'}</span>
+                    <span class="value">${ticker.sell_target ? '$' + ticker.sell_target.toFixed(2) : 
+                        (ticker.sell_target_reason ? ticker.sell_target_reason : 'N/A')}</span>
                 </div>
                 <div class="metric">
                     <span class="label">Volume:</span>
