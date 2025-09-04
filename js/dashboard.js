@@ -86,7 +86,7 @@ function displaySystemStatus(report) {
                 <div class="metric-label">Tickers Processed</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.data_quality_score}%</div>
+                <div class="metric-value">${report.summary.data_quality_score.toFixed(1)}%</div>
                 <div class="metric-label">Data Quality</div>
             </div>
             <div class="metric-card">
@@ -116,7 +116,7 @@ function displayLatestReport(report) {
                 <div class="metric-label">Detailed Tickers</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.processing_time}</div>
+                <div class="metric-value">${report.summary.processing_time.toFixed(1)}s</div>
                 <div class="metric-label">Processing Time</div>
             </div>
         </div>
@@ -359,7 +359,7 @@ function displayReportDetail(report) {
                 <div class="metric-label">Tickers Processed</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.data_quality_score}%</div>
+                <div class="metric-value">${report.summary.data_quality_score.toFixed(1)}%</div>
                 <div class="metric-label">Data Quality</div>
             </div>
             <div class="metric-card">
