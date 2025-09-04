@@ -116,7 +116,7 @@ function displayLatestReport(report) {
                 <div class="metric-label">Detailed Tickers</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.processing_time.toFixed(1)}s</div>
+                <div class="metric-value">${report.summary.processing_time}</div>
                 <div class="metric-label">Processing Time</div>
             </div>
         </div>
