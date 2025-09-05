@@ -340,7 +340,7 @@ function displayReportDetail(report) {
                         <div class="ticker-details">
                             <div class="detail-item">
                                 <span class="detail-label">Vibe Score:</span>
-                                <span class="detail-value">${ticker.vibe_score ? ticker.vibe_score.toFixed(3) : 'N/A'}</span>
+                                <span class="detail-value">${ticker.vibe_score ? (ticker.vibe_score * 100 * 3.5 + 20).toFixed(0) + '%' : 'N/A'}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Buy Target:</span>
@@ -398,7 +398,7 @@ function displayReportDetail(report) {
                 <div class="metric-label">Total Calculated</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${(report.vibe_score_stats?.average_score || 0).toFixed(3)}</div>
+                <div class="metric-value">${((report.vibe_score_stats?.average_score || 0) * 100 * 3.5 + 20).toFixed(0)}%</div>
                 <div class="metric-label">Average Score</div>
             </div>
             <div class="metric-card">
@@ -454,7 +454,7 @@ function displayTickers() {
                 </div>
                 <div class="metric">
                     <span class="label">Vibe Score:</span>
-                    <span class="value">${ticker.vibe_score ? (ticker.vibe_score * 100).toFixed(1) + '%' : 'N/A'}</span>
+                    <span class="value">${ticker.vibe_score && ticker.vibe_score >= 0 ? (ticker.vibe_score * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
                 <div class="metric">
                     <span class="label">Upside:</span>

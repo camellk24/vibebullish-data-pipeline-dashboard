@@ -834,9 +834,79 @@
             document.getElementById('ticker-list').innerHTML = `<div class="ticker-grid">${tickersHTML}</div>`;
         }
 
+        // Load stock alerts function
+        async function loadStockAlerts() {
+            try {
+                const response = await fetch('https://api.vibebullish.com/api/alerts/dashboard');
+                const data = await response.json();
+                
+                if (data.success) {
+                    stockAlerts = data.alerts;
+                    displayStockAlerts();
+                } else {
+                    console.error('Failed to load stock alerts:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading stock alerts:', error);
+            }
+        }
+        
+        // Display stock alerts
+        function displayStockAlerts() {
+            const alertsContainer = document.getElementById('alerts-container');
+            if (!alertsContainer) return;
+            
+            if (stockAlerts.length === 0) {
+                alertsContainer.innerHTML = '<div class="no-alerts">✅ No active alerts</div>';
+                return;
+            }
+            
+            let alertsHTML = '';
+            stockAlerts.forEach(alert => {
+                const timeAgo = formatTimeAgo(new Date(alert.created_at));
+                alertsHTML += `
+                    <div class="alert-item ${alert.alert_type}" style="border-left-color: ${alert.color}">
+                        <div class="alert-header">
+                            <span class="alert-icon">${alert.icon}</span>
+                            <span class="alert-ticker">${alert.ticker}</span>
+                            <span class="alert-type">${alert.alert_type.replace('_', ' ').toUpperCase()}</span>
+                            <span class="alert-time">${timeAgo}</span>
+                        </div>
+                        <div class="alert-details">
+                            <div class="alert-reason">${alert.alert_reason}</div>
+                            <div class="alert-metrics">
+                                <span class="price-change ${alert.price_change_percent < 0 ? 'negative' : 'positive'}">
+                                    ${alert.price_change_percent.toFixed(2)}%
+                                </span>
+                                <span class="current-price">$${alert.current_price.toFixed(2)}</span>
+                                <span class="risk-level">Risk: ${alert.risk_level}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            alertsContainer.innerHTML = alertsHTML;
+        }
+        
+        // Format time ago
+        function formatTimeAgo(date) {
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadOverview();
+            loadStockAlerts();
         });
     </script>
 </body>
