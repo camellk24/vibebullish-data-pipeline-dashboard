@@ -302,11 +302,11 @@ function displayLatestReport(report) {
         <div class="metric-grid">
             <div class="metric-card">
                 <div class="metric-value">${vibeStats.total_calculated || 0}</div>
-                <div class="metric-label">Vibe Scores Calculated</div>
+                <div class="metric-label">AI Ratings Calculated</div>
             </div>
             <div class="metric-card">
                 <div class="metric-value">${(vibeStats.average_score || 0).toFixed(3)}</div>
-                <div class="metric-label">Avg Vibe Score</div>
+                <div class="metric-label">Avg AI Rating</div>
             </div>
             <div class="metric-card">
                 <div class="metric-value">${tickerCount}</div>
@@ -525,9 +525,22 @@ function displayReportDetail(report) {
                         </div>
                         <div class="ticker-details">
                             <div class="detail-item">
-                                <span class="detail-label">Vibe Score:</span>
-                                <span class="detail-value">${ticker.vibe_score ? (ticker.vibe_score * 100 * 3.5 + 20).toFixed(0) + '%' : 'N/A'}</span>
+                                <span class="detail-label">AI Rating:</span>
+                                <span class="detail-value">${ticker.ai_rating ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                             </div>
+                            ${ticker.ai_rating_breakdown ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Score Breakdown:</span>
+                                    <div class="breakdown-details">
+                                        ${Object.entries(ticker.ai_rating_breakdown.components || {}).map(([key, component]) => 
+                                            `<div class="breakdown-item">
+                                                <span class="breakdown-label">${key.replace(/_/g, ' ').toUpperCase()}:</span>
+                                                <span class="breakdown-value">${(component.score * 100).toFixed(1)}%</span>
+                                            </div>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
                             <div class="detail-item">
                                 <span class="detail-label">Buy Target:</span>
                                 <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
@@ -577,15 +590,15 @@ function displayReportDetail(report) {
             </div>
         </div>
         
-        <h3>Vibe Score Statistics</h3>
+        <h3>AI Rating Statistics</h3>
         <div class="metric-grid">
             <div class="metric-card">
                 <div class="metric-value">${report.vibe_score_stats?.total_calculated || 0}</div>
                 <div class="metric-label">Total Calculated</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${((report.vibe_score_stats?.average_score || 0) * 100 * 3.5 + 20).toFixed(0)}%</div>
-                <div class="metric-label">Average Score</div>
+                <div class="metric-value">${((report.vibe_score_stats?.average_score || 0) * 100).toFixed(1)}%</div>
+                <div class="metric-label">Average Rating</div>
             </div>
             <div class="metric-card">
                 <div class="metric-value">${report.vibe_score_stats?.default_values_used || 0}</div>
@@ -639,8 +652,8 @@ function displayTickers() {
                     <span class="value">$${ticker.current_price?.toFixed(2) || 'N/A'}</span>
                 </div>
                 <div class="metric">
-                    <span class="label">Vibe Score:</span>
-                    <span class="value">${ticker.vibe_score && ticker.vibe_score >= 0 ? (ticker.vibe_score * 100).toFixed(1) + '%' : 'N/A'}</span>
+                    <span class="label">AI Rating:</span>
+                    <span class="value">${ticker.ai_rating && ticker.ai_rating >= 0 ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
                 <div class="metric">
                     <span class="label">Upside:</span>
@@ -681,8 +694,8 @@ function filterTickers(filter) {
         case 'all':
             filteredTickers = [...allTickers];
             break;
-        case 'high-vibe':
-            filteredTickers = allTickers.filter(t => t.vibe_score && t.vibe_score > 0.5);
+        case 'high-ai-rating':
+            filteredTickers = allTickers.filter(t => t.ai_rating && t.ai_rating > 0.5);
             break;
         case 'buy-targets':
             filteredTickers = allTickers.filter(t => t.buy_target && t.current_price && t.current_price <= t.buy_target);
@@ -703,8 +716,8 @@ function sortTickers(sortBy) {
         switch (sortBy) {
             case 'ticker':
                 return a.ticker.localeCompare(b.ticker);
-            case 'vibe-score':
-                return (b.vibe_score || 0) - (a.vibe_score || 0);
+            case 'ai-rating':
+                return (b.ai_rating || 0) - (a.ai_rating || 0);
             case 'upside':
                 return (b.upside_percent || 0) - (a.upside_percent || 0);
             case 'price':

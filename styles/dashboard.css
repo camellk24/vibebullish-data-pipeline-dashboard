@@ -384,6 +384,40 @@ body {
     color: white;
 }
 
+/* AI Rating Breakdown Styles */
+.breakdown-details {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8fafc;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.breakdown-item:last-child {
+    border-bottom: none;
+}
+
+.breakdown-label {
+    font-size: 0.85em;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.breakdown-value {
+    font-size: 0.85em;
+    color: #1e293b;
+    font-weight: 600;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
