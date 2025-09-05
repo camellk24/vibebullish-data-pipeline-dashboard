@@ -1,9 +1,11 @@
 // Dashboard JavaScript
 const API_BASE = 'https://api.vibebullish.com/api/data-pipeline';
+const COST_OPT_API_BASE = 'https://api.vibebullish.com/api/cost-optimization';
 let currentReports = [];
 let currentTickers = [];
 let currentPage = 1;
 const reportsPerPage = 10;
+let costMetrics = null;
 
 // Helper function to format processing time
 function formatProcessingTime(timeStr) {
@@ -26,6 +28,173 @@ function formatProcessingTime(timeStr) {
     }
     
     return timeStr; // Return original if parsing fails
+}
+
+// Helper function to format currency
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4
+    }).format(amount);
+}
+
+// Helper function to format percentage
+function formatPercentage(value) {
+    return `${(value * 100).toFixed(1)}%`;
+}
+
+// Load cost optimization page
+async function loadCostOptimization() {
+    await loadCostMetrics();
+    await loadCostOptimizationDetails();
+}
+
+// Load cost optimization metrics
+async function loadCostMetrics() {
+    try {
+        const response = await fetch(`${COST_OPT_API_BASE}/metrics`);
+        const data = await response.json();
+        costMetrics = data;
+        displayCostMetrics();
+    } catch (error) {
+        console.error('Error loading cost metrics:', error);
+        // Show fallback data
+        costMetrics = {
+            ml_model_cost: 0.0,
+            genai_cost: 0.0,
+            total_requests: 0,
+            ml_model_requests: 0,
+            genai_requests: 0,
+            average_latency: 0,
+            cost_savings: 0.0
+        };
+        displayCostMetrics();
+    }
+}
+
+// Load detailed cost optimization data
+async function loadCostOptimizationDetails() {
+    try {
+        const response = await fetch(`${COST_OPT_API_BASE}/details`);
+        const data = await response.json();
+        displayCostOptimizationDetails(data);
+    } catch (error) {
+        console.error('Error loading cost optimization details:', error);
+        displayCostOptimizationDetails(null);
+    }
+}
+
+// Display detailed cost optimization information
+function displayCostOptimizationDetails(data) {
+    const container = document.getElementById('cost-optimization-details');
+    if (!container) return;
+    
+    if (!data) {
+        container.innerHTML = '<div class="error">Failed to load cost optimization details</div>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="cost-optimization-content">
+            <div class="section">
+                <h3>📊 Usage Breakdown by Analysis Type</h3>
+                <div class="usage-breakdown">
+                    ${Object.entries(data.usage_by_type || {}).map(([type, metrics]) => `
+                        <div class="usage-item">
+                            <div class="usage-type">${type}</div>
+                            <div class="usage-stats">
+                                <span class="ml-usage">ML: ${metrics.ml_requests || 0}</span>
+                                <span class="genai-usage">GenAI: ${metrics.genai_requests || 0}</span>
+                                <span class="total-cost">Cost: ${formatCurrency(metrics.total_cost || 0)}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>🎯 Optimization Recommendations</h3>
+                <div class="recommendations">
+                    ${data.recommendations ? data.recommendations.map(rec => `
+                        <div class="recommendation-item">
+                            <div class="recommendation-type">${rec.analysis_type}</div>
+                            <div class="recommendation-text">${rec.recommendation}</div>
+                            <div class="recommendation-savings">Potential savings: ${formatCurrency(rec.potential_savings || 0)}</div>
+                        </div>
+                    `).join('') : '<div class="no-recommendations">No recommendations available</div>'}
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>📈 Performance Trends</h3>
+                <div class="performance-trends">
+                    <div class="trend-item">
+                        <div class="trend-label">ML Model Usage</div>
+                        <div class="trend-value">${data.ml_usage_trend || '0%'} ↗️</div>
+                    </div>
+                    <div class="trend-item">
+                        <div class="trend-label">Cost Reduction</div>
+                        <div class="trend-value">${data.cost_reduction_trend || '0%'} ↘️</div>
+                    </div>
+                    <div class="trend-item">
+                        <div class="trend-label">Response Time</div>
+                        <div class="trend-value">${data.latency_trend || '0ms'} ⚡</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Display cost optimization metrics
+function displayCostMetrics() {
+    if (!costMetrics) return;
+    
+    const container = document.getElementById('cost-metrics');
+    if (!container) return;
+    
+    const totalCost = costMetrics.ml_model_cost + costMetrics.genai_cost;
+    const mlPercentage = costMetrics.total_requests > 0 ? 
+        (costMetrics.ml_model_requests / costMetrics.total_requests) * 100 : 0;
+    const genaiPercentage = costMetrics.total_requests > 0 ? 
+        (costMetrics.genai_requests / costMetrics.total_requests) * 100 : 0;
+    
+    container.innerHTML = `
+        <div class="cost-metrics-grid">
+            <div class="metric-card">
+                <h3>💰 Total Cost</h3>
+                <div class="metric-value">${formatCurrency(totalCost)}</div>
+                <div class="metric-subtitle">Last 24 hours</div>
+            </div>
+            <div class="metric-card">
+                <h3>🤖 ML Models</h3>
+                <div class="metric-value">${formatCurrency(costMetrics.ml_model_cost)}</div>
+                <div class="metric-subtitle">${mlPercentage.toFixed(1)}% of requests</div>
+            </div>
+            <div class="metric-card">
+                <h3>🧠 GenAI</h3>
+                <div class="metric-value">${formatCurrency(costMetrics.genai_cost)}</div>
+                <div class="metric-subtitle">${genaiPercentage.toFixed(1)}% of requests</div>
+            </div>
+            <div class="metric-card">
+                <h3>📊 Cost Savings</h3>
+                <div class="metric-value">${formatPercentage(costMetrics.cost_savings)}</div>
+                <div class="metric-subtitle">vs all GenAI</div>
+            </div>
+            <div class="metric-card">
+                <h3>⚡ Avg Latency</h3>
+                <div class="metric-value">${costMetrics.average_latency}ms</div>
+                <div class="metric-subtitle">Response time</div>
+            </div>
+            <div class="metric-card">
+                <h3>📈 Total Requests</h3>
+                <div class="metric-value">${costMetrics.total_requests.toLocaleString()}</div>
+                <div class="metric-subtitle">Last 24 hours</div>
+            </div>
+        </div>
+    `;
 }
 
 // Ticker Analysis Page
@@ -67,6 +236,8 @@ function showPage(pageId) {
         loadTickers();
     } else if (pageId === 'schedule') {
         loadSchedule();
+    } else if (pageId === 'cost-optimization') {
+        loadCostOptimization();
     }
 }
 
@@ -75,6 +246,9 @@ async function loadOverview() {
     try {
         const response = await fetch(`${API_BASE}/reports?limit=1`);
         const data = await response.json();
+        
+        // Also load cost metrics for overview
+        await loadCostMetrics();
         
         if (data.reports && data.reports.length > 0) {
             const latestReport = data.reports[0];
@@ -255,6 +429,18 @@ function displayReports() {
                     <div class="summary-item">
                         <div class="summary-value">${tickerCount}</div>
                         <div class="summary-label">Details</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value">${report.cost_metrics ? formatCurrency(report.cost_metrics.total_cost) : 'N/A'}</div>
+                        <div class="summary-label">Total Cost</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value">${report.cost_metrics ? report.cost_metrics.genai_calls : 0}</div>
+                        <div class="summary-label">GenAI Calls</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value">${report.cost_metrics ? report.cost_metrics.ml_model_calls : 0}</div>
+                        <div class="summary-label">ML Calls</div>
                     </div>
                     <div class="summary-item">
                         <div class="summary-value"><span class="status-badge ${statusClass}">${report.status}</span></div>
