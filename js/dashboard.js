@@ -540,7 +540,7 @@ function displayReportDetail(report) {
                                         ).join('')}
                                     </div>
                                 </div>
-                            ` : ''}
+                            ` : `<div class="detail-item"><span class="detail-label">Score Breakdown:</span><span class="detail-value">DEBUG: No breakdown data</span></div>`}
                             <div class="detail-item">
                                 <span class="detail-label">Buy Target:</span>
                                 <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
@@ -624,6 +624,22 @@ async function loadTickers() {
         if (data.reports && data.reports.length > 0) {
             allTickers = data.reports[0].ticker_details || [];
             filteredTickers = [...allTickers];
+            
+            // Debug logging
+            console.log('Latest report ID:', data.reports[0].report_id);
+            console.log('Total tickers loaded:', allTickers.length);
+            
+            // Check AAPL specifically
+            const aaplTicker = allTickers.find(t => t.ticker === 'AAPL');
+            if (aaplTicker) {
+                console.log('AAPL data:', {
+                    ticker: aaplTicker.ticker,
+                    ai_rating: aaplTicker.ai_rating,
+                    has_breakdown: !!aaplTicker.ai_rating_breakdown,
+                    breakdown_components: aaplTicker.ai_rating_breakdown ? Object.keys(aaplTicker.ai_rating_breakdown.components || {}) : null
+                });
+            }
+            
             displayTickers();
         } else {
             document.getElementById('ticker-list').innerHTML = '<div class="error">No ticker data available</div>';
