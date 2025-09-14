@@ -45,6 +45,64 @@ function formatPercentage(value) {
     return `${(value * 100).toFixed(1)}%`;
 }
 
+// Helper function to determine trading strategy based on AI rating and upside
+function getTradingStrategy(ticker) {
+    const aiRating = ticker.ai_rating || 0;
+    const upside = ticker.upside_percent || 0;
+    
+    // High AI Rating (>60%) + Positive Upside (>10%) = Strong Buy
+    if (aiRating > 0.6 && upside > 10) {
+        return {
+            class: 'strategy-strong-buy',
+            label: '🚀 Strong Buy',
+            explanation: 'High quality stock with good upside potential'
+        };
+    }
+    
+    // High AI Rating (>60%) + Moderate Upside (0-10%) = Buy
+    if (aiRating > 0.6 && upside >= 0 && upside <= 10) {
+        return {
+            class: 'strategy-buy',
+            label: '✅ Buy',
+            explanation: 'Quality stock, modest upside'
+        };
+    }
+    
+    // High AI Rating (>60%) + Negative Upside = Wait & Watch
+    if (aiRating > 0.6 && upside < 0) {
+        return {
+            class: 'strategy-wait',
+            label: '⏳ Wait & Watch',
+            explanation: 'Quality stock but overvalued - wait for pullback'
+        };
+    }
+    
+    // Moderate AI Rating (40-60%) + High Upside (>20%) = Speculative Buy
+    if (aiRating >= 0.4 && aiRating <= 0.6 && upside > 20) {
+        return {
+            class: 'strategy-speculative',
+            label: '⚠️ Speculative Buy',
+            explanation: 'High upside but moderate quality - higher risk'
+        };
+    }
+    
+    // Moderate AI Rating (40-60%) + Any Upside = Hold
+    if (aiRating >= 0.4 && aiRating <= 0.6) {
+        return {
+            class: 'strategy-hold',
+            label: '🤝 Hold',
+            explanation: 'Moderate quality - hold if owned, avoid new positions'
+        };
+    }
+    
+    // Low AI Rating (<40%) = Avoid
+    return {
+        class: 'strategy-avoid',
+        label: '❌ Avoid',
+        explanation: 'Low quality stock - avoid regardless of upside'
+    };
+}
+
 // Load cost optimization page
 async function loadCostOptimization() {
     await loadCostMetrics();
@@ -689,6 +747,11 @@ function displayTickers() {
                     <span class="label">Volume:</span>
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
                 </div>
+            </div>
+            <div class="ticker-strategy">
+                <span class="strategy-label">Strategy:</span>
+                <span class="strategy-badge ${getTradingStrategy(ticker).class}">${getTradingStrategy(ticker).label}</span>
+                <span class="strategy-explanation">${getTradingStrategy(ticker).explanation}</span>
             </div>
             ${ticker.ai_rating_breakdown ? `
                 <div class="ticker-breakdown">
