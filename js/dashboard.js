@@ -782,6 +782,11 @@ function filterTickers(filter) {
     });
     document.querySelector(`[data-ticker-filter="${filter}"]`).classList.add('active');
     
+    // Clear strategy filter when using regular filters
+    document.querySelectorAll('.strategy-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
     // Apply filter
     switch (filter) {
         case 'all':
@@ -797,6 +802,29 @@ function filterTickers(filter) {
             filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
             break;
     }
+    
+    // Apply current sort
+    sortTickers(currentSort);
+}
+
+function filterByStrategy(strategy) {
+    // Update active strategy filter button
+    document.querySelectorAll('.strategy-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-strategy-filter="${strategy}"]`).classList.add('active');
+    
+    // Clear regular filter when using strategy filter
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector('[data-ticker-filter="all"]').classList.add('active');
+    
+    // Filter by strategy
+    filteredTickers = allTickers.filter(ticker => {
+        const tickerStrategy = getTradingStrategy(ticker);
+        return tickerStrategy.class === `strategy-${strategy}`;
+    });
     
     // Apply current sort
     sortTickers(currentSort);
@@ -985,6 +1013,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.target.classList.contains('filter-btn')) {
             const filter = e.target.getAttribute('data-ticker-filter');
             filterTickers(filter);
+        } else if (e.target.classList.contains('strategy-filter-btn')) {
+            const strategyFilter = e.target.getAttribute('data-strategy-filter');
+            filterByStrategy(strategyFilter);
         } else if (e.target.classList.contains('sort-btn')) {
             const sort = e.target.getAttribute('data-sort');
             sortTickers(sort);

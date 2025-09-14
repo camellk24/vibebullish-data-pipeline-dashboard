@@ -288,6 +288,47 @@ body {
     color: white;
 }
 
+/* Strategy Filter Buttons */
+.strategy-filter-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.filter-section-label {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #475569;
+    margin-right: 5px;
+}
+
+.strategy-filter-btn {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85em;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.strategy-filter-btn:hover {
+    background-color: #f8fafc;
+    border-color: #667eea;
+    transform: translateY(-1px);
+}
+
+.strategy-filter-btn.active {
+    background-color: #667eea;
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
 .sort-label {
     font-weight: 600;
     color: #64748b;
