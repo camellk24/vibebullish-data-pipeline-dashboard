@@ -690,6 +690,20 @@ function displayTickers() {
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
                 </div>
             </div>
+            ${ticker.ai_rating_breakdown ? `
+                <div class="ticker-breakdown">
+                    <h4>Score Breakdown:</h4>
+                    <div class="breakdown-grid">
+                        ${Object.entries(ticker.ai_rating_breakdown.components || {}).map(([key, component]) => 
+                            `<div class="breakdown-item">
+                                <span class="breakdown-label">${key.replace(/_/g, ' ').toUpperCase()}:</span>
+                                <span class="breakdown-value">${(component.score * 100).toFixed(1)}%</span>
+                                <span class="breakdown-weight">(${(component.weight * 100).toFixed(0)}% weight)</span>
+                            </div>`
+                        ).join('')}
+                    </div>
+                </div>
+            ` : ''}
         </div>
     `).join('');
     

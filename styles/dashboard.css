@@ -418,6 +418,59 @@ body {
     font-weight: 600;
 }
 
+/* Ticker Breakdown Styles */
+.ticker-breakdown {
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.ticker-breakdown h4 {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    color: #475569;
+    font-weight: 600;
+}
+
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.breakdown-grid .breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    background-color: white;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 0;
+}
+
+.breakdown-grid .breakdown-label {
+    font-size: 0.8em;
+    color: #64748b;
+    font-weight: 500;
+    flex: 1;
+}
+
+.breakdown-grid .breakdown-value {
+    font-size: 0.8em;
+    color: #1e293b;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.breakdown-weight {
+    font-size: 0.75em;
+    color: #94a3b8;
+    font-style: italic;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
