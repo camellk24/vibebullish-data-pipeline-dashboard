@@ -244,7 +244,7 @@ function showPage(pageId) {
 // Overview Page
 async function loadOverview() {
     try {
-        const response = await fetch(`${API_BASE}/reports?limit=1`);
+        const response = await fetch(`${API_BASE}/reports?limit=1&t=${Date.now()}`);
         const data = await response.json();
         
         // Also load cost metrics for overview
@@ -386,7 +386,7 @@ function displayScheduleSummary(status) {
 // Reports Page
 async function loadReports() {
     try {
-        const response = await fetch(`${API_BASE}/reports?limit=50`);
+        const response = await fetch(`${API_BASE}/reports?limit=50&t=${Date.now()}`);
         const data = await response.json();
         currentReports = data.reports || [];
         displayReports();
@@ -618,7 +618,7 @@ function displayReportDetail(report) {
 async function loadTickers() {
     try {
         // Get the latest report to extract ticker details
-        const response = await fetch('https://api.vibebullish.com/api/data-pipeline/reports?limit=1');
+        const response = await fetch(`https://api.vibebullish.com/api/data-pipeline/reports?limit=1&t=${Date.now()}`);
         const data = await response.json();
         
         if (data.reports && data.reports.length > 0) {
