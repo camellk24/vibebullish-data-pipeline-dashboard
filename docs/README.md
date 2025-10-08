@@ -62,8 +62,10 @@ open http://localhost:8000
 ## 📊 Key Features
 
 - **Real-time Monitoring**: Live updates every 30 seconds
-- **Multi-page Interface**: Overview, Reports, Vibe Scores, System Health
-- **Vibe Score Analytics**: Track ML model performance and default values
+- **Multi-page Interface**: Overview, Reports, Ticker Analysis, Schedule
+- **Strategy-based Filtering**: Filter by trading strategies (Strong Buy, Buy, Wait & Watch, Speculative, Hold, Avoid)
+- **Advanced Sorting**: Sort by ticker, AI rating, upside percentage, price, or volume
+- **AI Rating Analytics**: Track ML model performance and default values
 - **System Health**: Monitor database, AI services, and overall status
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 - **Progressive Web App**: PWA-ready for mobile installation
@@ -84,17 +86,18 @@ open http://localhost:8000
 - Quick status indicators
 - Performance charts
 
+### **Ticker Analysis Page**
+- Comprehensive ticker data with AI ratings and strategies
+- Strategy-based filtering (Strong Buy, Buy, Wait & Watch, Speculative, Hold, Avoid)
+- Advanced sorting by multiple criteria
+- Real-time price and volume data
+- AI rating breakdowns and explanations
+
 ### **Reports Page**
 - Detailed pipeline reports
 - Filter by status, type, and date
 - Recommendations and alerts
 - Historical data analysis
-
-### **Vibe Scores Page**
-- ML model performance tracking
-- Default value detection
-- Score distribution analysis
-- Issue identification
 
 ### **System Health Page**
 - Database connectivity status
@@ -221,15 +224,23 @@ The dashboard is fully responsive and works on:
 - Error handling for failed requests
 - Connection status indicators
 
-### **Vibe Score Monitoring**
-- **Default Values**: Track when vibe scores use 0.5 instead of calculated values
-- **Calculation Failures**: Monitor when vibe score calculations fail
-- **Score Distribution**: Analyze how scores are distributed across ranges
-- **Average Scores**: Track overall vibe score trends
+### **Strategy-based Filtering**
+- **Strong Buy**: High AI rating (>60%) + positive upside (>10%)
+- **Buy**: High AI rating (>60%) + moderate upside (0-10%)
+- **Wait & Watch**: High AI rating (>60%) + negative upside
+- **Speculative**: Moderate AI rating (40-60%) + high upside (>20%)
+- **Hold**: Moderate AI rating (40-60%) + any upside
+- **Avoid**: Low AI rating (<40%) regardless of upside
+
+### **AI Rating Monitoring**
+- **Default Values**: Track when AI ratings use default values instead of calculated values
+- **Calculation Failures**: Monitor when AI rating calculations fail
+- **Score Distribution**: Analyze how ratings are distributed across ranges
+- **Average Ratings**: Track overall AI rating trends
 
 ### **Alert System**
-- High number of default vibe scores (>50%)
-- Low average vibe scores (<0.3)
+- High number of default AI ratings (>50%)
+- Low average AI ratings (<0.3)
 - Critical system issues
 - Data quality problems
 
