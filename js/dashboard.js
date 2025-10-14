@@ -622,6 +622,14 @@ function displayReportDetail(report) {
                                 <span class="detail-value">$${(ticker.market_cap / 1000000000).toFixed(1)}B</span>
                             </div>
                         </div>
+                        <button class="expand-button" onclick="toggleTimeframes('${ticker.ticker}')" style="margin-top: 15px; width: 100%;">
+                            📊 View All Timeframes (6)
+                        </button>
+                        <div id="timeframes-${ticker.ticker}" class="timeframe-details" style="display: none;">
+                            <div style="text-align: center; padding: 20px; color: #64748b;">
+                                Loading...
+                            </div>
+                        </div>
                     </div>
                 `).join('')}
             </div>
@@ -990,6 +998,143 @@ function displaySchedule(status, stats) {
     `;
 }
 
+// Toggle and load multi-timeframe price targets
+async function toggleTimeframes(ticker) {
+    const detailsDiv = document.getElementById(`timeframes-${ticker}`);
+    const button = event.target;
+    
+    if (detailsDiv.style.display === 'none') {
+        // Load data if not loaded yet
+        if (!detailsDiv.dataset.loaded) {
+            await loadTimeframeData(ticker);
+            detailsDiv.dataset.loaded = 'true';
+        }
+        detailsDiv.style.display = 'block';
+        button.textContent = '📊 Hide Timeframes';
+    } else {
+        detailsDiv.style.display = 'none';
+        button.textContent = '📊 View All Timeframes (6)';
+    }
+}
+
+async function loadTimeframeData(ticker) {
+    const detailsDiv = document.getElementById(`timeframes-${ticker}`);
+    
+    try {
+        const response = await fetch(`https://api.vibebullish.com/api/stocks/${ticker}/price-targets/all`);
+        const data = await response.json();
+        
+        // Sort timeframes in order
+        const timeframeOrder = ['1D', '1W', '1M', '6M', '12M', '>12M'];
+        const sortedTargets = data.trading_agents.sort((a, b) => {
+            return timeframeOrder.indexOf(a.time_horizon) - timeframeOrder.indexOf(b.time_horizon);
+        });
+        
+        const icons = {
+            '1D': '⚡',
+            '1W': '📅',
+            '1M': '📆',
+            '6M': '📊',
+            '12M': '📈',
+            '>12M': '🚀'
+        };
+        
+        const labels = {
+            '1D': '1 Day',
+            '1W': '1 Week',
+            '1M': '1 Month',
+            '6M': '6 Months',
+            '12M': '12 Months',
+            '>12M': '12+ Months'
+        };
+        
+        let html = `
+            <div class="timeframe-section">
+                <h4>🤖 Trading Agents (GPT-4o mini)</h4>
+                <table class="timeframe-table">
+                    <thead>
+                        <tr>
+                            <th>Horizon</th>
+                            <th>Buy Target</th>
+                            <th>Sell Target</th>
+                            <th>Upside</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        sortedTargets.forEach(target => {
+            const upsideClass = target.upside_percent >= 0 ? 'upside-positive' : 'upside-negative';
+            html += `
+                <tr>
+                    <td>${icons[target.time_horizon]} ${labels[target.time_horizon]}</td>
+                    <td>$${target.buy_target.toFixed(2)}</td>
+                    <td>$${target.sell_target.toFixed(2)}</td>
+                    <td class="${upsideClass}">${target.upside_percent >= 0 ? '+' : ''}${target.upside_percent.toFixed(2)}%</td>
+                    <td>${(target.confidence * 100).toFixed(0)}%</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        // Add LightGBM section if available
+        if (data.lightgbm && data.lightgbm.predicted_price_1d) {
+            html += `
+                <div class="timeframe-section">
+                    <h4>🤖 LightGBM (ML Model)</h4>
+                    <table class="timeframe-table">
+                        <thead>
+                            <tr>
+                                <th>Horizon</th>
+                                <th>Predicted Price</th>
+                                <th>Upside</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1 Day</td>
+                                <td>$${data.lightgbm.predicted_price_1d.toFixed(2)}</td>
+                                <td class="${((data.lightgbm.predicted_price_1d - data.current_price) / data.current_price * 100) >= 0 ? 'upside-positive' : 'upside-negative'}">
+                                    ${((data.lightgbm.predicted_price_1d - data.current_price) / data.current_price * 100).toFixed(2)}%
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>5 Days</td>
+                                <td>$${data.lightgbm.predicted_price_5d.toFixed(2)}</td>
+                                <td class="${((data.lightgbm.predicted_price_5d - data.current_price) / data.current_price * 100) >= 0 ? 'upside-positive' : 'upside-negative'}">
+                                    ${((data.lightgbm.predicted_price_5d - data.current_price) / data.current_price * 100).toFixed(2)}%
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>20 Days</td>
+                                <td>$${data.lightgbm.predicted_price_20d.toFixed(2)}</td>
+                                <td class="${((data.lightgbm.predicted_price_20d - data.current_price) / data.current_price * 100) >= 0 ? 'upside-positive' : 'upside-negative'}">
+                                    ${((data.lightgbm.predicted_price_20d - data.current_price) / data.current_price * 100).toFixed(2)}%
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        detailsDiv.innerHTML = html;
+    } catch (error) {
+        console.error(`Error loading timeframes for ${ticker}:`, error);
+        detailsDiv.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #dc2626;">
+                ❌ Failed to load timeframe data: ${error.message}
+            </div>
+        `;
+    }
+}
+
 // Make functions globally available
 window.loadTickers = loadTickers;
 window.filterTickers = filterTickers;
@@ -999,6 +1144,7 @@ window.showPage = showPage;
 window.showReportDetail = showReportDetail;
 window.changePage = changePage;
 window.loadSchedule = loadSchedule;
+window.toggleTimeframes = toggleTimeframes;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {

@@ -601,3 +601,77 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Multi-timeframe styles */
+.expand-button {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9em;
+}
+
+.expand-button:hover {
+    background: #5a67d8;
+}
+
+.timeframe-details {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.timeframe-section {
+    margin-bottom: 20px;
+}
+
+.timeframe-section h4 {
+    margin: 0 0 10px 0;
+    color: #1e293b;
+    font-size: 1.1em;
+}
+
+.timeframe-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.timeframe-table th {
+    background: #667eea;
+    color: white;
+    padding: 10px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.timeframe-table td {
+    padding: 10px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.timeframe-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.timeframe-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.upside-positive {
+    color: #059669;
+    font-weight: 600;
+}
+
+.upside-negative {
+    color: #dc2626;
+    font-weight: 600;
+}
