@@ -258,7 +258,7 @@ function displayCostMetrics() {
 // Ticker Analysis Page
 let allTickers = [];
 let filteredTickers = [];
-let currentSort = 'ticker';
+let currentSort = 'ai-rating'; // Default to AI Rating sort
 let currentFilter = 'all';
 let currentTimeframe = 'all';
 
@@ -731,10 +731,6 @@ function displayTickers() {
                     <span class="value">${ticker.ai_rating && ticker.ai_rating >= 0 ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
                 <div class="metric">
-                    <span class="label">Upside:</span>
-                    <span class="value ${ticker.upside_percent >= 0 ? 'upside-positive' : 'upside-negative'}">${ticker.upside_percent ? (ticker.upside_percent >= 0 ? '+' : '') + ticker.upside_percent.toFixed(1) + '%' : 'N/A'}</span>
-                </div>
-                <div class="metric">
                     <span class="label">Volume:</span>
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
                 </div>
@@ -1162,7 +1158,38 @@ function filterByTimeframe(horizon) {
         }
     });
     
-    // Reload all visible tickers with the new timeframe
+    // Enable/disable sort buttons based on timeframe selection
+    const sortButtons = document.querySelectorAll('.sort-btn');
+    if (horizon === 'all') {
+        // Disable upside and price sorting when "All" is selected
+        sortButtons.forEach(btn => {
+            const sortType = btn.getAttribute('data-sort');
+            if (sortType === 'upside' || sortType === 'price') {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            }
+        });
+        // Switch to AI Rating sort
+        currentSort = 'ai-rating';
+        sortButtons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-sort') === 'ai-rating') {
+                btn.classList.add('active');
+            }
+        });
+    } else {
+        // Enable all sort buttons
+        sortButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
+    }
+    
+    // Re-sort and reload all visible tickers with the new timeframe
+    sortTickers(currentSort);
+    
     filteredTickers.forEach(ticker => {
         loadTimeframeDataInline(ticker.ticker, horizon);
     });
