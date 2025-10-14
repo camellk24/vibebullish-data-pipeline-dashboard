@@ -622,14 +622,6 @@ function displayReportDetail(report) {
                                 <span class="detail-value">$${(ticker.market_cap / 1000000000).toFixed(1)}B</span>
                             </div>
                         </div>
-                        <button class="expand-button" onclick="toggleTimeframes('${ticker.ticker}')" style="margin-top: 15px; width: 100%;">
-                            📊 View All Timeframes (6)
-                        </button>
-                        <div id="timeframes-${ticker.ticker}" class="timeframe-details" style="display: none;">
-                            <div style="text-align: center; padding: 20px; color: #64748b;">
-                                Loading...
-                            </div>
-                        </div>
                     </div>
                 `).join('')}
             </div>
@@ -775,6 +767,14 @@ function displayTickers() {
                     </div>
                 </div>
             ` : ''}
+            <button class="expand-button" onclick="toggleTimeframes('${ticker.ticker}')" style="margin-top: 15px; width: 100%;">
+                📊 View All Timeframes (6)
+            </button>
+            <div id="timeframes-${ticker.ticker}" class="timeframe-details" style="display: none;">
+                <div style="text-align: center; padding: 20px; color: #64748b;">
+                    Loading...
+                </div>
+            </div>
         </div>
     `).join('');
     
