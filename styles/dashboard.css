@@ -618,6 +618,34 @@ body {
     background: #5a67d8;
 }
 
+.timeframe-filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.timeframe-filter-btn {
+    background: white;
+    color: #667eea;
+    border: 1px solid #667eea;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85em;
+    transition: all 0.2s;
+}
+
+.timeframe-filter-btn:hover {
+    background: #f0f4ff;
+}
+
+.timeframe-filter-btn.active {
+    background: #667eea;
+    color: white;
+}
+
 .timeframe-details {
     margin-top: 15px;
     padding: 15px;

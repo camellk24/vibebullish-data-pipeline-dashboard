@@ -1017,18 +1017,28 @@ async function toggleTimeframes(ticker) {
     }
 }
 
-async function loadTimeframeData(ticker) {
+async function loadTimeframeData(ticker, selectedHorizon = 'all') {
     const detailsDiv = document.getElementById(`timeframes-${ticker}`);
     
     try {
         const response = await fetch(`https://api.vibebullish.com/api/stocks/${ticker}/price-targets/all`);
         const data = await response.json();
         
+        // Store data for filtering
+        if (!detailsDiv.dataset.cachedData) {
+            detailsDiv.dataset.cachedData = JSON.stringify(data);
+        }
+        
         // Sort timeframes in order
         const timeframeOrder = ['1D', '1W', '1M', '6M', '12M', '>12M'];
-        const sortedTargets = data.trading_agents.sort((a, b) => {
+        let sortedTargets = data.trading_agents.sort((a, b) => {
             return timeframeOrder.indexOf(a.time_horizon) - timeframeOrder.indexOf(b.time_horizon);
         });
+        
+        // Filter if specific horizon selected
+        if (selectedHorizon !== 'all') {
+            sortedTargets = sortedTargets.filter(t => t.time_horizon === selectedHorizon);
+        }
         
         const icons = {
             '1D': '⚡',
@@ -1048,7 +1058,17 @@ async function loadTimeframeData(ticker) {
             '>12M': '12+ Months'
         };
         
+        // Add timeframe filter buttons
         let html = `
+            <div class="timeframe-filter-bar">
+                <button class="timeframe-filter-btn ${selectedHorizon === 'all' ? 'active' : ''}" onclick="filterTimeframe('${ticker}', 'all')">📊 All</button>
+                <button class="timeframe-filter-btn ${selectedHorizon === '1D' ? 'active' : ''}" onclick="filterTimeframe('${ticker}', '1D')">⚡ 1D</button>
+                <button class="timeframe-filter-btn ${selectedHorizon === '1W' ? 'active' : ''}" onclick="filterTimeframe('${ticker}', '1W')">📅 1W</button>
+                <button class="timeframe-filter-btn ${selectedHorizon === '1M' ? 'active' : ''}" onclick="filterTimeframe('${ticker}', '1M')">📆 1M</button>
+                <button class="timeframe-filter-btn ${selectedHorizon === '6M' ? 'active' : ''}" onclick="filterTimeframe('${ticker}', '6M')">📊 6M</button>
+                <button class="timeframe-filter-btn ${selectedHorizon === '12M' ? 'active' : ''}" onclick="filterTimeframe('${ticker}', '12M')">📈 12M</button>
+                <button class="timeframe-filter-btn ${selectedHorizon === '>12M' ? 'active' : ''}" onclick="filterTimeframe('${ticker}', '>12M')">🚀 >12M</button>
+            </div>
             <div class="timeframe-section">
                 <h4>🤖 Trading Agents (GPT-4o mini)</h4>
                 <table class="timeframe-table">
@@ -1135,6 +1155,11 @@ async function loadTimeframeData(ticker) {
     }
 }
 
+// Filter timeframes (for switching between All, 1D, 1W, etc.)
+function filterTimeframe(ticker, horizon) {
+    loadTimeframeData(ticker, horizon);
+}
+
 // Make functions globally available
 window.loadTickers = loadTickers;
 window.filterTickers = filterTickers;
@@ -1145,6 +1170,7 @@ window.showReportDetail = showReportDetail;
 window.changePage = changePage;
 window.loadSchedule = loadSchedule;
 window.toggleTimeframes = toggleTimeframes;
+window.filterTimeframe = filterTimeframe;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
