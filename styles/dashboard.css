@@ -771,3 +771,35 @@ body {
     padding: 10px;
     font-style: italic;
 }
+
+/* Compact table for "All" timeframes view */
+.timeframe-compact-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.timeframe-compact-table th {
+    background: #667eea;
+    color: white;
+    padding: 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85em;
+}
+
+.timeframe-compact-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.timeframe-compact-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.timeframe-compact-table tbody tr:last-child td {
+    border-bottom: none;
+}

@@ -1188,26 +1188,12 @@ async function loadTimeframeDataInline(ticker, selectedHorizon) {
         selectedHorizon = currentTimeframe;
     }
     
-    // Show "All" means hide the inline display
-    if (selectedHorizon === 'all') {
-        detailsDiv.style.display = 'none';
-        return;
-    }
-    
     detailsDiv.style.display = 'block';
     detailsDiv.innerHTML = '<div class="timeframe-loading">Loading...</div>';
     
     try {
         const response = await fetch(`https://api.vibebullish.com/api/stocks/${ticker}/price-targets/all`);
         const data = await response.json();
-        
-        // Find the specific timeframe
-        const target = data.trading_agents.find(t => t.time_horizon === selectedHorizon);
-        
-        if (!target) {
-            detailsDiv.innerHTML = '<div class="timeframe-no-data">No data for this timeframe</div>';
-            return;
-        }
         
         const icons = {
             '1D': '⚡',
@@ -1226,6 +1212,60 @@ async function loadTimeframeDataInline(ticker, selectedHorizon) {
             '12M': '12 Months',
             '>12M': '12+ Months'
         };
+        
+        // If "All" selected, show all 6 timeframes in a table
+        if (selectedHorizon === 'all') {
+            const timeframeOrder = ['1D', '1W', '1M', '6M', '12M', '>12M'];
+            const sortedTargets = data.trading_agents.sort((a, b) => {
+                return timeframeOrder.indexOf(a.time_horizon) - timeframeOrder.indexOf(b.time_horizon);
+            });
+            
+            let tableHTML = `
+                <div class="timeframe-inline-content">
+                    <div class="timeframe-inline-header">All Timeframe Predictions</div>
+                    <table class="timeframe-compact-table">
+                        <thead>
+                            <tr>
+                                <th>Horizon</th>
+                                <th>Buy</th>
+                                <th>Sell</th>
+                                <th>Upside</th>
+                                <th>Conf.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            sortedTargets.forEach(target => {
+                const upsideClass = target.upside_percent >= 0 ? 'upside-positive' : 'upside-negative';
+                tableHTML += `
+                    <tr>
+                        <td>${icons[target.time_horizon]} ${labels[target.time_horizon]}</td>
+                        <td>$${target.buy_target.toFixed(2)}</td>
+                        <td>$${target.sell_target.toFixed(2)}</td>
+                        <td class="${upsideClass}">${target.upside_percent >= 0 ? '+' : ''}${target.upside_percent.toFixed(1)}%</td>
+                        <td>${(target.confidence * 100).toFixed(0)}%</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            detailsDiv.innerHTML = tableHTML;
+            return;
+        }
+        
+        // Otherwise, show the specific selected timeframe
+        const target = data.trading_agents.find(t => t.time_horizon === selectedHorizon);
+        
+        if (!target) {
+            detailsDiv.innerHTML = '<div class="timeframe-no-data">No data for this timeframe</div>';
+            return;
+        }
         
         const upsideClass = target.upside_percent >= 0 ? 'upside-positive' : 'upside-negative';
         
