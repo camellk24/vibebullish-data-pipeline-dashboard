@@ -731,20 +731,6 @@ function displayTickers() {
                     <span class="value">${ticker.ai_rating && ticker.ai_rating >= 0 ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
                 <div class="metric">
-                    <span class="label">Upside:</span>
-                    <span class="value">${ticker.upside_percent ? ticker.upside_percent.toFixed(1) + '%' : 'N/A'}</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Buy Target:</span>
-                    <span class="value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
-                        (ticker.buy_target_reason ? ticker.buy_target_reason : 'N/A')}</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Sell Target:</span>
-                    <span class="value">${ticker.sell_target ? '$' + ticker.sell_target.toFixed(2) : 
-                        (ticker.sell_target_reason ? ticker.sell_target_reason : 'N/A')}</span>
-                </div>
-                <div class="metric">
                     <span class="label">Volume:</span>
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
                 </div>
