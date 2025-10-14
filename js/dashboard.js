@@ -260,6 +260,7 @@ let allTickers = [];
 let filteredTickers = [];
 let currentSort = 'ticker';
 let currentFilter = 'all';
+let currentTimeframe = 'all';
 
 // Page Navigation
 function showPage(pageId) {
@@ -1004,9 +1005,9 @@ async function toggleTimeframes(ticker) {
     const button = event.target;
     
     if (detailsDiv.style.display === 'none') {
-        // Load data if not loaded yet
+        // Load data if not loaded yet, using the global currentTimeframe
         if (!detailsDiv.dataset.loaded) {
-            await loadTimeframeData(ticker);
+            await loadTimeframeData(ticker, currentTimeframe);
             detailsDiv.dataset.loaded = 'true';
         }
         detailsDiv.style.display = 'block';
@@ -1017,7 +1018,11 @@ async function toggleTimeframes(ticker) {
     }
 }
 
-async function loadTimeframeData(ticker, selectedHorizon = 'all') {
+async function loadTimeframeData(ticker, selectedHorizon) {
+    // Use global currentTimeframe if no horizon specified
+    if (!selectedHorizon) {
+        selectedHorizon = currentTimeframe;
+    }
     const detailsDiv = document.getElementById(`timeframes-${ticker}`);
     
     try {
@@ -1155,7 +1160,28 @@ async function loadTimeframeData(ticker, selectedHorizon = 'all') {
     }
 }
 
-// Filter timeframes (for switching between All, 1D, 1W, etc.)
+// Global timeframe filter (applies to all tickers)
+function filterByTimeframe(horizon) {
+    currentTimeframe = horizon;
+    
+    // Update active button state
+    document.querySelectorAll('.timeframe-filter-buttons .timeframe-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-timeframe') === horizon) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Update all currently expanded ticker views
+    document.querySelectorAll('.timeframe-details').forEach(detailsDiv => {
+        if (detailsDiv.style.display !== 'none' && detailsDiv.dataset.loaded) {
+            const ticker = detailsDiv.id.replace('timeframes-', '');
+            loadTimeframeData(ticker, horizon);
+        }
+    });
+}
+
+// Filter timeframes (for per-ticker switching)
 function filterTimeframe(ticker, horizon) {
     loadTimeframeData(ticker, horizon);
 }
@@ -1171,6 +1197,7 @@ window.changePage = changePage;
 window.loadSchedule = loadSchedule;
 window.toggleTimeframes = toggleTimeframes;
 window.filterTimeframe = filterTimeframe;
+window.filterByTimeframe = filterByTimeframe;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {

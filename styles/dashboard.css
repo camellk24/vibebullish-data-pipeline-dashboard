@@ -297,6 +297,14 @@ body {
     align-items: center;
 }
 
+.timeframe-filter-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
 .filter-section-label {
     font-size: 0.9em;
     font-weight: 600;

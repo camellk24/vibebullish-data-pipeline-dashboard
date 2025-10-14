@@ -79,6 +79,16 @@
                     <button class="sort-btn" data-sort="price">Price</button>
                     <button class="sort-btn" data-sort="volume">Volume</button>
                 </div>
+                <div class="timeframe-filter-buttons">
+                    <span class="filter-section-label">Timeframe:</span>
+                    <button class="timeframe-filter-btn active" data-timeframe="all" onclick="filterByTimeframe('all')">📊 All</button>
+                    <button class="timeframe-filter-btn" data-timeframe="1D" onclick="filterByTimeframe('1D')">⚡ 1D</button>
+                    <button class="timeframe-filter-btn" data-timeframe="1W" onclick="filterByTimeframe('1W')">📅 1W</button>
+                    <button class="timeframe-filter-btn" data-timeframe="1M" onclick="filterByTimeframe('1M')">📆 1M</button>
+                    <button class="timeframe-filter-btn" data-timeframe="6M" onclick="filterByTimeframe('6M')">📊 6M</button>
+                    <button class="timeframe-filter-btn" data-timeframe="12M" onclick="filterByTimeframe('12M')">📈 12M</button>
+                    <button class="timeframe-filter-btn" data-timeframe=">12M" onclick="filterByTimeframe('>12M')">🚀 >12M</button>
+                </div>
                 <div id="ticker-list" class="loading">Loading ticker data...</div>
             </div>
         </div>
