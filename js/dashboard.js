@@ -768,18 +768,18 @@ function displayTickers() {
                     </div>
                 </div>
             ` : ''}
-            <button class="expand-button" onclick="toggleTimeframes('${ticker.ticker}')" style="margin-top: 15px; width: 100%;">
-                📊 View All Timeframes (6)
-            </button>
-            <div id="timeframes-${ticker.ticker}" class="timeframe-details" style="display: none;">
-                <div style="text-align: center; padding: 20px; color: #64748b;">
-                    Loading...
-                </div>
+            <div id="timeframes-${ticker.ticker}" class="timeframe-details-inline">
+                <div class="timeframe-loading">Loading timeframes...</div>
             </div>
         </div>
     `).join('');
     
     document.getElementById('ticker-list').innerHTML = `<div class="ticker-grid">${tickersHTML}</div>`;
+    
+    // Auto-load timeframes for all visible tickers based on global selection
+    filteredTickers.forEach(ticker => {
+        loadTimeframeDataInline(ticker.ticker, currentTimeframe);
+    });
 }
 
 function filterTickers(filter) {
@@ -1172,16 +1172,95 @@ function filterByTimeframe(horizon) {
         }
     });
     
-    // Update all currently expanded ticker views
-    document.querySelectorAll('.timeframe-details').forEach(detailsDiv => {
-        if (detailsDiv.style.display !== 'none' && detailsDiv.dataset.loaded) {
-            const ticker = detailsDiv.id.replace('timeframes-', '');
-            loadTimeframeData(ticker, horizon);
-        }
+    // Reload all visible tickers with the new timeframe
+    filteredTickers.forEach(ticker => {
+        loadTimeframeDataInline(ticker.ticker, horizon);
     });
 }
 
-// Filter timeframes (for per-ticker switching)
+// Load timeframe data inline (no expand/collapse, always visible)
+async function loadTimeframeDataInline(ticker, selectedHorizon) {
+    const detailsDiv = document.getElementById(`timeframes-${ticker}`);
+    if (!detailsDiv) return;
+    
+    // Use global currentTimeframe if no horizon specified
+    if (!selectedHorizon) {
+        selectedHorizon = currentTimeframe;
+    }
+    
+    // Show "All" means hide the inline display
+    if (selectedHorizon === 'all') {
+        detailsDiv.style.display = 'none';
+        return;
+    }
+    
+    detailsDiv.style.display = 'block';
+    detailsDiv.innerHTML = '<div class="timeframe-loading">Loading...</div>';
+    
+    try {
+        const response = await fetch(`https://api.vibebullish.com/api/stocks/${ticker}/price-targets/all`);
+        const data = await response.json();
+        
+        // Find the specific timeframe
+        const target = data.trading_agents.find(t => t.time_horizon === selectedHorizon);
+        
+        if (!target) {
+            detailsDiv.innerHTML = '<div class="timeframe-no-data">No data for this timeframe</div>';
+            return;
+        }
+        
+        const icons = {
+            '1D': '⚡',
+            '1W': '📅',
+            '1M': '📆',
+            '6M': '📊',
+            '12M': '📈',
+            '>12M': '🚀'
+        };
+        
+        const labels = {
+            '1D': '1 Day',
+            '1W': '1 Week',
+            '1M': '1 Month',
+            '6M': '6 Months',
+            '12M': '12 Months',
+            '>12M': '12+ Months'
+        };
+        
+        const upsideClass = target.upside_percent >= 0 ? 'upside-positive' : 'upside-negative';
+        
+        detailsDiv.innerHTML = `
+            <div class="timeframe-inline-content">
+                <div class="timeframe-inline-header">
+                    ${icons[selectedHorizon]} ${labels[selectedHorizon]} Prediction
+                </div>
+                <div class="timeframe-inline-grid">
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Buy Target:</span>
+                        <span class="timeframe-inline-value">$${target.buy_target.toFixed(2)}</span>
+                    </div>
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Sell Target:</span>
+                        <span class="timeframe-inline-value">$${target.sell_target.toFixed(2)}</span>
+                    </div>
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Upside:</span>
+                        <span class="timeframe-inline-value ${upsideClass}">${target.upside_percent >= 0 ? '+' : ''}${target.upside_percent.toFixed(2)}%</span>
+                    </div>
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Confidence:</span>
+                        <span class="timeframe-inline-value">${(target.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error(`Error loading timeframe for ${ticker}:`, error);
+        detailsDiv.innerHTML = '<div class="timeframe-error">Failed to load timeframe data</div>';
+    }
+}
+
+// Filter timeframes (for per-ticker switching - kept for compatibility)
 function filterTimeframe(ticker, horizon) {
     loadTimeframeData(ticker, horizon);
 }

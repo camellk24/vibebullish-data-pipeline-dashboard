@@ -711,3 +711,63 @@ body {
     color: #dc2626;
     font-weight: 600;
 }
+
+/* Inline timeframe display */
+.timeframe-details-inline {
+    display: none;
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.timeframe-inline-content {
+    width: 100%;
+}
+
+.timeframe-inline-header {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 12px;
+}
+
+.timeframe-inline-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.timeframe-inline-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.timeframe-inline-label {
+    font-size: 0.85em;
+    color: #64748b;
+}
+
+.timeframe-inline-value {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.timeframe-loading {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.85em;
+    padding: 10px;
+}
+
+.timeframe-no-data,
+.timeframe-error {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85em;
+    padding: 10px;
+    font-style: italic;
+}
