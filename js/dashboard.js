@@ -794,7 +794,36 @@ async function filterTickers(filter) {
             filteredTickers = allTickers.filter(t => t.buy_target && t.current_price && t.current_price <= t.buy_target);
             break;
         case 'high-upside':
-            filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
+            // If a specific timeframe is selected, filter by that timeframe's upside
+            if (currentTimeframe !== 'all') {
+                console.log(`Filtering high upside for timeframe: ${currentTimeframe}`);
+                
+                // Fetch price targets for all tickers to get timeframe-specific upside
+                const priceTargetsPromises = allTickers.map(async ticker => {
+                    try {
+                        const response = await fetch(`https://api.vibebullish.com/api/stocks/${ticker.ticker}/price-targets/all`);
+                        const data = await response.json();
+                        
+                        // Find the target for the selected timeframe
+                        const target = data.trading_agents?.find(t => t.time_horizon === currentTimeframe);
+                        ticker._timeframeUpside = target?.upside_percent || 0;
+                        
+                        return ticker;
+                    } catch (error) {
+                        console.error(`Failed to fetch price targets for ${ticker.ticker}:`, error);
+                        ticker._timeframeUpside = 0;
+                        return ticker;
+                    }
+                });
+                
+                await Promise.all(priceTargetsPromises);
+                
+                // Filter by timeframe-specific upside > 20%
+                filteredTickers = allTickers.filter(t => t._timeframeUpside && t._timeframeUpside > 20);
+            } else {
+                // Use generic upside when "All" timeframes is selected
+                filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
+            }
             break;
     }
     
