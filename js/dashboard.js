@@ -959,8 +959,10 @@ async function sortTickers(sortBy) {
                 // Sort by timeframe-specific data
                 if (sortBy === 'upside') {
                     filteredTickers.sort((a, b) => (b._timeframeUpside || 0) - (a._timeframeUpside || 0));
+                    console.log(`🔢 Top 5 tickers by upside:`, filteredTickers.slice(0, 5).map(t => `${t.ticker}: ${t._timeframeUpside?.toFixed(2)}%`));
                 } else if (sortBy === 'price') {
                     filteredTickers.sort((a, b) => (b._timeframeSellTarget || 0) - (a._timeframeSellTarget || 0));
+                    console.log(`🔢 Top 5 tickers by price:`, filteredTickers.slice(0, 5).map(t => `${t.ticker}: $${t._timeframeSellTarget?.toFixed(2)}`));
                 }
             } else {
                 console.error('Failed to fetch bulk timeframe data:', data);
