@@ -681,12 +681,30 @@ async function loadTickers() {
         const data = await response.json();
         
         if (data.reports && data.reports.length > 0) {
-            allTickers = data.reports[0].ticker_details || [];
+            const rawTickers = data.reports[0].ticker_details || [];
+            
+            // Filter out invalid/test tickers
+            allTickers = rawTickers.filter(t => {
+                // Exclude test tickers
+                if (t.ticker === 'TEST' || t.ticker === 'FAKE' || t.ticker === 'INVALID') {
+                    console.log(`⚠️ Filtered out test ticker: ${t.ticker}`);
+                    return false;
+                }
+                
+                // Exclude tickers with no valid price data
+                if (!t.current_price || t.current_price === 0) {
+                    console.log(`⚠️ Filtered out ticker with invalid price: ${t.ticker}`);
+                    return false;
+                }
+                
+                return true;
+            });
+            
             filteredTickers = [...allTickers];
             
             // Debug logging
             console.log('Latest report ID:', data.reports[0].report_id);
-            console.log('Total tickers loaded:', allTickers.length);
+            console.log('Total tickers loaded:', allTickers.length, `(${rawTickers.length - allTickers.length} filtered out)`);
             
             // Check AAPL specifically
             const aaplTicker = allTickers.find(t => t.ticker === 'AAPL');
