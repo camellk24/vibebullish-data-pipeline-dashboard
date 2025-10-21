@@ -890,11 +890,12 @@ async function filterByStrategy(strategy) {
 }
 
 async function sortTickers(sortBy) {
+    console.log(`📊 sortTickers called: sortBy=${sortBy}, currentTimeframe=${currentTimeframe}, filteredTickers.length=${filteredTickers.length}`);
     currentSort = sortBy;
     
     // For upside or price sorting with a specific timeframe, fetch price targets
     if ((sortBy === 'upside' || sortBy === 'price') && currentTimeframe !== 'all') {
-        console.log(`Sorting by ${sortBy} for timeframe: ${currentTimeframe}`);
+        console.log(`🎯 Sorting by ${sortBy} for timeframe: ${currentTimeframe}`);
         
         // Show loading indicator
         const tickersList = document.getElementById('tickers-list');
@@ -1303,10 +1304,12 @@ async function filterByTimeframe(horizon) {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
+            console.log(`✅ Enabled sort button: ${btn.getAttribute('data-sort')}`);
         });
     }
     
     // Re-sort and reload all visible tickers with the new timeframe
+    console.log(`🔄 Re-sorting with current sort: ${currentSort}, timeframe: ${horizon}`);
     await sortTickers(currentSort);
     
     filteredTickers.forEach(ticker => {
@@ -1472,6 +1475,14 @@ document.addEventListener('DOMContentLoaded', () => {
             await filterByStrategy(strategyFilter);
         } else if (e.target.classList.contains('sort-btn')) {
             const sort = e.target.getAttribute('data-sort');
+            console.log(`🖱️ Sort button clicked: ${sort}, disabled=${e.target.disabled}, currentTimeframe=${currentTimeframe}`);
+            
+            // Check if button is actually disabled
+            if (e.target.disabled) {
+                console.warn(`⚠️ Button is disabled, ignoring click`);
+                return;
+            }
+            
             await sortTickers(sort);
             
             // Update active sort button
