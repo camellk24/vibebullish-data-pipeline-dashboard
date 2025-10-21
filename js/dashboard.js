@@ -748,10 +748,17 @@ function displayTickers() {
                     <span class="label">AI Rating:</span>
                     <span class="value">${ticker.ai_rating && ticker.ai_rating >= 0 ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
+                ${currentTimeframe !== 'all' && ticker._timeframeUpside !== undefined ? `
+                <div class="metric">
+                    <span class="label">Upside (${currentTimeframe}):</span>
+                    <span class="value ${ticker._timeframeUpside >= 0 ? 'upside-positive' : 'upside-negative'}">${ticker._timeframeUpside >= 0 ? '+' : ''}${ticker._timeframeUpside.toFixed(2)}%</span>
+                </div>
+                ` : `
                 <div class="metric">
                     <span class="label">Volume:</span>
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
                 </div>
+                `}
             </div>
             <div class="ticker-strategy">
                 <span class="strategy-label">Strategy:</span>
