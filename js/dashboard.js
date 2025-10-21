@@ -768,7 +768,7 @@ function displayTickers() {
     });
 }
 
-function filterTickers(filter) {
+async function filterTickers(filter) {
     currentFilter = filter;
     
     // Update active filter button
@@ -799,10 +799,10 @@ function filterTickers(filter) {
     }
     
     // Apply current sort
-    sortTickers(currentSort);
+    await sortTickers(currentSort);
 }
 
-function filterByStrategy(strategy) {
+async function filterByStrategy(strategy) {
     // Update active strategy filter button
     document.querySelectorAll('.strategy-filter-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -822,35 +822,70 @@ function filterByStrategy(strategy) {
     });
     
     // Apply current sort
-    sortTickers(currentSort);
+    await sortTickers(currentSort);
 }
 
-function sortTickers(sortBy) {
+async function sortTickers(sortBy) {
     currentSort = sortBy;
     
-    filteredTickers.sort((a, b) => {
-        switch (sortBy) {
-            case 'ticker':
-                return a.ticker.localeCompare(b.ticker);
-            case 'ai-rating':
-                return (b.ai_rating || 0) - (a.ai_rating || 0);
-            case 'upside':
-                return (b.upside_percent || 0) - (a.upside_percent || 0);
-            case 'price':
-                return (b.current_price || 0) - (a.current_price || 0);
-            case 'volume':
-                return (b.volume || 0) - (a.volume || 0);
-            default:
-                return 0;
+    // For upside or price sorting with a specific timeframe, fetch price targets
+    if ((sortBy === 'upside' || sortBy === 'price') && currentTimeframe !== 'all') {
+        console.log(`Sorting by ${sortBy} for timeframe: ${currentTimeframe}`);
+        
+        // Fetch price targets for all tickers to get timeframe-specific data
+        const priceTargetsPromises = filteredTickers.map(async ticker => {
+            try {
+                const response = await fetch(`https://api.vibebullish.com/api/stocks/${ticker.ticker}/price-targets/all`);
+                const data = await response.json();
+                
+                // Find the target for the selected timeframe
+                const target = data.trading_agents?.find(t => t.time_horizon === currentTimeframe);
+                ticker._timeframeUpside = target?.upside_percent || 0;
+                ticker._timeframeSellTarget = target?.sell_target || 0;
+                
+                return ticker;
+            } catch (error) {
+                console.error(`Failed to fetch price targets for ${ticker.ticker}:`, error);
+                ticker._timeframeUpside = 0;
+                ticker._timeframeSellTarget = 0;
+                return ticker;
+            }
+        });
+        
+        await Promise.all(priceTargetsPromises);
+        
+        // Sort by timeframe-specific data
+        if (sortBy === 'upside') {
+            filteredTickers.sort((a, b) => (b._timeframeUpside || 0) - (a._timeframeUpside || 0));
+        } else if (sortBy === 'price') {
+            filteredTickers.sort((a, b) => (b._timeframeSellTarget || 0) - (a._timeframeSellTarget || 0));
         }
-    });
+    } else {
+        // Normal sorting
+        filteredTickers.sort((a, b) => {
+            switch (sortBy) {
+                case 'ticker':
+                    return a.ticker.localeCompare(b.ticker);
+                case 'ai-rating':
+                    return (b.ai_rating || 0) - (a.ai_rating || 0);
+                case 'upside':
+                    return (b.upside_percent || 0) - (a.upside_percent || 0);
+                case 'price':
+                    return (b.current_price || 0) - (a.current_price || 0);
+                case 'volume':
+                    return (b.volume || 0) - (a.volume || 0);
+                default:
+                    return 0;
+            }
+        });
+    }
     
     displayTickers();
 }
 
-function searchTickers(query) {
+async function searchTickers(query) {
     if (!query.trim()) {
-        filterTickers(currentFilter);
+        await filterTickers(currentFilter);
         return;
     }
     
@@ -859,7 +894,7 @@ function searchTickers(query) {
         ticker.ticker.toLowerCase().includes(searchTerm)
     );
     
-    sortTickers(currentSort);
+    await sortTickers(currentSort);
 }
 
 // Schedule Page
@@ -1147,7 +1182,7 @@ async function loadTimeframeData(ticker, selectedHorizon) {
 }
 
 // Global timeframe filter (applies to all tickers)
-function filterByTimeframe(horizon) {
+async function filterByTimeframe(horizon) {
     currentTimeframe = horizon;
     
     // Update active button state
@@ -1188,7 +1223,7 @@ function filterByTimeframe(horizon) {
     }
     
     // Re-sort and reload all visible tickers with the new timeframe
-    sortTickers(currentSort);
+    await sortTickers(currentSort);
     
     filteredTickers.forEach(ticker => {
         loadTimeframeDataInline(ticker.ticker, horizon);
@@ -1340,20 +1375,20 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOverview();
     
     // Add event listeners for navigation
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         if (e.target.classList.contains('nav-link')) {
             e.preventDefault();
             const pageId = e.target.getAttribute('data-page');
             showPage(pageId);
         } else if (e.target.classList.contains('filter-btn')) {
             const filter = e.target.getAttribute('data-ticker-filter');
-            filterTickers(filter);
+            await filterTickers(filter);
         } else if (e.target.classList.contains('strategy-filter-btn')) {
             const strategyFilter = e.target.getAttribute('data-strategy-filter');
-            filterByStrategy(strategyFilter);
+            await filterByStrategy(strategyFilter);
         } else if (e.target.classList.contains('sort-btn')) {
             const sort = e.target.getAttribute('data-sort');
-            sortTickers(sort);
+            await sortTickers(sort);
             
             // Update active sort button
             document.querySelectorAll('.sort-btn').forEach(btn => {
