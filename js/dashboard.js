@@ -816,16 +816,20 @@ async function filterTickers(filter) {
             if (currentTimeframe !== 'all') {
                 console.log(`Filtering high upside for timeframe: ${currentTimeframe}`);
                 
+                // Optimize: Only process tickers with AI rating > 0.3
+                const tickersToProcess = allTickers.filter(t => t.ai_rating && t.ai_rating > 0.3);
+                console.log(`⚡ Optimized: Processing ${tickersToProcess.length}/${allTickers.length} tickers`);
+                
                 // Show loading indicator
                 const tickersList = document.getElementById('tickers-list');
                 if (tickersList) {
-                    tickersList.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading timeframe-specific data for filtering...</div>';
+                    tickersList.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading timeframe data for ${tickersToProcess.length} tickers...</div>`;
                 }
                 
-                // Batch fetch price targets with concurrency limit (10 at a time)
-                const batchSize = 10;
-                for (let i = 0; i < allTickers.length; i += batchSize) {
-                    const batch = allTickers.slice(i, i + batchSize);
+                // Batch fetch price targets with concurrency limit (20 at a time)
+                const batchSize = 20;
+                for (let i = 0; i < tickersToProcess.length; i += batchSize) {
+                    const batch = tickersToProcess.slice(i, i + batchSize);
                     await Promise.all(batch.map(async ticker => {
                         // Skip if already fetched for this timeframe
                         if (ticker._timeframeUpside !== undefined && ticker._lastFetchedTimeframe === currentTimeframe) {
@@ -850,11 +854,11 @@ async function filterTickers(filter) {
                         }
                     }));
                     
-                    console.log(`Fetched price targets for ${Math.min(i + batchSize, allTickers.length)}/${allTickers.length} tickers`);
+                    console.log(`Fetched ${Math.min(i + batchSize, tickersToProcess.length)}/${tickersToProcess.length} tickers`);
                 }
                 
                 // Filter by timeframe-specific upside > 20%
-                filteredTickers = allTickers.filter(t => t._timeframeUpside && t._timeframeUpside > 20);
+                filteredTickers = tickersToProcess.filter(t => t._timeframeUpside && t._timeframeUpside > 20);
             } else {
                 // Use generic upside when "All" timeframes is selected
                 filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
@@ -897,20 +901,27 @@ async function sortTickers(sortBy) {
     if ((sortBy === 'upside' || sortBy === 'price') && currentTimeframe !== 'all') {
         console.log(`🎯 Sorting by ${sortBy} for timeframe: ${currentTimeframe}`);
         
+        // IMPORTANT: With 1947 tickers, fetching all price targets takes 3+ minutes
+        // Solution: Filter to only tickers with high AI ratings first (>0.3)
+        // This typically reduces from 1947 to ~200-300 tickers
+        const tickersToProcess = filteredTickers.filter(t => t.ai_rating && t.ai_rating > 0.3);
+        const skippedCount = filteredTickers.length - tickersToProcess.length;
+        
+        console.log(`⚡ Optimized: Processing ${tickersToProcess.length} tickers (${skippedCount} with low AI rating will be sorted to bottom)`);
+        
         // Show loading indicator
         const tickersList = document.getElementById('tickers-list');
         if (tickersList) {
-            tickersList.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading timeframe-specific data for sorting...</div>';
+            tickersList.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading timeframe data for ${tickersToProcess.length} tickers...<br/><small style="color: #999;">(${skippedCount} low-rated tickers skipped)</small></div>`;
         }
         
-        // Batch fetch price targets with concurrency limit (10 at a time)
-        const batchSize = 10;
-        const tickersToFetch = filteredTickers.filter(t => !t._timeframeUpside); // Only fetch if not already cached
+        // Batch fetch price targets with concurrency limit (20 at a time for faster processing)
+        const batchSize = 20;
         
-        for (let i = 0; i < filteredTickers.length; i += batchSize) {
-            const batch = filteredTickers.slice(i, i + batchSize);
+        for (let i = 0; i < tickersToProcess.length; i += batchSize) {
+            const batch = tickersToProcess.slice(i, i + batchSize);
             await Promise.all(batch.map(async ticker => {
-                // Skip if already fetched
+                // Skip if already fetched for this timeframe
                 if (ticker._timeframeUpside !== undefined && ticker._lastFetchedTimeframe === currentTimeframe) {
                     return ticker;
                 }
@@ -923,7 +934,7 @@ async function sortTickers(sortBy) {
                     const target = data.trading_agents?.find(t => t.time_horizon === currentTimeframe);
                     ticker._timeframeUpside = target?.upside_percent || 0;
                     ticker._timeframeSellTarget = target?.sell_target || 0;
-                    ticker._lastFetchedTimeframe = currentTimeframe; // Mark which timeframe was fetched
+                    ticker._lastFetchedTimeframe = currentTimeframe;
                     
                     return ticker;
                 } catch (error) {
@@ -936,8 +947,17 @@ async function sortTickers(sortBy) {
             }));
             
             // Show progress
-            console.log(`Fetched price targets for ${Math.min(i + batchSize, filteredTickers.length)}/${filteredTickers.length} tickers`);
+            console.log(`Fetched ${Math.min(i + batchSize, tickersToProcess.length)}/${tickersToProcess.length} tickers`);
         }
+        
+        // Mark skipped tickers with 0 upside so they sort to the bottom
+        filteredTickers.forEach(ticker => {
+            if (!tickersToProcess.includes(ticker)) {
+                ticker._timeframeUpside = 0;
+                ticker._timeframeSellTarget = 0;
+                ticker._lastFetchedTimeframe = currentTimeframe;
+            }
+        });
         
         // Sort by timeframe-specific data
         if (sortBy === 'upside') {
