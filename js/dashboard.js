@@ -261,6 +261,7 @@ let filteredTickers = [];
 let currentSort = 'ai-rating'; // Default to AI Rating sort
 let currentFilter = 'all';
 let currentTimeframe = 'all';
+let isReloadingData = false; // Flag to prevent infinite loops
 
 // Page Navigation
 function showPage(pageId) {
@@ -818,8 +819,10 @@ async function filterTickers(filter) {
             break;
     }
     
-    // Apply current sort
-    await sortTickers(currentSort);
+    // Apply current sort (but not if we're reloading data)
+    if (!isReloadingData) {
+        await sortTickers(currentSort);
+    }
 }
 
 async function filterByStrategy(strategy) {
@@ -850,8 +853,10 @@ async function sortTickers(sortBy) {
     currentSort = sortBy;
     
     // For sorting with specific timeframe, reload data with timeframe and sort parameters
-    if (currentTimeframe !== 'all' && (sortBy === 'upside' || sortBy === 'price' || sortBy === 'ai-rating')) {
+    if (currentTimeframe !== 'all' && (sortBy === 'upside' || sortBy === 'price' || sortBy === 'ai-rating') && !isReloadingData) {
         console.log(`🎯 Reloading data with timeframe=${currentTimeframe}, sort=${sortBy}`);
+        
+        isReloadingData = true; // Prevent infinite loops
         
         // Show loading indicator
         const tickersList = document.getElementById('tickers-list');
@@ -878,8 +883,23 @@ async function sortTickers(sortBy) {
                     return true;
                 });
                 
-                // Re-apply current filter
-                await filterTickers(currentFilter);
+                // Re-apply current filter (but skip sortTickers to prevent loop)
+                filteredTickers = [...allTickers];
+                if (currentFilter !== 'all') {
+                    switch (currentFilter) {
+                        case 'high-ai-rating':
+                            filteredTickers = allTickers.filter(t => t.ai_rating && t.ai_rating > 0.5);
+                            break;
+                        case 'buy-targets':
+                            filteredTickers = allTickers.filter(t => t.buy_target && t.current_price && t.current_price <= t.buy_target);
+                            break;
+                        case 'high-upside':
+                            filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
+                            break;
+                    }
+                }
+                
+                displayTickers();
                 
                 console.log(`✅ Reloaded ${allTickers.length} tickers sorted by ${sortBy} for timeframe ${currentTimeframe}`);
             } else {
@@ -887,6 +907,8 @@ async function sortTickers(sortBy) {
             }
         } catch (error) {
             console.error('Error reloading with timeframe/sort:', error);
+        } finally {
+            isReloadingData = false; // Reset flag
         }
     } else {
         // Normal in-memory sorting
