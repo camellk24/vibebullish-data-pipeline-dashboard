@@ -748,17 +748,10 @@ function displayTickers() {
                     <span class="label">AI Rating:</span>
                     <span class="value">${ticker.ai_rating && ticker.ai_rating >= 0 ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
-                ${currentTimeframe !== 'all' && ticker._timeframeUpside !== undefined ? `
-                <div class="metric">
-                    <span class="label">Upside (${currentTimeframe}):</span>
-                    <span class="value ${ticker._timeframeUpside >= 0 ? 'upside-positive' : 'upside-negative'}">${ticker._timeframeUpside >= 0 ? '+' : ''}${ticker._timeframeUpside.toFixed(2)}%</span>
-                </div>
-                ` : `
                 <div class="metric">
                     <span class="label">Volume:</span>
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
                 </div>
-                `}
             </div>
             <div class="ticker-strategy">
                 <span class="strategy-label">Strategy:</span>
@@ -819,69 +812,9 @@ async function filterTickers(filter) {
             filteredTickers = allTickers.filter(t => t.buy_target && t.current_price && t.current_price <= t.buy_target);
             break;
         case 'high-upside':
-            // If a specific timeframe is selected, filter by that timeframe's upside
-            if (currentTimeframe !== 'all') {
-                console.log(`Filtering high upside for timeframe: ${currentTimeframe}`);
-                
-                // Show loading indicator
-                const tickersList = document.getElementById('tickers-list');
-                if (tickersList) {
-                    tickersList.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading high-upside data for all tickers...<br/><small style="color: #999;">Fetching from database in one efficient query</small></div>`;
-                }
-                
-                try {
-                    // Use the new bulk endpoint to get ALL tickers' timeframe data in one call
-                    const response = await fetch(`https://api.vibebullish.com/api/stocks/timeframe/bulk?timeframe=${currentTimeframe}`);
-                    const data = await response.json();
-                    
-                    if (data.success !== false && data.tickers) {
-                        console.log(`✅ Fetched timeframe data for ${data.count} tickers in ${data.query_time_ms}ms`);
-                        
-                        // Create a lookup map for fast access
-                        const timeframeDataMap = {};
-                        data.tickers.forEach(tickerData => {
-                            timeframeDataMap[tickerData.ticker] = {
-                                upside: tickerData.upside,
-                                buyTarget: tickerData.buy_target,
-                                sellTarget: tickerData.sell_target,
-                                confidence: tickerData.confidence
-                            };
-                        });
-                        
-                        // Apply timeframe data to all tickers
-                        allTickers.forEach(ticker => {
-                            const timeframeData = timeframeDataMap[ticker.ticker];
-                            if (timeframeData) {
-                                ticker._timeframeUpside = timeframeData.upside;
-                                ticker._timeframeSellTarget = timeframeData.sellTarget;
-                                ticker._timeframeBuyTarget = timeframeData.buyTarget;
-                                ticker._timeframeConfidence = timeframeData.confidence;
-                            } else {
-                                // No data for this ticker in this timeframe
-                                ticker._timeframeUpside = 0;
-                                ticker._timeframeSellTarget = 0;
-                                ticker._timeframeBuyTarget = 0;
-                                ticker._timeframeConfidence = 0;
-                            }
-                            ticker._lastFetchedTimeframe = currentTimeframe;
-                        });
-                        
-                        // Filter by timeframe-specific upside > 20%
-                        filteredTickers = allTickers.filter(ticker => (ticker._timeframeUpside || 0) > 20);
-                    } else {
-                        console.error('Failed to fetch bulk timeframe data:', data);
-                        // Fallback to existing data
-                        filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
-                    }
-                } catch (error) {
-                    console.error('Error fetching bulk timeframe data:', error);
-                    // Fallback to existing data
-                    filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
-                }
-            } else {
-                // Use generic upside when "All" timeframes is selected
-                filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
-            }
+            // Filter by upside > 20%
+            // Note: When a specific timeframe is selected, the data already includes timeframe-specific upside
+            filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
             break;
     }
     
@@ -916,91 +849,47 @@ async function sortTickers(sortBy) {
     console.log(`📊 sortTickers called: sortBy=${sortBy}, currentTimeframe=${currentTimeframe}, filteredTickers.length=${filteredTickers.length}`);
     currentSort = sortBy;
     
-    // For upside or price sorting with a specific timeframe, fetch price targets
-    if ((sortBy === 'upside' || sortBy === 'price') && currentTimeframe !== 'all') {
-        console.log(`🎯 Sorting by ${sortBy} for timeframe: ${currentTimeframe}`);
+    // For sorting with specific timeframe, reload data with timeframe and sort parameters
+    if (currentTimeframe !== 'all' && (sortBy === 'upside' || sortBy === 'price' || sortBy === 'ai-rating')) {
+        console.log(`🎯 Reloading data with timeframe=${currentTimeframe}, sort=${sortBy}`);
         
         // Show loading indicator
         const tickersList = document.getElementById('tickers-list');
         if (tickersList) {
-            tickersList.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading timeframe data for all tickers...<br/><small style="color: #999;">Fetching from database in one efficient query</small></div>`;
+            tickersList.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading sorted data...<br/><small style="color: #999;">Fetching from database with timeframe=${currentTimeframe}, sort=${sortBy}</small></div>`;
         }
         
         try {
-            // Use the new bulk endpoint to get ALL tickers' timeframe data in one call
-            const response = await fetch(`https://api.vibebullish.com/api/stocks/timeframe/bulk?timeframe=${currentTimeframe}`);
+            // Reload tickers with timeframe and sort parameters
+            const response = await fetch(`https://api.vibebullish.com/api/data-pipeline/reports?limit=1&timeframe=${currentTimeframe}&sort=${sortBy}&t=${Date.now()}`);
             const data = await response.json();
             
-            if (data.success !== false && data.tickers) {
-                console.log(`✅ Fetched timeframe data for ${data.count} tickers in ${data.query_time_ms}ms`);
+            if (data.reports && data.reports.length > 0) {
+                const rawTickers = data.reports[0].ticker_details || [];
                 
-                // Create a lookup map for fast access
-                const timeframeDataMap = {};
-                data.tickers.forEach(tickerData => {
-                    timeframeDataMap[tickerData.ticker] = {
-                        upside: tickerData.upside,
-                        buyTarget: tickerData.buy_target,
-                        sellTarget: tickerData.sell_target,
-                        confidence: tickerData.confidence
-                    };
-                });
-                
-                // Apply timeframe data to all tickers
-                filteredTickers.forEach(ticker => {
-                    const timeframeData = timeframeDataMap[ticker.ticker];
-                    if (timeframeData) {
-                        ticker._timeframeUpside = timeframeData.upside;
-                        ticker._timeframeSellTarget = timeframeData.sellTarget;
-                        ticker._timeframeBuyTarget = timeframeData.buyTarget;
-                        ticker._timeframeConfidence = timeframeData.confidence;
-                    } else {
-                        // No data for this ticker in this timeframe
-                        ticker._timeframeUpside = 0;
-                        ticker._timeframeSellTarget = 0;
-                        ticker._timeframeBuyTarget = 0;
-                        ticker._timeframeConfidence = 0;
+                // Filter out invalid/test tickers
+                allTickers = rawTickers.filter(t => {
+                    if (t.ticker === 'TEST' || t.ticker === 'FAKE' || t.ticker === 'INVALID') {
+                        return false;
                     }
-                    ticker._lastFetchedTimeframe = currentTimeframe;
+                    if (!t.current_price || t.current_price === 0) {
+                        return false;
+                    }
+                    return true;
                 });
                 
-                // Sort by timeframe-specific data
-                if (sortBy === 'upside') {
-                    filteredTickers.sort((a, b) => (b._timeframeUpside || 0) - (a._timeframeUpside || 0));
-                    console.log(`🔢 Top 5 tickers by upside:`, filteredTickers.slice(0, 5).map(t => `${t.ticker}: ${t._timeframeUpside?.toFixed(2)}%`));
-                } else if (sortBy === 'price') {
-                    filteredTickers.sort((a, b) => (b._timeframeSellTarget || 0) - (a._timeframeSellTarget || 0));
-                    console.log(`🔢 Top 5 tickers by price:`, filteredTickers.slice(0, 5).map(t => `${t.ticker}: $${t._timeframeSellTarget?.toFixed(2)}`));
-                }
+                // Re-apply current filter
+                await filterTickers(currentFilter);
+                
+                console.log(`✅ Reloaded ${allTickers.length} tickers sorted by ${sortBy} for timeframe ${currentTimeframe}`);
             } else {
-                console.error('Failed to fetch bulk timeframe data:', data);
-                // Fallback to existing data
-                filteredTickers.sort((a, b) => {
-                    switch (sortBy) {
-                        case 'upside':
-                            return (b.upside_percent || 0) - (a.upside_percent || 0);
-                        case 'price':
-                            return (b.current_price || 0) - (a.current_price || 0);
-                        default:
-                            return 0;
-                    }
-                });
+                console.error('Failed to reload with timeframe/sort:', data);
             }
         } catch (error) {
-            console.error('Error fetching bulk timeframe data:', error);
-            // Fallback to existing data
-            filteredTickers.sort((a, b) => {
-                switch (sortBy) {
-                    case 'upside':
-                        return (b.upside_percent || 0) - (a.upside_percent || 0);
-                    case 'price':
-                        return (b.current_price || 0) - (a.current_price || 0);
-                    default:
-                        return 0;
-                }
-            });
+            console.error('Error reloading with timeframe/sort:', error);
         }
     } else {
-        // Normal sorting
+        // Normal in-memory sorting
         filteredTickers.sort((a, b) => {
             switch (sortBy) {
                 case 'ticker':
@@ -1017,9 +906,8 @@ async function sortTickers(sortBy) {
                     return 0;
             }
         });
+        displayTickers();
     }
-    
-    displayTickers();
 }
 
 async function searchTickers(query) {
@@ -1458,6 +1346,16 @@ async function loadTimeframeDataInline(ticker, selectedHorizon) {
         if (!target) {
             detailsDiv.innerHTML = '<div class="timeframe-no-data">No data for this timeframe</div>';
             return;
+        }
+        
+        // Store the timeframe-specific data on the ticker object for sorting
+        const tickerObj = filteredTickers.find(t => t.ticker === ticker) || allTickers.find(t => t.ticker === ticker);
+        if (tickerObj) {
+            tickerObj._timeframeUpside = target.upside_percent;
+            tickerObj._timeframeSellTarget = target.sell_target;
+            tickerObj._timeframeBuyTarget = target.buy_target;
+            tickerObj._timeframeConfidence = target.confidence;
+            tickerObj._lastFetchedTimeframe = selectedHorizon;
         }
         
         const upsideClass = target.upside_percent >= 0 ? 'upside-positive' : 'upside-negative';
