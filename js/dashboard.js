@@ -899,6 +899,16 @@ async function sortTickers(sortBy) {
                     }
                 }
                 
+                // DEBUG: Log top 5 tickers to verify sort order
+                console.log(`🔍 Top 5 tickers after reload (${sortBy}):`, 
+                    filteredTickers.slice(0, 5).map(t => ({
+                        ticker: t.ticker,
+                        upside: t.upside_percent,
+                        sellTarget: t.sell_target,
+                        aiRating: t.ai_rating
+                    }))
+                );
+                
                 displayTickers();
                 
                 console.log(`✅ Reloaded ${allTickers.length} tickers sorted by ${sortBy} for timeframe ${currentTimeframe}`);
