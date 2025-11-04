@@ -760,6 +760,21 @@ function displayTickers() {
                     <span class="label">AI Rating:</span>
                     <span class="value">${ticker.ai_rating && ticker.ai_rating >= 0 ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
+                ${currentTimeframe !== 'all' && ticker.timeframe_data && ticker.timeframe_data[currentTimeframe] ? `
+                <div class="metric">
+                    <span class="label">Upside (${currentTimeframe}):</span>
+                    <span class="value ${ticker.timeframe_data[currentTimeframe].upside >= 0 ? 'positive' : 'negative'}">
+                        ${ticker.timeframe_data[currentTimeframe].upside >= 0 ? '+' : ''}${ticker.timeframe_data[currentTimeframe].upside?.toFixed(1) || 0}%
+                    </span>
+                </div>
+                ` : ticker.upside_percent ? `
+                <div class="metric">
+                    <span class="label">Upside:</span>
+                    <span class="value ${ticker.upside_percent >= 0 ? 'positive' : 'negative'}">
+                        ${ticker.upside_percent >= 0 ? '+' : ''}${ticker.upside_percent.toFixed(1)}%
+                    </span>
+                </div>
+                ` : ''}
                 <div class="metric">
                     <span class="label">Volume:</span>
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
