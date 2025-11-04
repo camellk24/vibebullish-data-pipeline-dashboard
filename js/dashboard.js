@@ -331,18 +331,22 @@ function displaySystemStatus(report) {
     const statusClass = report.status === 'success' ? 'status-success' : 
                       report.status === 'warning' ? 'status-warning' : 'status-error';
     
+    // Handle reports without summary (direct generation reports)
+    const summary = report.summary || {};
+    const tickerCount = report.ticker_details ? report.ticker_details.length : 0;
+    
     document.getElementById('system-status').innerHTML = `
         <div class="metric-grid">
             <div class="metric-card">
-                <div class="metric-value">${report.summary.success_rate.toFixed(1)}%</div>
+                <div class="metric-value">${summary.success_rate ? summary.success_rate.toFixed(1) : 'N/A'}%</div>
                 <div class="metric-label">Success Rate</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.total_tickers_processed}</div>
+                <div class="metric-value">${summary.total_tickers_processed || tickerCount}</div>
                 <div class="metric-label">Tickers Processed</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.data_quality_score.toFixed(1)}%</div>
+                <div class="metric-value">${summary.data_quality_score ? summary.data_quality_score.toFixed(1) : 'N/A'}%</div>
                 <div class="metric-label">Data Quality</div>
             </div>
             <div class="metric-card">
@@ -372,7 +376,7 @@ function displayLatestReport(report) {
                 <div class="metric-label">Detailed Tickers</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${formatProcessingTime(report.summary.processing_time)}</div>
+                <div class="metric-value">${summary.processing_time ? formatProcessingTime(summary.processing_time) : 'N/A'}</div>
                 <div class="metric-label">Processing Time</div>
             </div>
         </div>
@@ -469,6 +473,7 @@ function displayReports() {
         const statusClass = report.status === 'success' ? 'status-success' : 
                           report.status === 'warning' ? 'status-warning' : 'status-error';
         const tickerCount = report.ticker_details ? report.ticker_details.length : 0;
+        const summary = report.summary || {};
         
         return `
             <div class="report-item" data-report-id="${report.report_id}">
@@ -478,11 +483,11 @@ function displayReports() {
                 </div>
                 <div class="report-summary">
                     <div class="summary-item">
-                        <div class="summary-value">${report.summary.success_rate.toFixed(1)}%</div>
+                        <div class="summary-value">${summary.success_rate ? summary.success_rate.toFixed(1) : 'N/A'}%</div>
                         <div class="summary-label">Success Rate</div>
                     </div>
                     <div class="summary-item">
-                        <div class="summary-value">${report.summary.total_tickers_processed}</div>
+                        <div class="summary-value">${summary.total_tickers_processed || tickerCount}</div>
                         <div class="summary-label">Tickers</div>
                     </div>
                     <div class="summary-item">
@@ -570,6 +575,8 @@ async function showReportDetail(reportId) {
 function displayReportDetail(report) {
     const statusClass = report.status === 'success' ? 'status-success' : 
                       report.status === 'warning' ? 'status-warning' : 'status-error';
+    const summary = report.summary || {};
+    const tickerCount = report.ticker_details ? report.ticker_details.length : 0;
     
     let tickerDetailsHTML = '';
     if (report.ticker_details && report.ticker_details.length > 0) {
@@ -632,15 +639,15 @@ function displayReportDetail(report) {
     document.getElementById('report-detail-content').innerHTML = `
         <div class="metric-grid">
             <div class="metric-card">
-                <div class="metric-value">${report.summary.success_rate.toFixed(1)}%</div>
+                <div class="metric-value">${summary.success_rate ? summary.success_rate.toFixed(1) : 'N/A'}%</div>
                 <div class="metric-label">Success Rate</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.total_tickers_processed}</div>
+                <div class="metric-value">${summary.total_tickers_processed || tickerCount}</div>
                 <div class="metric-label">Tickers Processed</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${report.summary.data_quality_score.toFixed(1)}%</div>
+                <div class="metric-value">${summary.data_quality_score ? summary.data_quality_score.toFixed(1) : 'N/A'}%</div>
                 <div class="metric-label">Data Quality</div>
             </div>
             <div class="metric-card">
