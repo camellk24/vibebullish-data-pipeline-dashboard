@@ -700,6 +700,18 @@ async function loadTickers() {
                 return true;
             });
             
+            // DEBUG: Check if timeframe_data is present
+            if (allTickers.length > 0) {
+                const sample = allTickers[0];
+                console.log(`🔍 DEBUG: Sample ticker ${sample.ticker} - timeframe_data exists: ${!!sample.timeframe_data}`);
+                if (sample.timeframe_data) {
+                    console.log(`🔍 DEBUG: Available timeframes:`, Object.keys(sample.timeframe_data));
+                    if (sample.timeframe_data['1W']) {
+                        console.log(`🔍 DEBUG: 1W data:`, sample.timeframe_data['1W']);
+                    }
+                }
+            }
+            
             filteredTickers = [...allTickers];
             
             // Debug logging
@@ -849,6 +861,15 @@ function sortTickers(sortBy) {
     console.log(`📊 sortTickers called: sortBy=${sortBy}, currentTimeframe=${currentTimeframe}, filteredTickers.length=${filteredTickers.length}`);
     currentSort = sortBy;
     
+    // DEBUG: Log sample before sort
+    if (currentTimeframe !== 'all' && filteredTickers.length > 0) {
+        const sample = filteredTickers[0];
+        console.log(`🔍 DEBUG before sort: ${sample.ticker} - timeframe_data exists: ${!!sample.timeframe_data}`);
+        if (sample.timeframe_data && sample.timeframe_data[currentTimeframe]) {
+            console.log(`🔍 DEBUG: ${currentTimeframe} data:`, sample.timeframe_data[currentTimeframe]);
+        }
+    }
+    
     // INSTANT SORTING: Use pre-loaded timeframe_data from report - no API calls needed!
     filteredTickers.sort((a, b) => {
         // For timeframe-specific sorting, use the timeframe_data map
@@ -883,6 +904,15 @@ function sortTickers(sortBy) {
                 return 0;
         }
     });
+    
+    // DEBUG: Log top 5 after sort
+    if (currentTimeframe !== 'all' && sortBy === 'upside' && filteredTickers.length > 0) {
+        console.log(`🔍 DEBUG after sort - Top 5 by ${sortBy} for ${currentTimeframe}:`);
+        filteredTickers.slice(0, 5).forEach((t, i) => {
+            const data = t.timeframe_data && t.timeframe_data[currentTimeframe];
+            console.log(`  ${i+1}. ${t.ticker}: upside=${data?.upside || 'N/A'}`);
+        });
+    }
     
     displayTickers();
     console.log(`✅ Sorted ${filteredTickers.length} tickers by ${sortBy}${currentTimeframe !== 'all' ? ` for ${currentTimeframe}` : ''} - INSTANT (no API call)`);
