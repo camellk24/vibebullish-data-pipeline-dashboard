@@ -806,9 +806,7 @@ function displayTickers() {
                     </div>
                 </div>
             ` : ''}
-            <div id="timeframes-${ticker.ticker}" class="timeframe-details-inline">
-                <div class="timeframe-loading">Loading timeframes...</div>
-            </div>
+            <div id="timeframes-${ticker.ticker}" class="timeframe-details-inline"></div>
         </div>
     `).join('');
     
@@ -1290,8 +1288,9 @@ async function filterByTimeframe(horizon) {
 }
 
 // Load timeframe data inline (no expand/collapse, always visible)
-async function loadTimeframeDataInline(ticker, selectedHorizon) {
-    const detailsDiv = document.getElementById(`timeframes-${ticker}`);
+// INSTANT: Uses pre-loaded timeframe_data from report - no API calls!
+async function loadTimeframeDataInline(tickerSymbol, selectedHorizon) {
+    const detailsDiv = document.getElementById(`timeframes-${tickerSymbol}`);
     if (!detailsDiv) return;
     
     // Use global currentTimeframe if no horizon specified
@@ -1300,10 +1299,127 @@ async function loadTimeframeDataInline(ticker, selectedHorizon) {
     }
     
     detailsDiv.style.display = 'block';
+    
+    // Find the ticker object - it should have pre-loaded timeframe_data
+    const tickerObj = filteredTickers.find(t => t.ticker === tickerSymbol) || allTickers.find(t => t.ticker === tickerSymbol);
+    
+    // INSTANT: Use pre-loaded timeframe_data if available
+    if (tickerObj && tickerObj.timeframe_data && Object.keys(tickerObj.timeframe_data).length > 0) {
+        const icons = {
+            '1D': '⚡',
+            '1W': '📅',
+            '1M': '📆',
+            '6M': '📊',
+            '12M': '📈',
+            '>12M': '🚀'
+        };
+        
+        const labels = {
+            '1D': '1 Day',
+            '1W': '1 Week',
+            '1M': '1 Month',
+            '6M': '6 Months',
+            '12M': '12 Months',
+            '>12M': '12+ Months'
+        };
+        
+        // If "All" selected, show all 6 timeframes in a table
+        if (selectedHorizon === 'all') {
+            const timeframeOrder = ['1D', '1W', '1M', '6M', '12M', '>12M'];
+            const sortedTargets = timeframeOrder.map(horizon => {
+                const data = tickerObj.timeframe_data[horizon];
+                if (!data) return null;
+                return {
+                    time_horizon: horizon,
+                    buy_target: data.buy_target || 0,
+                    sell_target: data.sell_target || 0,
+                    upside_percent: data.upside || 0,
+                    confidence: data.confidence || 0
+                };
+            }).filter(t => t !== null);
+            
+            let tableHTML = `
+                <div class="timeframe-inline-content">
+                    <div class="timeframe-inline-header">All Timeframe Predictions</div>
+                    <table class="timeframe-compact-table">
+                        <thead>
+                            <tr>
+                                <th>Horizon</th>
+                                <th>Buy</th>
+                                <th>Sell</th>
+                                <th>Upside</th>
+                                <th>Conf.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            sortedTargets.forEach(target => {
+                const upsideClass = target.upside_percent >= 0 ? 'upside-positive' : 'upside-negative';
+                tableHTML += `
+                    <tr>
+                        <td>${icons[target.time_horizon]} ${labels[target.time_horizon]}</td>
+                        <td>$${target.buy_target.toFixed(2)}</td>
+                        <td>$${target.sell_target.toFixed(2)}</td>
+                        <td class="${upsideClass}">${target.upside_percent >= 0 ? '+' : ''}${target.upside_percent.toFixed(1)}%</td>
+                        <td>${(target.confidence * 100).toFixed(0)}%</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            detailsDiv.innerHTML = tableHTML;
+            return;
+        }
+        
+        // Otherwise, show the specific selected timeframe
+        const targetData = tickerObj.timeframe_data[selectedHorizon];
+        
+        if (!targetData) {
+            detailsDiv.innerHTML = '<div class="timeframe-no-data">No data for this timeframe</div>';
+            return;
+        }
+        
+        const upsideClass = (targetData.upside || 0) >= 0 ? 'upside-positive' : 'upside-negative';
+        
+        detailsDiv.innerHTML = `
+            <div class="timeframe-inline-content">
+                <div class="timeframe-inline-header">
+                    ${icons[selectedHorizon]} ${labels[selectedHorizon]} Prediction
+                </div>
+                <div class="timeframe-inline-grid">
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Buy Target:</span>
+                        <span class="timeframe-inline-value">$${targetData.buy_target ? targetData.buy_target.toFixed(2) : 'N/A'}</span>
+                    </div>
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Sell Target:</span>
+                        <span class="timeframe-inline-value">$${targetData.sell_target ? targetData.sell_target.toFixed(2) : 'N/A'}</span>
+                    </div>
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Upside:</span>
+                        <span class="timeframe-inline-value ${upsideClass}">${targetData.upside >= 0 ? '+' : ''}${targetData.upside ? targetData.upside.toFixed(2) : '0.00'}%</span>
+                    </div>
+                    <div class="timeframe-inline-item">
+                        <span class="timeframe-inline-label">Confidence:</span>
+                        <span class="timeframe-inline-value">${targetData.confidence ? (targetData.confidence * 100).toFixed(0) : 'N/A'}%</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        return; // INSTANT - no API call needed!
+    }
+    
+    // FALLBACK: Only make API call if timeframe_data is missing
     detailsDiv.innerHTML = '<div class="timeframe-loading">Loading...</div>';
     
     try {
-        const response = await fetch(`https://api.vibebullish.com/api/stocks/${ticker}/price-targets/all`);
+        const response = await fetch(`https://api.vibebullish.com/api/stocks/${tickerSymbol}/price-targets/all`);
         const data = await response.json();
         
         const icons = {
