@@ -261,7 +261,6 @@ let filteredTickers = [];
 let currentSort = 'ai-rating'; // Default to AI Rating sort
 let currentFilter = 'all';
 let currentTimeframe = 'all';
-let isReloadingData = false; // Flag to prevent infinite loops
 
 // Page Navigation
 function showPage(pageId) {
@@ -819,10 +818,8 @@ async function filterTickers(filter) {
             break;
     }
     
-    // Apply current sort (but not if we're reloading data)
-    if (!isReloadingData) {
-        await sortTickers(currentSort);
-    }
+    // Apply current sort
+    sortTickers(currentSort);
 }
 
 async function filterByStrategy(strategy) {
@@ -845,101 +842,50 @@ async function filterByStrategy(strategy) {
     });
     
     // Apply current sort
-    await sortTickers(currentSort);
+    sortTickers(currentSort);
 }
 
-async function sortTickers(sortBy) {
+function sortTickers(sortBy) {
     console.log(`📊 sortTickers called: sortBy=${sortBy}, currentTimeframe=${currentTimeframe}, filteredTickers.length=${filteredTickers.length}`);
     currentSort = sortBy;
     
-    // For sorting with specific timeframe, reload data with timeframe and sort parameters
-    if (currentTimeframe !== 'all' && (sortBy === 'upside' || sortBy === 'price' || sortBy === 'ai-rating') && !isReloadingData) {
-        console.log(`🎯 Reloading data with timeframe=${currentTimeframe}, sort=${sortBy}`);
-        
-        isReloadingData = true; // Prevent infinite loops
-        
-        // Show loading indicator
-        const tickersList = document.getElementById('tickers-list');
-        if (tickersList) {
-            tickersList.innerHTML = `<div style="text-align: center; padding: 40px; color: #666;">⏳ Loading sorted data...<br/><small style="color: #999;">Fetching from database with timeframe=${currentTimeframe}, sort=${sortBy}</small></div>`;
-        }
-        
-        try {
-            // Reload tickers with timeframe and sort parameters
-            const response = await fetch(`https://api.vibebullish.com/api/data-pipeline/reports?limit=1&timeframe=${currentTimeframe}&sort=${sortBy}&t=${Date.now()}`);
-            const data = await response.json();
+    // INSTANT SORTING: Use pre-loaded timeframe_data from report - no API calls needed!
+    filteredTickers.sort((a, b) => {
+        // For timeframe-specific sorting, use the timeframe_data map
+        if (currentTimeframe !== 'all' && (sortBy === 'upside' || sortBy === 'price')) {
+            const aData = a.timeframe_data && a.timeframe_data[currentTimeframe];
+            const bData = b.timeframe_data && b.timeframe_data[currentTimeframe];
             
-            if (data.reports && data.reports.length > 0) {
-                const rawTickers = data.reports[0].ticker_details || [];
-                
-                // Filter out invalid/test tickers
-                allTickers = rawTickers.filter(t => {
-                    if (t.ticker === 'TEST' || t.ticker === 'FAKE' || t.ticker === 'INVALID') {
-                        return false;
-                    }
-                    if (!t.current_price || t.current_price === 0) {
-                        return false;
-                    }
-                    return true;
-                });
-                
-                // Re-apply current filter (but skip sortTickers to prevent loop)
-                filteredTickers = [...allTickers];
-                if (currentFilter !== 'all') {
-                    switch (currentFilter) {
-                        case 'high-ai-rating':
-                            filteredTickers = allTickers.filter(t => t.ai_rating && t.ai_rating > 0.5);
-                            break;
-                        case 'buy-targets':
-                            filteredTickers = allTickers.filter(t => t.buy_target && t.current_price && t.current_price <= t.buy_target);
-                            break;
-                        case 'high-upside':
-                            filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
-                            break;
-                    }
-                }
-                
-                // DEBUG: Log top 5 tickers to verify sort order
-                console.log(`🔍 Top 5 tickers after reload (${sortBy}):`, 
-                    filteredTickers.slice(0, 5).map(t => ({
-                        ticker: t.ticker,
-                        upside: t.upside_percent,
-                        sellTarget: t.sell_target,
-                        aiRating: t.ai_rating
-                    }))
-                );
-                
-                displayTickers();
-                
-                console.log(`✅ Reloaded ${allTickers.length} tickers sorted by ${sortBy} for timeframe ${currentTimeframe}`);
-            } else {
-                console.error('Failed to reload with timeframe/sort:', data);
+            if (sortBy === 'upside') {
+                const aUpside = aData?.upside || 0;
+                const bUpside = bData?.upside || 0;
+                return bUpside - aUpside;
+            } else if (sortBy === 'price') {
+                const aPrice = aData?.sell_target || 0;
+                const bPrice = bData?.sell_target || 0;
+                return bPrice - aPrice;
             }
-        } catch (error) {
-            console.error('Error reloading with timeframe/sort:', error);
-        } finally {
-            isReloadingData = false; // Reset flag
         }
-    } else {
-        // Normal in-memory sorting
-        filteredTickers.sort((a, b) => {
-            switch (sortBy) {
-                case 'ticker':
-                    return a.ticker.localeCompare(b.ticker);
-                case 'ai-rating':
-                    return (b.ai_rating || 0) - (a.ai_rating || 0);
-                case 'upside':
-                    return (b.upside_percent || 0) - (a.upside_percent || 0);
-                case 'price':
-                    return (b.current_price || 0) - (a.current_price || 0);
-                case 'volume':
-                    return (b.volume || 0) - (a.volume || 0);
-                default:
-                    return 0;
-            }
-        });
-        displayTickers();
-    }
+        
+        // Normal sorting (no timeframe filter)
+        switch (sortBy) {
+            case 'ticker':
+                return a.ticker.localeCompare(b.ticker);
+            case 'ai-rating':
+                return (b.ai_rating || 0) - (a.ai_rating || 0);
+            case 'upside':
+                return (b.upside_percent || 0) - (a.upside_percent || 0);
+            case 'price':
+                return (b.current_price || 0) - (a.current_price || 0);
+            case 'volume':
+                return (b.volume || 0) - (a.volume || 0);
+            default:
+                return 0;
+        }
+    });
+    
+    displayTickers();
+    console.log(`✅ Sorted ${filteredTickers.length} tickers by ${sortBy}${currentTimeframe !== 'all' ? ` for ${currentTimeframe}` : ''} - INSTANT (no API call)`);
 }
 
 async function searchTickers(query) {
@@ -953,7 +899,7 @@ async function searchTickers(query) {
         ticker.ticker.toLowerCase().includes(searchTerm)
     );
     
-    await sortTickers(currentSort);
+    sortTickers(currentSort);
 }
 
 // Schedule Page
@@ -1284,7 +1230,7 @@ async function filterByTimeframe(horizon) {
     
     // Re-sort and reload all visible tickers with the new timeframe
     console.log(`🔄 Re-sorting with current sort: ${currentSort}, timeframe: ${horizon}`);
-    await sortTickers(currentSort);
+    sortTickers(currentSort);
     
     filteredTickers.forEach(ticker => {
         loadTimeframeDataInline(ticker.ticker, horizon);
@@ -1467,7 +1413,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            await sortTickers(sort);
+            sortTickers(sort);
             
             // Update active sort button
             document.querySelectorAll('.sort-btn').forEach(btn => {
