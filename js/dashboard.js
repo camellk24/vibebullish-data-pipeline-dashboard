@@ -607,6 +607,33 @@ function displayReportDetail(report) {
                                     </div>
                                 </div>
                             ` : `<div class="detail-item"><span class="detail-label">Score Breakdown:</span><span class="detail-value">DEBUG: No breakdown data</span></div>`}
+                            ${ticker.reddit_score !== null && ticker.reddit_score !== undefined ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Reddit Sentiment:</span>
+                                    <span class="detail-value">${(ticker.reddit_score * 100).toFixed(1)}%${ticker.reddit_mentions ? ` (${ticker.reddit_mentions} posts)` : ''}</span>
+                                </div>
+                            ` : ''}
+                            ${ticker.finbert_sentiment ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">FinBERT Sentiment:</span>
+                                    <div class="breakdown-details">
+                                        <div class="breakdown-item">
+                                            <span class="breakdown-label">Score:</span>
+                                            <span class="breakdown-value">${(ticker.finbert_sentiment.normalized * 100).toFixed(1)}%</span>
+                                        </div>
+                                        <div class="breakdown-item">
+                                            <span class="breakdown-label">Label:</span>
+                                            <span class="breakdown-value">${ticker.finbert_sentiment.label || 'N/A'}</span>
+                                        </div>
+                                        ${ticker.finbert_sentiment.confidence ? `
+                                            <div class="breakdown-item">
+                                                <span class="breakdown-label">Confidence:</span>
+                                                <span class="breakdown-value">${(ticker.finbert_sentiment.confidence * 100).toFixed(1)}%</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
                             <div class="detail-item">
                                 <span class="detail-label">Buy Target:</span>
                                 <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
@@ -803,6 +830,33 @@ function displayTickers() {
                                 <span class="breakdown-weight">(${(component.weight * 100).toFixed(0)}% weight)</span>
                             </div>`
                         ).join('')}
+                    </div>
+                </div>
+            ` : ''}
+            ${ticker.reddit_score !== null && ticker.reddit_score !== undefined || ticker.finbert_sentiment ? `
+                <div class="ticker-breakdown">
+                    <h4>Sentiment Analysis:</h4>
+                    <div class="breakdown-grid">
+                        ${ticker.reddit_score !== null && ticker.reddit_score !== undefined ? `
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Reddit:</span>
+                                <span class="breakdown-value">${(ticker.reddit_score * 100).toFixed(1)}%</span>
+                                ${ticker.reddit_mentions ? `<span class="breakdown-weight">(${ticker.reddit_mentions} posts)</span>` : ''}
+                            </div>
+                        ` : ''}
+                        ${ticker.finbert_sentiment ? `
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">FinBERT:</span>
+                                <span class="breakdown-value">${(ticker.finbert_sentiment.normalized * 100).toFixed(1)}%</span>
+                                <span class="breakdown-weight">(${ticker.finbert_sentiment.label || 'neutral'})</span>
+                            </div>
+                            ${ticker.finbert_sentiment.confidence ? `
+                                <div class="breakdown-item">
+                                    <span class="breakdown-label">FinBERT Confidence:</span>
+                                    <span class="breakdown-value">${(ticker.finbert_sentiment.confidence * 100).toFixed(1)}%</span>
+                                </div>
+                            ` : ''}
+                        ` : ''}
                     </div>
                 </div>
             ` : ''}

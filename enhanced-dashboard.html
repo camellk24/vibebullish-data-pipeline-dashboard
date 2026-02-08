@@ -976,6 +976,33 @@
                                             </div>
                                         </div>
                                     ` : ''}
+                                    ${ticker.reddit_score !== null && ticker.reddit_score !== undefined ? `
+                                        <div class="detail-item">
+                                            <span class="detail-label">Reddit Sentiment:</span>
+                                            <span class="detail-value">${(ticker.reddit_score * 100).toFixed(1)}%${ticker.reddit_mentions ? ` (${ticker.reddit_mentions} posts)` : ''}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${ticker.finbert_sentiment ? `
+                                        <div class="detail-item">
+                                            <span class="detail-label">FinBERT Sentiment:</span>
+                                            <div class="breakdown-details">
+                                                <div class="breakdown-item">
+                                                    <span class="breakdown-label">Score:</span>
+                                                    <span class="breakdown-value">${(ticker.finbert_sentiment.normalized * 100).toFixed(1)}%</span>
+                                                </div>
+                                                <div class="breakdown-item">
+                                                    <span class="breakdown-label">Label:</span>
+                                                    <span class="breakdown-value">${ticker.finbert_sentiment.label || 'N/A'}</span>
+                                                </div>
+                                                ${ticker.finbert_sentiment.confidence ? `
+                                                    <div class="breakdown-item">
+                                                        <span class="breakdown-label">Confidence:</span>
+                                                        <span class="breakdown-value">${(ticker.finbert_sentiment.confidence * 100).toFixed(1)}%</span>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    ` : ''}
                                     <div class="detail-item">
                                         <span class="detail-label">Buy Target:</span>
                                         <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
