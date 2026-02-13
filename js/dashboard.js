@@ -634,6 +634,62 @@ function displayReportDetail(report) {
                                     </div>
                                 </div>
                             ` : ''}
+                            ${ticker.lightgbm_predictions ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">LightGBM Predictions:</span>
+                                    <div class="breakdown-details">
+                                        <div class="breakdown-item">
+                                            <span class="breakdown-label">1D:</span>
+                                            <span class="breakdown-value">$${ticker.lightgbm_predictions.prediction_1d?.toFixed(2) || 'N/A'}</span>
+                                        </div>
+                                        <div class="breakdown-item">
+                                            <span class="breakdown-label">5D:</span>
+                                            <span class="breakdown-value">$${ticker.lightgbm_predictions.prediction_5d?.toFixed(2) || 'N/A'}</span>
+                                        </div>
+                                        <div class="breakdown-item">
+                                            <span class="breakdown-label">20D:</span>
+                                            <span class="breakdown-value">$${ticker.lightgbm_predictions.prediction_20d?.toFixed(2) || 'N/A'}</span>
+                                        </div>
+                                        ${ticker.lightgbm_predictions.confidence_5d ? `
+                                            <div class="breakdown-item">
+                                                <span class="breakdown-label">Confidence (5D):</span>
+                                                <span class="breakdown-value">${(ticker.lightgbm_predictions.confidence_5d * 100).toFixed(1)}%</span>
+                                            </div>
+                                        ` : ''}
+                                        ${ticker.lightgbm_predictions.direction ? `
+                                            <div class="breakdown-item">
+                                                <span class="breakdown-label">Direction:</span>
+                                                <span class="breakdown-value">${ticker.lightgbm_predictions.direction}</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            ${ticker.trading_agent_result ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Trading Agent:</span>
+                                    <div class="breakdown-details">
+                                        ${ticker.trading_agent_result.rationale ? `
+                                            <div class="breakdown-item" style="grid-column: 1 / -1;">
+                                                <span class="breakdown-label">Rationale:</span>
+                                                <span class="breakdown-value">${ticker.trading_agent_result.rationale}</span>
+                                            </div>
+                                        ` : ''}
+                                        ${ticker.trading_agent_result.confidence ? `
+                                            <div class="breakdown-item">
+                                                <span class="breakdown-label">Confidence:</span>
+                                                <span class="breakdown-value">${(ticker.trading_agent_result.confidence * 100).toFixed(1)}%</span>
+                                            </div>
+                                        ` : ''}
+                                        ${ticker.trading_agent_result.recommendation_type ? `
+                                            <div class="breakdown-item">
+                                                <span class="breakdown-label">Recommendation:</span>
+                                                <span class="breakdown-value">${ticker.trading_agent_result.recommendation_type}</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            ` : ''}
                             <div class="detail-item">
                                 <span class="detail-label">Buy Target:</span>
                                 <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 
