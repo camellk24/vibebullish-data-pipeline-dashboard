@@ -1176,6 +1176,18 @@
                             <span class="detail-label">AI Rating:</span>
                             <span class="detail-value">${ticker.ai_rating ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                         </div>
+                        ${ticker.lightgbm_predictions ? `
+                        <div class="detail-item">
+                            <span class="detail-label">LightGBM:</span>
+                            <span class="detail-value">1D $${ticker.lightgbm_predictions.prediction_1d?.toFixed(2) || 'N/A'} | 5D $${ticker.lightgbm_predictions.prediction_5d?.toFixed(2) || 'N/A'} | 20D $${ticker.lightgbm_predictions.prediction_20d?.toFixed(2) || 'N/A'}</span>
+                        </div>
+                        ` : ''}
+                        ${ticker.trading_agent_result ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Trading Agent:</span>
+                            <span class="detail-value">${ticker.trading_agent_result.rationale || 'N/A'} (${ticker.trading_agent_result.recommendation_type || ''})</span>
+                        </div>
+                        ` : ''}
                         <div class="detail-item">
                             <span class="detail-label">Buy Target:</span>
                             <span class="detail-value">${ticker.buy_target ? '$' + ticker.buy_target.toFixed(2) : 'N/A'}</span>
