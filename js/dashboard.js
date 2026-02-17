@@ -669,6 +669,18 @@ function displayReportDetail(report) {
                                 <div class="detail-item">
                                     <span class="detail-label">Trading Agent:</span>
                                     <div class="breakdown-details">
+                                        ${ticker.trading_agent_result.time_horizon ? `
+                                            <div class="breakdown-item">
+                                                <span class="breakdown-label">Timeframe:</span>
+                                                <span class="breakdown-value">${ticker.trading_agent_result.time_horizon}</span>
+                                            </div>
+                                        ` : ''}
+                                        ${ticker.trading_agent_result.last_updated_at ? `
+                                            <div class="breakdown-item">
+                                                <span class="breakdown-label">Last Updated:</span>
+                                                <span class="breakdown-value">${new Date(ticker.trading_agent_result.last_updated_at).toLocaleString()}</span>
+                                            </div>
+                                        ` : ''}
                                         ${ticker.trading_agent_result.rationale ? `
                                             <div class="breakdown-item" style="grid-column: 1 / -1;">
                                                 <span class="breakdown-label">Rationale:</span>
@@ -951,6 +963,18 @@ function displayTickers() {
                 <div class="ticker-breakdown">
                     <h4>Trading Agent:</h4>
                     <div class="breakdown-grid">
+                        ${ticker.trading_agent_result.time_horizon ? `
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Timeframe:</span>
+                                <span class="breakdown-value">${ticker.trading_agent_result.time_horizon}</span>
+                            </div>
+                        ` : ''}
+                        ${ticker.trading_agent_result.last_updated_at ? `
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">Last Updated:</span>
+                                <span class="breakdown-value">${new Date(ticker.trading_agent_result.last_updated_at).toLocaleString()}</span>
+                            </div>
+                        ` : ''}
                         ${ticker.trading_agent_result.rationale ? `
                             <div class="breakdown-item" style="grid-column: 1 / -1;">
                                 <span class="breakdown-label">Rationale:</span>
