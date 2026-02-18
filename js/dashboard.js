@@ -45,10 +45,23 @@ function formatPercentage(value) {
     return `${(value * 100).toFixed(1)}%`;
 }
 
+// Get upside from timeframe breakdown only. No overall upside - rely on timeframe only.
+function getTickerUpside(ticker, currentTimeframe) {
+    if (ticker.timeframe_data && Object.keys(ticker.timeframe_data).length > 0) {
+        if (currentTimeframe && currentTimeframe !== 'all') {
+            const tf = ticker.timeframe_data[currentTimeframe];
+            if (tf && tf.upside != null) return tf.upside;
+        }
+        const values = Object.values(ticker.timeframe_data).map(t => t.upside).filter(v => v != null && !isNaN(v));
+        return values.length > 0 ? Math.max(...values) : 0;
+    }
+    return ticker.upside_percent ?? 0;
+}
+
 // Helper function to determine trading strategy based on AI rating and upside
 function getTradingStrategy(ticker) {
     const aiRating = ticker.ai_rating || 0;
-    const upside = ticker.upside_percent || 0;
+    const upside = getTickerUpside(ticker, currentTimeframe);
     
     // High AI Rating (>60%) + Positive Upside (>10%) = Strong Buy
     if (aiRating > 0.6 && upside > 10) {
@@ -712,10 +725,14 @@ function displayReportDetail(report) {
                                 <span class="detail-value">${ticker.sell_target ? '$' + ticker.sell_target.toFixed(2) : 
                                     (ticker.sell_target_reason ? ticker.sell_target_reason : 'N/A')}</span>
                             </div>
+                            ${ticker.timeframe_data && Object.keys(ticker.timeframe_data).length > 0 ? `
                             <div class="detail-item">
                                 <span class="detail-label">Upside:</span>
-                                <span class="detail-value">${ticker.upside_percent ? ticker.upside_percent.toFixed(1) + '%' : 'N/A'}</span>
+                                <span class="detail-value">${Object.entries(ticker.timeframe_data).map(([tf, d]) => 
+                                    `${tf}: ${(d.upside ?? 0) >= 0 ? '+' : ''}${(d.upside ?? 0).toFixed(1)}%`
+                                ).join(' | ')}</span>
                             </div>
+                            ` : ''}
                             <div class="detail-item">
                                 <span class="detail-label">Volume:</span>
                                 <span class="detail-value">${(ticker.volume / 1000000).toFixed(1)}M</span>
@@ -862,21 +879,25 @@ function displayTickers() {
                     <span class="label">AI Rating:</span>
                     <span class="value">${ticker.ai_rating && ticker.ai_rating >= 0 ? (ticker.ai_rating * 100).toFixed(1) + '%' : 'N/A'}</span>
                 </div>
-                ${currentTimeframe !== 'all' && ticker.timeframe_data && ticker.timeframe_data[currentTimeframe] ? `
+                ${ticker.timeframe_data && Object.keys(ticker.timeframe_data).length > 0 ? (
+                    currentTimeframe !== 'all' && ticker.timeframe_data[currentTimeframe] ? `
                 <div class="metric">
                     <span class="label">Upside (${currentTimeframe}):</span>
                     <span class="value ${ticker.timeframe_data[currentTimeframe].upside >= 0 ? 'positive' : 'negative'}">
                         ${ticker.timeframe_data[currentTimeframe].upside >= 0 ? '+' : ''}${ticker.timeframe_data[currentTimeframe].upside?.toFixed(1) || 0}%
                     </span>
                 </div>
-                ` : ticker.upside_percent ? `
+                ` : `
                 <div class="metric">
                     <span class="label">Upside:</span>
-                    <span class="value ${ticker.upside_percent >= 0 ? 'positive' : 'negative'}">
-                        ${ticker.upside_percent >= 0 ? '+' : ''}${ticker.upside_percent.toFixed(1)}%
+                    <span class="value timeframe-breakdown">
+                        ${Object.entries(ticker.timeframe_data).map(([tf, d]) => 
+                            `${tf}: ${(d.upside ?? 0) >= 0 ? '+' : ''}${(d.upside ?? 0).toFixed(1)}%`
+                        ).join(' | ')}
                     </span>
                 </div>
-                ` : ''}
+                `
+                ) : ''}
                 <div class="metric">
                     <span class="label">Volume:</span>
                     <span class="value">${ticker.volume ? (ticker.volume / 1000000).toFixed(1) + 'M' : 'N/A'}</span>
@@ -1034,9 +1055,8 @@ async function filterTickers(filter) {
             filteredTickers = allTickers.filter(t => t.buy_target && t.current_price && t.current_price <= t.buy_target);
             break;
         case 'high-upside':
-            // Filter by upside > 20%
-            // Note: When a specific timeframe is selected, the data already includes timeframe-specific upside
-            filteredTickers = allTickers.filter(t => t.upside_percent && t.upside_percent > 20);
+            // Filter by upside > 20% (from timeframe breakdown)
+            filteredTickers = allTickers.filter(t => getTickerUpside(t, currentTimeframe) > 20);
             break;
     }
     
@@ -1105,7 +1125,7 @@ function sortTickers(sortBy) {
             case 'ai-rating':
                 return (b.ai_rating || 0) - (a.ai_rating || 0);
             case 'upside':
-                return (b.upside_percent || 0) - (a.upside_percent || 0);
+                return getTickerUpside(b, currentTimeframe) - getTickerUpside(a, currentTimeframe);
             case 'price':
                 return (b.current_price || 0) - (a.current_price || 0);
             case 'volume':
