@@ -225,6 +225,24 @@
             margin-bottom: 10px;
         }
         
+        .ticker-symbol-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .wsb-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff4500 0%, #ff6b35 100%);
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
         .ticker-symbol {
             font-weight: 700;
             font-size: 1.1em;
@@ -711,6 +729,17 @@
             
             return timeStr; // Return original if parsing fails
         }
+
+        // Get Reddit badges from subreddits (WSB, Stocks, Investing) or legacy reddit_mentions
+        function getRedditBadges(ticker) {
+            const subToTag = { wallstreetbets: 'WSB', stocks: 'Stocks', investing: 'Investing' };
+            if (ticker.reddit_subreddits && Array.isArray(ticker.reddit_subreddits) && ticker.reddit_subreddits.length > 0) {
+                return ticker.reddit_subreddits
+                    .map(s => subToTag[s?.toLowerCase?.()] || s)
+                    .filter(Boolean);
+            }
+            return (ticker.reddit_mentions > 0) ? ['WSB'] : [];
+        }
         
         let currentReports = [];
         let currentTickers = [];
@@ -955,7 +984,10 @@
                         ${report.ticker_details.map(ticker => `
                             <div class="ticker-card">
                                 <div class="ticker-header">
-                                    <div class="ticker-symbol">${ticker.ticker}</div>
+                                    <div class="ticker-symbol-row">
+                                        <span class="ticker-symbol">${ticker.ticker}</span>
+                                        ${getRedditBadges(ticker).map(tag => `<span class="wsb-badge">${tag}</span>`).join('')}
+                                    </div>
                                     <div class="ticker-price">$${ticker.current_price.toFixed(2)}</div>
                                 </div>
                                 <div class="ticker-details">

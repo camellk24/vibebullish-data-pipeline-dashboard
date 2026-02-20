@@ -45,6 +45,17 @@ function formatPercentage(value) {
     return `${(value * 100).toFixed(1)}%`;
 }
 
+// Get Reddit badges from subreddits (WSB, Stocks, Investing) or legacy reddit_mentions
+function getRedditBadges(ticker) {
+    const subToTag = { wallstreetbets: 'WSB', stocks: 'Stocks', investing: 'Investing' };
+    if (ticker.reddit_subreddits && Array.isArray(ticker.reddit_subreddits) && ticker.reddit_subreddits.length > 0) {
+        return ticker.reddit_subreddits
+            .map(s => subToTag[s?.toLowerCase?.()] || s)
+            .filter(Boolean);
+    }
+    return (ticker.reddit_mentions > 0) ? ['WSB'] : [];
+}
+
 // Get upside from timeframe breakdown only. No overall upside - rely on timeframe only.
 function getTickerUpside(ticker, currentTimeframe) {
     if (ticker.timeframe_data && Object.keys(ticker.timeframe_data).length > 0) {
@@ -599,7 +610,10 @@ function displayReportDetail(report) {
                 ${report.ticker_details.map(ticker => `
                     <div class="ticker-card">
                         <div class="ticker-header">
-                            <div class="ticker-symbol">${ticker.ticker}</div>
+                            <div class="ticker-symbol-row">
+                                <span class="ticker-symbol">${ticker.ticker}</span>
+                                ${getRedditBadges(ticker).map(tag => `<span class="wsb-badge">${tag}</span>`).join('')}
+                            </div>
                             <div class="ticker-price">$${ticker.current_price.toFixed(2)}</div>
                         </div>
                         <div class="ticker-details">
@@ -868,7 +882,10 @@ function displayTickers() {
         <div class="ticker-card">
             <div class="ticker-header">
                 <h3>${ticker.ticker}</h3>
-                <span class="status-badge ${ticker.status === 'success' ? 'status-success' : ticker.status === 'error' ? 'status-error' : 'status-warning'}">${ticker.status}</span>
+                <div class="header-badges">
+                    ${getRedditBadges(ticker).map(tag => `<span class="wsb-badge">${tag}</span>`).join('')}
+                    <span class="status-badge ${ticker.status === 'success' ? 'status-success' : ticker.status === 'error' ? 'status-error' : 'status-warning'}">${ticker.status}</span>
+                </div>
             </div>
             <div class="ticker-metrics">
                 <div class="metric">
