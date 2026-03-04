@@ -69,62 +69,45 @@ function getTickerUpside(ticker, currentTimeframe) {
     return ticker.upside_percent ?? 0;
 }
 
-// Helper function to determine trading strategy based on AI rating and upside
+// Get trading agent recommendation type (strong_buy, buy, hold, sell, strong_sell) - for filtering
+function getRecommendationType(ticker) {
+    // Prefer trading_agent_result.recommendation_type
+    if (ticker.trading_agent_result?.recommendation_type) {
+        return (ticker.trading_agent_result.recommendation_type || '').toLowerCase().trim();
+    }
+    // Check timeframe_data for current horizon
+    if (currentTimeframe && currentTimeframe !== 'all' && ticker.timeframe_data?.[currentTimeframe]?.recommendation_type) {
+        return (ticker.timeframe_data[currentTimeframe].recommendation_type || '').toLowerCase().trim();
+    }
+    // Check any timeframe
+    if (ticker.timeframe_data) {
+        for (const tf of Object.values(ticker.timeframe_data)) {
+            if (tf?.recommendation_type) return (tf.recommendation_type || '').toLowerCase().trim();
+        }
+    }
+    return 'hold'; // Fallback
+}
+
+// Helper function to determine display label from trading agent recommendation (fallback to calculated strategy)
 function getTradingStrategy(ticker) {
+    const recType = getRecommendationType(ticker);
+    const recToDisplay = {
+        strong_buy: { class: 'rec-strong-buy', label: '🚀 Strong Buy', explanation: 'Trading agent: Strong Buy' },
+        buy: { class: 'rec-buy', label: '✅ Buy', explanation: 'Trading agent: Buy' },
+        hold: { class: 'rec-hold', label: '🤝 Hold', explanation: 'Trading agent: Hold' },
+        sell: { class: 'rec-sell', label: '📉 Sell', explanation: 'Trading agent: Sell' },
+        strong_sell: { class: 'rec-strong-sell', label: '❌ Strong Sell', explanation: 'Trading agent: Strong Sell' }
+    };
+    if (recToDisplay[recType]) return recToDisplay[recType];
+    // Fallback: calculate from AI rating + upside when no trading agent data
     const aiRating = ticker.ai_rating || 0;
     const upside = getTickerUpside(ticker, currentTimeframe);
-    
-    // High AI Rating (>60%) + Positive Upside (>10%) = Strong Buy
-    if (aiRating > 0.6 && upside > 10) {
-        return {
-            class: 'strategy-strong-buy',
-            label: '🚀 Strong Buy',
-            explanation: 'High quality stock with good upside potential'
-        };
-    }
-    
-    // High AI Rating (>60%) + Moderate Upside (0-10%) = Buy
-    if (aiRating > 0.6 && upside >= 0 && upside <= 10) {
-        return {
-            class: 'strategy-buy',
-            label: '✅ Buy',
-            explanation: 'Quality stock, modest upside'
-        };
-    }
-    
-    // High AI Rating (>60%) + Negative Upside = Wait & Watch
-    if (aiRating > 0.6 && upside < 0) {
-        return {
-            class: 'strategy-wait',
-            label: '⏳ Wait & Watch',
-            explanation: 'Quality stock but overvalued - wait for pullback'
-        };
-    }
-    
-    // Moderate AI Rating (40-60%) + High Upside (>20%) = Speculative Buy
-    if (aiRating >= 0.4 && aiRating <= 0.6 && upside > 20) {
-        return {
-            class: 'strategy-speculative',
-            label: '⚠️ Speculative Buy',
-            explanation: 'High upside but moderate quality - higher risk'
-        };
-    }
-    
-    // Moderate AI Rating (40-60%) + Any Upside = Hold
-    if (aiRating >= 0.4 && aiRating <= 0.6) {
-        return {
-            class: 'strategy-hold',
-            label: '🤝 Hold',
-            explanation: 'Moderate quality - hold if owned, avoid new positions'
-        };
-    }
-    
-    // Low AI Rating (<40%) = Avoid
-    return {
-        class: 'strategy-avoid',
-        label: '❌ Avoid',
-        explanation: 'Low quality stock - avoid regardless of upside'
-    };
+    if (aiRating > 0.6 && upside > 10) return { class: 'rec-strong-buy', label: '🚀 Strong Buy', explanation: 'High quality, good upside' };
+    if (aiRating > 0.6 && upside >= 0) return { class: 'rec-buy', label: '✅ Buy', explanation: 'Quality stock, modest upside' };
+    if (aiRating > 0.6 && upside < 0) return { class: 'rec-hold', label: '🤝 Hold', explanation: 'Quality but overvalued' };
+    if (aiRating >= 0.4 && upside > 20) return { class: 'rec-buy', label: '⚠️ Speculative', explanation: 'High upside, moderate quality' };
+    if (aiRating >= 0.4) return { class: 'rec-hold', label: '🤝 Hold', explanation: 'Moderate quality' };
+    return { class: 'rec-hold', label: '🤝 Hold', explanation: 'Low quality - hold or avoid' };
 }
 
 // Load cost optimization page
@@ -327,7 +310,8 @@ function showPage(pageId) {
 // Overview Page
 async function loadOverview() {
     try {
-        const response = await fetch(`${API_BASE}/reports?limit=1&t=${Date.now()}`);
+        // Fetch from dashboard endpoint to get reports + pipeline_complete_events
+        const response = await fetch(`${API_BASE}/dashboard?t=${Date.now()}`);
         const data = await response.json();
         
         // Also load cost metrics for overview
@@ -342,12 +326,17 @@ async function loadOverview() {
             document.getElementById('latest-report').innerHTML = '<div class="error">No reports available</div>';
         }
         
+        // Display pipeline complete events
+        displayPipelineCompleteEvents(data.pipeline_complete_events || []);
+        
         // Load schedule summary
         await loadScheduleSummary();
     } catch (error) {
         console.error('Error loading overview:', error);
         document.getElementById('system-status').innerHTML = '<div class="error">Failed to load system status</div>';
         document.getElementById('latest-report').innerHTML = '<div class="error">Failed to load latest report</div>';
+        const pcEl = document.getElementById('pipeline-complete-events');
+        if (pcEl) pcEl.innerHTML = '<div class="error">Failed to load pipeline events</div>';
     }
 }
 
@@ -382,17 +371,20 @@ function displaySystemStatus(report) {
 }
 
 function displayLatestReport(report) {
-    const vibeStats = report.vibe_score_stats || {};
+    const vibeStats = report.vibe_score_stats || report.ai_rating_stats || {};
     const tickerCount = report.ticker_details ? report.ticker_details.length : 0;
+    const summary = report.summary || {};
+    const totalCalculated = vibeStats.total_calculated ?? vibeStats.total ?? 0;
+    const avgScore = vibeStats.average_score ?? vibeStats.avg ?? 0;
     
     document.getElementById('latest-report').innerHTML = `
         <div class="metric-grid">
             <div class="metric-card">
-                <div class="metric-value">${vibeStats.total_calculated || 0}</div>
+                <div class="metric-value">${totalCalculated}</div>
                 <div class="metric-label">AI Ratings Calculated</div>
             </div>
             <div class="metric-card">
-                <div class="metric-value">${(vibeStats.average_score || 0).toFixed(3)}</div>
+                <div class="metric-value">${(avgScore).toFixed(3)}</div>
                 <div class="metric-label">Avg AI Rating</div>
             </div>
             <div class="metric-card">
@@ -405,6 +397,40 @@ function displayLatestReport(report) {
             </div>
         </div>
     `;
+}
+
+function displayPipelineCompleteEvents(events) {
+    const el = document.getElementById('pipeline-complete-events');
+    if (!el) return;
+    
+    if (!events || events.length === 0) {
+        el.innerHTML = '<div class="muted">No pipeline complete events yet. Events appear after each full pipeline run (ingestion → regen → cache warming).</div>';
+        return;
+    }
+    
+    const rows = events.map(e => {
+        const meta = e.metadata || {};
+        const source = meta.source || 'unknown';
+        const tickerCount = meta.ticker_count ?? e.summary?.total_tickers_processed ?? 0;
+        const buyFeedItems = meta.buy_feed_items_1w ?? 0;
+        const durationSec = meta.total_duration_sec ?? 0;
+        const durationStr = durationSec >= 60 ? `${(durationSec / 60).toFixed(1)}m` : `${durationSec.toFixed(0)}s`;
+        const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '—';
+        
+        return `
+            <div class="pipeline-event-row">
+                <div class="pipeline-event-time">${ts}</div>
+                <div class="pipeline-event-metrics">
+                    <span class="badge">${source}</span>
+                    <span>${tickerCount} tickers</span>
+                    <span>${buyFeedItems} buy feed items (1W)</span>
+                    <span>${durationStr} total</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    el.innerHTML = `<div class="pipeline-events-list">${rows}</div>`;
 }
 
 // Load schedule summary for overview
@@ -1055,10 +1081,11 @@ async function filterTickers(filter) {
     });
     document.querySelector(`[data-ticker-filter="${filter}"]`).classList.add('active');
     
-    // Clear strategy filter when using regular filters
-    document.querySelectorAll('.strategy-filter-btn').forEach(btn => {
+    // Clear recommendation filter when using regular filters
+    document.querySelectorAll('.recommendation-filter-btn').forEach(btn => {
         btn.classList.remove('active');
     });
+    document.querySelector('[data-recommendation-filter="all"]')?.classList.add('active');
     
     // Apply filter
     switch (filter) {
@@ -1081,24 +1108,28 @@ async function filterTickers(filter) {
     sortTickers(currentSort);
 }
 
-async function filterByStrategy(strategy) {
-    // Update active strategy filter button
-    document.querySelectorAll('.strategy-filter-btn').forEach(btn => {
+async function filterByRecommendation(recommendation) {
+    // Update active recommendation filter button
+    document.querySelectorAll('.recommendation-filter-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-strategy-filter="${strategy}"]`).classList.add('active');
+    document.querySelector(`[data-recommendation-filter="${recommendation}"]`)?.classList.add('active');
     
-    // Clear regular filter when using strategy filter
+    // Clear regular filter when using recommendation filter
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     document.querySelector('[data-ticker-filter="all"]').classList.add('active');
     
-    // Filter by strategy
-    filteredTickers = allTickers.filter(ticker => {
-        const tickerStrategy = getTradingStrategy(ticker);
-        return tickerStrategy.class === `strategy-${strategy}`;
-    });
+    // Filter by trading agent recommendation (all, strong_buy, buy, hold)
+    if (recommendation === 'all') {
+        filteredTickers = [...allTickers];
+    } else {
+        filteredTickers = allTickers.filter(ticker => {
+            const recType = getRecommendationType(ticker);
+            return recType === recommendation;
+        });
+    }
     
     // Apply current sort
     sortTickers(currentSort);
@@ -1795,9 +1826,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.target.classList.contains('filter-btn')) {
             const filter = e.target.getAttribute('data-ticker-filter');
             await filterTickers(filter);
-        } else if (e.target.classList.contains('strategy-filter-btn')) {
-            const strategyFilter = e.target.getAttribute('data-strategy-filter');
-            await filterByStrategy(strategyFilter);
+        } else if (e.target.classList.contains('recommendation-filter-btn')) {
+            const recommendationFilter = e.target.getAttribute('data-recommendation-filter');
+            await filterByRecommendation(recommendationFilter);
         } else if (e.target.classList.contains('sort-btn')) {
             const sort = e.target.getAttribute('data-sort');
             console.log(`🖱️ Sort button clicked: ${sort}, disabled=${e.target.disabled}, currentTimeframe=${currentTimeframe}`);

@@ -162,6 +162,55 @@ body {
     font-weight: 500;
 }
 
+.muted {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.pipeline-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pipeline-event-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+}
+
+.pipeline-event-time {
+    font-weight: 600;
+    color: #1e293b;
+    min-width: 180px;
+}
+
+.pipeline-event-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.pipeline-event-metrics .badge {
+    background: #667eea;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.pipeline-event-metrics span:not(.badge) {
+    color: #64748b;
+    font-size: 0.9em;
+}
+
 .report-list {
     display: grid;
     gap: 15px;
@@ -354,11 +403,30 @@ body {
     transform: translateY(-1px);
 }
 
-.strategy-filter-btn.active {
+.strategy-filter-btn.active,
+.recommendation-filter-btn.active {
     background-color: #667eea;
     color: white;
     border-color: #667eea;
     box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.recommendation-filter-btn {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85em;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.recommendation-filter-btn:hover {
+    background-color: #f8fafc;
+    border-color: #667eea;
+    transform: translateY(-1px);
 }
 
 .sort-label {
@@ -610,6 +678,37 @@ body {
 }
 
 .strategy-avoid {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #ef4444;
+}
+
+/* Recommendation badge colors (trading agent) */
+.rec-strong-buy {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #22c55e;
+}
+
+.rec-buy {
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #3b82f6;
+}
+
+.rec-hold {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #9ca3af;
+}
+
+.rec-sell {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.rec-strong-sell {
     background-color: #fee2e2;
     color: #dc2626;
     border: 1px solid #ef4444;

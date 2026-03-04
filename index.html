@@ -31,6 +31,11 @@
                 <h2>Latest Report</h2>
                 <div id="latest-report" class="loading">Loading latest report...</div>
             </div>
+            
+            <div class="card">
+                <h2>Pipeline Complete Events</h2>
+                <div id="pipeline-complete-events" class="loading">Loading pipeline events...</div>
+            </div>
         </div>
         
         <!-- Reports Page -->
@@ -63,13 +68,11 @@
                     <button class="filter-btn" data-ticker-filter="high-upside">High Upside</button>
                 </div>
                 <div class="strategy-filter-buttons">
-                    <span class="filter-section-label">Strategy:</span>
-                    <button class="strategy-filter-btn" data-strategy-filter="strong-buy">🚀 Strong Buy</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="buy">✅ Buy</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="wait">⏳ Wait & Watch</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="speculative">⚠️ Speculative</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="hold">🤝 Hold</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="avoid">❌ Avoid</button>
+                    <span class="filter-section-label">Recommendation:</span>
+                    <button class="recommendation-filter-btn active" data-recommendation-filter="all">All</button>
+                    <button class="recommendation-filter-btn" data-recommendation-filter="strong_buy">🚀 Strong Buy</button>
+                    <button class="recommendation-filter-btn" data-recommendation-filter="buy">✅ Buy</button>
+                    <button class="recommendation-filter-btn" data-recommendation-filter="hold">🤝 Hold</button>
                 </div>
                 <div class="sort-buttons">
                     <span class="sort-label">Sort by:</span>

@@ -144,6 +144,55 @@
             font-weight: 500;
         }
         
+        .muted {
+            color: #94a3b8;
+            font-style: italic;
+        }
+        
+        .pipeline-events-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .pipeline-event-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+        
+        .pipeline-event-time {
+            font-weight: 600;
+            color: #1e293b;
+            min-width: 180px;
+        }
+        
+        .pipeline-event-metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .pipeline-event-metrics .badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        
+        .pipeline-event-metrics span:not(.badge) {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+        
         .report-list {
             display: grid;
             gap: 15px;
@@ -331,6 +380,42 @@
         .filter-btn.active {
             background-color: #667eea;
             color: white;
+        }
+        
+        .strategy-filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-section-label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #475569;
+            margin-right: 5px;
+        }
+        
+        .recommendation-filter-btn {
+            padding: 6px 12px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        
+        .recommendation-filter-btn:hover {
+            background-color: #f8fafc;
+            border-color: #667eea;
+        }
+        
+        .recommendation-filter-btn.active {
+            background-color: #667eea;
+            color: white;
+            border-color: #667eea;
         }
         
         .pagination {
@@ -638,6 +723,11 @@
                 <h2>Latest Report Summary</h2>
                 <div id="latest-report" class="loading">Loading latest report...</div>
             </div>
+            
+            <div class="card">
+                <h2>Pipeline Complete Events</h2>
+                <div id="pipeline-complete-events" class="loading">Loading pipeline events...</div>
+            </div>
         </div>
         
         <!-- Report History Page -->
@@ -677,13 +767,11 @@
                     <button class="filter-btn" data-ticker-filter="high-upside">High Upside</button>
                 </div>
                 <div class="strategy-filter-buttons">
-                    <span class="filter-section-label">Strategy:</span>
-                    <button class="strategy-filter-btn" data-strategy-filter="strong-buy">🚀 Strong Buy</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="buy">✅ Buy</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="wait">⏳ Wait & Watch</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="speculative">⚠️ Speculative</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="hold">🤝 Hold</button>
-                    <button class="strategy-filter-btn" data-strategy-filter="avoid">❌ Avoid</button>
+                    <span class="filter-section-label">Recommendation:</span>
+                    <button class="recommendation-filter-btn active" data-recommendation-filter="all">All</button>
+                    <button class="recommendation-filter-btn" data-recommendation-filter="strong_buy">🚀 Strong Buy</button>
+                    <button class="recommendation-filter-btn" data-recommendation-filter="buy">✅ Buy</button>
+                    <button class="recommendation-filter-btn" data-recommendation-filter="hold">🤝 Hold</button>
                 </div>
                 <div id="ticker-list" class="loading">Loading ticker data...</div>
             </div>
@@ -743,8 +831,22 @@
         
         let currentReports = [];
         let currentTickers = [];
+        let allTickers = [];
+        let currentRecommendationFilter = 'all';
         let currentPage = 1;
         const reportsPerPage = 10;
+
+        function getRecommendationType(ticker) {
+            if (ticker.trading_agent_result?.recommendation_type) {
+                return (ticker.trading_agent_result.recommendation_type || '').toLowerCase().trim();
+            }
+            if (ticker.timeframe_data) {
+                for (const tf of Object.values(ticker.timeframe_data)) {
+                    if (tf?.recommendation_type) return (tf.recommendation_type || '').toLowerCase().trim();
+                }
+            }
+            return 'hold';
+        }
 
         // Navigation
         document.querySelectorAll('.nav-link').forEach(link => {
@@ -783,7 +885,7 @@
         // Overview Page
         async function loadOverview() {
             try {
-                const response = await fetch(`${API_BASE}/reports?limit=1`);
+                const response = await fetch(`${API_BASE}/dashboard?t=${Date.now()}`);
                 const data = await response.json();
                 
                 if (data.reports && data.reports.length > 0) {
@@ -794,29 +896,35 @@
                     document.getElementById('system-status').innerHTML = '<div class="error">No reports available</div>';
                     document.getElementById('latest-report').innerHTML = '<div class="error">No reports available</div>';
                 }
+                
+                displayPipelineCompleteEvents(data.pipeline_complete_events || []);
             } catch (error) {
                 console.error('Error loading overview:', error);
                 document.getElementById('system-status').innerHTML = '<div class="error">Failed to load system status</div>';
                 document.getElementById('latest-report').innerHTML = '<div class="error">Failed to load latest report</div>';
+                const pcEl = document.getElementById('pipeline-complete-events');
+                if (pcEl) pcEl.innerHTML = '<div class="error">Failed to load pipeline events</div>';
             }
         }
 
         function displaySystemStatus(report) {
             const statusClass = report.status === 'success' ? 'status-success' : 
                               report.status === 'warning' ? 'status-warning' : 'status-error';
+            const summary = report.summary || {};
+            const tickerCount = report.ticker_details ? report.ticker_details.length : 0;
             
             document.getElementById('system-status').innerHTML = `
                 <div class="metric-grid">
                     <div class="metric-card">
-                        <div class="metric-value">${report.summary.success_rate.toFixed(1)}%</div>
+                        <div class="metric-value">${summary.success_rate != null ? summary.success_rate.toFixed(1) : 'N/A'}%</div>
                         <div class="metric-label">Success Rate</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${report.summary.total_tickers_processed}</div>
+                        <div class="metric-value">${summary.total_tickers_processed ?? tickerCount}</div>
                         <div class="metric-label">Tickers Processed</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${report.summary.data_quality_score.toFixed(1)}%</div>
+                        <div class="metric-value">${summary.data_quality_score != null ? summary.data_quality_score.toFixed(1) : 'N/A'}%</div>
                         <div class="metric-label">Data Quality</div>
                     </div>
                     <div class="metric-card">
@@ -828,17 +936,18 @@
         }
 
         function displayLatestReport(report) {
-            const vibeStats = report.vibe_score_stats || {};
+            const vibeStats = report.vibe_score_stats || report.ai_rating_stats || {};
             const tickerCount = report.ticker_details ? report.ticker_details.length : 0;
+            const summary = report.summary || {};
             
             document.getElementById('latest-report').innerHTML = `
                 <div class="metric-grid">
                     <div class="metric-card">
-                        <div class="metric-value">${vibeStats.total_calculated || 0}</div>
+                        <div class="metric-value">${vibeStats.total_calculated ?? vibeStats.total ?? 0}</div>
                         <div class="metric-label">AI Ratings Calculated</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${(vibeStats.average_score || 0).toFixed(3)}</div>
+                        <div class="metric-value">${(vibeStats.average_score ?? vibeStats.avg ?? 0).toFixed(3)}</div>
                         <div class="metric-label">Avg AI Rating</div>
                     </div>
                     <div class="metric-card">
@@ -846,11 +955,45 @@
                         <div class="metric-label">Detailed Tickers</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value">${formatProcessingTime(report.summary.processing_time)}</div>
+                        <div class="metric-value">${summary.processing_time ? formatProcessingTime(summary.processing_time) : 'N/A'}</div>
                         <div class="metric-label">Processing Time</div>
                     </div>
                 </div>
             `;
+        }
+
+        function displayPipelineCompleteEvents(events) {
+            const el = document.getElementById('pipeline-complete-events');
+            if (!el) return;
+            
+            if (!events || events.length === 0) {
+                el.innerHTML = '<div class="muted">No pipeline complete events yet. Events appear after each full pipeline run (ingestion → regen → cache warming).</div>';
+                return;
+            }
+            
+            const rows = events.map(e => {
+                const meta = e.metadata || {};
+                const source = meta.source || 'unknown';
+                const tickerCount = meta.ticker_count ?? e.summary?.total_tickers_processed ?? 0;
+                const buyFeedItems = meta.buy_feed_items_1w ?? 0;
+                const durationSec = meta.total_duration_sec ?? 0;
+                const durationStr = durationSec >= 60 ? `${(durationSec / 60).toFixed(1)}m` : `${durationSec.toFixed(0)}s`;
+                const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '—';
+                
+                return `
+                    <div class="pipeline-event-row">
+                        <div class="pipeline-event-time">${ts}</div>
+                        <div class="pipeline-event-metrics">
+                            <span class="badge">${source}</span>
+                            <span>${tickerCount} tickers</span>
+                            <span>${buyFeedItems} buy feed items (1W)</span>
+                            <span>${durationStr} total</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            el.innerHTML = `<div class="pipeline-events-list">${rows}</div>`;
         }
 
         // Reports Page
@@ -1192,7 +1335,8 @@
                 
                 if (data.reports && data.reports.length > 0) {
                     const latestReport = data.reports[0];
-                    currentTickers = latestReport.ticker_details || [];
+                    allTickers = latestReport.ticker_details || [];
+                    currentTickers = [...allTickers];
                     displayTickers();
                 } else {
                     document.getElementById('ticker-list').innerHTML = '<div class="error">No ticker data available</div>';
@@ -1203,9 +1347,23 @@
             }
         }
 
+        function filterByRecommendation(recommendation) {
+            currentRecommendationFilter = recommendation;
+            document.querySelectorAll('.recommendation-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-recommendation-filter') === recommendation) btn.classList.add('active');
+            });
+            if (recommendation === 'all') {
+                currentTickers = [...allTickers];
+            } else {
+                currentTickers = allTickers.filter(t => getRecommendationType(t) === recommendation);
+            }
+            displayTickers();
+        }
+
         function displayTickers() {
             if (currentTickers.length === 0) {
-                document.getElementById('ticker-list').innerHTML = '<div class="error">No ticker data available</div>';
+                document.getElementById('ticker-list').innerHTML = '<div class="error">No tickers match the current filter</div>';
                 return;
             }
             
@@ -1469,6 +1627,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadOverview();
             loadStockAlerts();
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('recommendation-filter-btn')) {
+                    const rec = e.target.getAttribute('data-recommendation-filter');
+                    if (rec) filterByRecommendation(rec);
+                }
+            });
         });
     </script>
 </body>
