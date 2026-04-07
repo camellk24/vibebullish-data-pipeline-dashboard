@@ -1,7 +1,7 @@
 {
   "name": "vibebullish-dashboard",
   "version": "1.0.0",
-  "description": "Data Pipeline Dashboard for Moodvestor",
+  "description": "Data Pipeline Dashboard for VibeBullish",
   "main": "index.html",
   "scripts": {
     "start": "npx serve .",
@@ -16,7 +16,7 @@
     "vibebullish",
     "vibe-scores"
   ],
-  "author": "Moodvestor Team",
+  "author": "VibeBullish",
   "license": "MIT",
   "devDependencies": {
     "serve": "^14.2.1"
