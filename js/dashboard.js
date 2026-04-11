@@ -1904,9 +1904,32 @@ async function loadLLMUsageToday() {
         // Cost estimation section
         const costEstimate = buildCostEstimate(data);
 
+        // Top tickers breakdown
+        const topTickers = (data.top_tickers || []);
+        let tickerSection = '';
+        if (topTickers.length > 0) {
+            const tickerRows = topTickers.map(t => {
+                const models = Object.entries(t.models || {})
+                    .map(([m, c]) => `${escapeHtml(m)}: ${c}`)
+                    .join(', ');
+                return `<tr>
+                    <td>${escapeHtml(t.ticker)}</td>
+                    <td class="count">${Number(t.calls).toLocaleString()}</td>
+                    <td style="font-size:0.8rem;color:#64748b">${models}</td>
+                </tr>`;
+            }).join('');
+            tickerSection = `
+                <h4 style="margin:1.5rem 0 .5rem">Top Tickers (${data.unique_tickers || 0} unique)</h4>
+                <table class="llm-table">
+                    <thead><tr><th>Ticker</th><th>Calls</th><th>Models</th></tr></thead>
+                    <tbody>${tickerRows}</tbody>
+                </table>
+            `;
+        }
+
         // All values from our own trusted backend API
         el.innerHTML = `
-            <div class="metric-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="metric-grid" style="grid-template-columns: 1fr 1fr 1fr;">
                 <div class="metric">
                     <div class="metric-value">${Number(data.total_calls).toLocaleString()}</div>
                     <div class="metric-label">Total Calls (${escapeHtml(data.date)})</div>
@@ -1914,6 +1937,10 @@ async function loadLLMUsageToday() {
                 <div class="metric">
                     <div class="metric-value">${Object.keys(data.by_model || {}).length}</div>
                     <div class="metric-label">Models Used</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">${data.unique_tickers || 0}</div>
+                    <div class="metric-label">Unique Tickers</div>
                 </div>
             </div>
             <div style="display:flex;gap:2rem;flex-wrap:wrap;margin-top:1rem;">
@@ -1932,6 +1959,7 @@ async function loadLLMUsageToday() {
             </div>
             <h4 style="margin:1rem 0 .5rem">Hourly Distribution (ET)</h4>
             <div class="hourly-chart">${hourlyBars}</div>
+            ${tickerSection}
             ${costEstimate}
         `;
     } catch (err) {
