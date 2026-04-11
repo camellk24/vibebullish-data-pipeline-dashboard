@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Static HTML/JS monitoring dashboard for the VibeBullish data pipeline. Displays pipeline health, vibe score analytics, and system status by polling the Go backend API. Deployed on Vercel. No build step required.
+LLM usage dashboard for VibeBullish. Single-page static app showing daily and weekly LLM call breakdowns, cost estimation, and per-ticker usage. Dark theme matching the iOS app. Deployed on Vercel, no build step.
 
 ## Commands
 
@@ -20,33 +20,30 @@ vercel --prod
 
 ## Configuration
 
-The backend URL is hardcoded in `index.html`:
+The backend API URL is set in `js/dashboard.js`:
 ```javascript
-const BACKEND_URL = 'https://vibebullish-backend-production.up.railway.app';
+const API = 'https://api.vibebullish.com/api/llm-usage';
 ```
-
-Change this for local development or to point at a different environment.
 
 ## Architecture
 
-Single-page application — all code lives in `index.html` with supporting files:
-
 ```
-index.html              → Main SPA (navigation, all page logic, API calls)
-enhanced-dashboard.html → Extended dashboard view
-js/                     → Supporting JS modules
-styles/                 → CSS
-vercel.json             → Vercel deployment config
+index.html          → Single page with all sections
+js/dashboard.js     → Fetch + render logic, cost estimation model
+styles/dashboard.css → Dark theme (matches iOS app Theme.swift)
+vercel.json         → Vercel deployment config
 ```
 
-The dashboard polls these backend endpoints every 30 seconds:
-- `GET /api/data-pipeline/dashboard` — metrics
-- `GET /api/data-pipeline/reports` — recent reports
-- `GET /health` — backend health check
+The dashboard polls two backend endpoints every 60 seconds:
+- `GET /api/llm-usage/today` — today's usage summary (by model, service, component, hourly, top tickers)
+- `GET /api/llm-usage/week` — last 7 days of daily summaries
 
-### Adding a New Page
+### Sections
 
-1. Add a nav link in the `.nav` section of `index.html`
-2. Add a page `<div>` with id `[page-name]-page`
-3. Add a `case` in the `showPage()` switch statement
-4. Implement the page's data loading function
+- **Hero metrics** — total calls, models used, unique tickers, estimated cost
+- **7-day trend** — bar chart of daily totals
+- **By model** — horizontal bar chart with percentage
+- **Hourly distribution** — 24-hour bar chart (ET timezone)
+- **By service / endpoint** — table breakdowns
+- **Top tickers** — chip grid showing per-ticker call counts
+- **Cost estimation** — current spend + what-if analysis for model switching
