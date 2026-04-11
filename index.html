@@ -3,117 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VibeBullish Data Pipeline Dashboard</title>
+    <title>VibeBullish — LLM Usage</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/dashboard.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 VibeBullish Data Pipeline</h1>
-            <p>Real-time monitoring and analysis of data ingestion processes</p>
-        </div>
-        
-        <div class="nav">
-            <a href="#" class="nav-link active" data-page="overview">📊 Overview</a>
-            <a href="#" class="nav-link" data-page="reports">📋 Report History</a>
-            <a href="#" class="nav-link" data-page="tickers">📈 Ticker Analysis</a>
-            <a href="#" class="nav-link" data-page="schedule">⏰ Schedule</a>
-        </div>
-        
-        <!-- Overview Page -->
-        <div id="overview" class="page active">
-            <div class="card">
-                <h2>System Status</h2>
-                <div id="system-status" class="loading">Loading system status...</div>
-            </div>
-            
-            <div class="card">
-                <h2>Latest Report</h2>
-                <div id="latest-report" class="loading">Loading latest report...</div>
-            </div>
-            
-            <div class="card">
-                <h2>Pipeline Complete Events</h2>
-                <div id="pipeline-complete-events" class="loading">Loading pipeline events...</div>
-            </div>
+    <div class="page">
+        <!-- Ambient background -->
+        <div class="ambient-orb orb-1"></div>
+        <div class="ambient-orb orb-2"></div>
 
-            <div class="card">
-                <h2>LLM Usage Today</h2>
-                <div id="llm-usage-today" class="loading">Loading LLM usage...</div>
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo">VibeBullish</h1>
+                <span class="badge">LLM Usage</span>
             </div>
+            <div class="header-right">
+                <span class="live-dot"></span>
+                <span class="header-meta" id="last-updated">Loading...</span>
+            </div>
+        </header>
 
-            <div class="card">
-                <h2>LLM Usage — Last 7 Days</h2>
-                <div id="llm-usage-week" class="loading">Loading weekly usage...</div>
+        <!-- Hero metrics -->
+        <section class="hero-metrics" id="hero-metrics">
+            <div class="metric-card hero">
+                <div class="metric-label">Total Calls Today</div>
+                <div class="metric-value" id="m-total">—</div>
+                <div class="metric-sub" id="m-date"></div>
             </div>
-        </div>
-        
-        <!-- Reports Page -->
-        <div id="reports" class="page">
-            <div class="card">
-                <h2>Report History</h2>
-                <div id="report-list" class="loading">Loading reports...</div>
-                <div id="pagination"></div>
+            <div class="metric-card">
+                <div class="metric-label">Models Used</div>
+                <div class="metric-value" id="m-models">—</div>
             </div>
-        </div>
-        
-        <!-- Report Detail Page -->
-        <div id="report-detail" class="page">
-            <div class="card">
-                <button class="back-button" onclick="showPage('reports')">← Back to Reports</button>
-                <h2 id="report-detail-title">Report Details</h2>
-                <div id="report-detail-content" class="loading">Loading report details...</div>
+            <div class="metric-card">
+                <div class="metric-label">Unique Tickers</div>
+                <div class="metric-value" id="m-tickers">—</div>
             </div>
-        </div>
-        
-        <!-- Ticker Analysis Page -->
-        <div id="tickers" class="page">
+            <div class="metric-card">
+                <div class="metric-label">Est. Cost Today</div>
+                <div class="metric-value" id="m-cost">—</div>
+            </div>
+        </section>
+
+        <!-- 7-Day Trend -->
+        <section class="card" id="weekly-section">
+            <div class="card-header">
+                <h2>7-Day Trend</h2>
+                <span class="card-badge" id="week-total"></span>
+            </div>
+            <div class="weekly-chart" id="weekly-chart"></div>
+        </section>
+
+        <!-- Two-column: Model breakdown + Hourly -->
+        <section class="grid-2">
             <div class="card">
-                <h2>Ticker Analysis</h2>
-                <input type="text" id="ticker-search" class="search-box" placeholder="Search tickers...">
-                <div class="filter-buttons">
-                    <button class="filter-btn active" data-ticker-filter="all">All</button>
-                    <button class="filter-btn" data-ticker-filter="high-ai-rating">High AI Rating</button>
-                    <button class="filter-btn" data-ticker-filter="buy-targets">Buy Targets</button>
-                    <button class="filter-btn" data-ticker-filter="high-upside">High Upside</button>
+                <div class="card-header">
+                    <h2>By Model</h2>
                 </div>
-                <div class="strategy-filter-buttons">
-                    <span class="filter-section-label">Recommendation:</span>
-                    <button class="recommendation-filter-btn active" data-recommendation-filter="all">All</button>
-                    <button class="recommendation-filter-btn" data-recommendation-filter="strong_buy">🚀 Strong Buy</button>
-                    <button class="recommendation-filter-btn" data-recommendation-filter="buy">✅ Buy</button>
-                    <button class="recommendation-filter-btn" data-recommendation-filter="hold">🤝 Hold</button>
-                </div>
-                <div class="sort-buttons">
-                    <span class="sort-label">Sort by:</span>
-                    <button class="sort-btn" data-sort="ticker">Ticker</button>
-                    <button class="sort-btn active" data-sort="ai-rating">AI Rating</button>
-                    <button class="sort-btn" data-sort="upside" style="opacity: 0.5; cursor: not-allowed;" disabled>Upside %</button>
-                    <button class="sort-btn" data-sort="price" style="opacity: 0.5; cursor: not-allowed;" disabled>Price</button>
-                    <button class="sort-btn" data-sort="volume">Volume</button>
-                </div>
-                <div class="timeframe-filter-buttons">
-                    <span class="filter-section-label">Timeframe:</span>
-                    <button class="timeframe-filter-btn active" data-timeframe="all" onclick="filterByTimeframe('all')">📊 All</button>
-                    <button class="timeframe-filter-btn" data-timeframe="1D" onclick="filterByTimeframe('1D')">⚡ 1D</button>
-                    <button class="timeframe-filter-btn" data-timeframe="1W" onclick="filterByTimeframe('1W')">📅 1W</button>
-                    <button class="timeframe-filter-btn" data-timeframe="1M" onclick="filterByTimeframe('1M')">📆 1M</button>
-                    <button class="timeframe-filter-btn" data-timeframe="6M" onclick="filterByTimeframe('6M')">📊 6M</button>
-                    <button class="timeframe-filter-btn" data-timeframe="12M" onclick="filterByTimeframe('12M')">📈 12M</button>
-                    <button class="timeframe-filter-btn" data-timeframe=">12M" onclick="filterByTimeframe('>12M')">🚀 >12M</button>
-                </div>
-                <div id="ticker-list" class="loading">Loading ticker data...</div>
+                <div id="model-breakdown"></div>
             </div>
-        </div>
-        
-        <!-- Schedule Page -->
-        <div id="schedule" class="page">
             <div class="card">
-                <h2>Data Ingestion Schedule</h2>
-                <button class="refresh-btn" onclick="loadSchedule()">🔄 Refresh Schedule</button>
-                <div id="schedule-content" class="loading">Loading schedule information...</div>
+                <div class="card-header">
+                    <h2>Hourly Distribution <span class="dim">(ET)</span></h2>
+                </div>
+                <div class="hourly-chart" id="hourly-chart"></div>
             </div>
-        </div>
+        </section>
+
+        <!-- Two-column: Service + Endpoint -->
+        <section class="grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <h2>By Service</h2>
+                </div>
+                <div id="service-breakdown"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2>By Endpoint</h2>
+                </div>
+                <div id="endpoint-breakdown"></div>
+            </div>
+        </section>
+
+        <!-- Top Tickers -->
+        <section class="card" id="tickers-section">
+            <div class="card-header">
+                <h2>Top Tickers</h2>
+                <span class="card-badge" id="ticker-count"></span>
+            </div>
+            <div id="ticker-grid"></div>
+        </section>
+
+        <!-- Cost Estimation -->
+        <section class="card">
+            <div class="card-header">
+                <h2>Cost Estimation</h2>
+                <span class="dim" id="cost-note"></span>
+            </div>
+            <div class="grid-2-inner">
+                <div>
+                    <h3 class="sub-heading">Current Spend</h3>
+                    <div id="cost-current"></div>
+                </div>
+                <div>
+                    <h3 class="sub-heading">What-If Analysis</h3>
+                    <div id="cost-whatif"></div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <span>VibeBullish Data Pipeline</span>
+            <span class="dim">Auto-refreshes every 60s</span>
+        </footer>
     </div>
 
     <script src="js/dashboard.js"></script>
