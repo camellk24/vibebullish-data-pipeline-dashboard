@@ -1023,7 +1023,6 @@
                 const meta = e.metadata || {};
                 const source = meta.source || 'unknown';
                 const tickerCount = meta.ticker_count ?? e.summary?.total_tickers_processed ?? 0;
-                const buyFeedItems = meta.buy_feed_items_1w ?? 0;
                 const durationSec = meta.total_duration_sec ?? 0;
                 const durationStr = durationSec >= 60 ? `${(durationSec / 60).toFixed(1)}m` : `${durationSec.toFixed(0)}s`;
                 const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '—';
@@ -1034,7 +1033,6 @@
                         <div class="pipeline-event-metrics">
                             <span class="badge">${source}</span>
                             <span>${tickerCount} tickers</span>
-                            <span>${buyFeedItems} buy feed items (1W)</span>
                             <span>${durationStr} total</span>
                         </div>
                     </div>

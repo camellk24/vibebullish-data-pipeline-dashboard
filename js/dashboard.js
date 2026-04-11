@@ -1,6 +1,7 @@
 // Dashboard JavaScript
 const API_BASE = 'https://api.vibebullish.com/api/data-pipeline';
 const COST_OPT_API_BASE = 'https://api.vibebullish.com/api/cost-optimization';
+const LLM_USAGE_API_BASE = 'https://api.vibebullish.com/api/llm-usage';
 let currentReports = [];
 let currentTickers = [];
 let currentPage = 1;
@@ -331,6 +332,10 @@ async function loadOverview() {
         
         // Load schedule summary
         await loadScheduleSummary();
+
+        // Load LLM usage
+        loadLLMUsageToday();
+        loadLLMUsageWeek();
     } catch (error) {
         console.error('Error loading overview:', error);
         document.getElementById('system-status').innerHTML = '<div class="error">Failed to load system status</div>';
@@ -412,7 +417,6 @@ function displayPipelineCompleteEvents(events) {
         const meta = e.metadata || {};
         const source = meta.source || 'unknown';
         const tickerCount = meta.ticker_count ?? e.summary?.total_tickers_processed ?? 0;
-        const buyFeedItems = meta.buy_feed_items_1w ?? 0;
         const durationSec = meta.total_duration_sec ?? 0;
         const durationStr = durationSec >= 60 ? `${(durationSec / 60).toFixed(1)}m` : `${durationSec.toFixed(0)}s`;
         const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : '—';
@@ -423,7 +427,6 @@ function displayPipelineCompleteEvents(events) {
                 <div class="pipeline-event-metrics">
                     <span class="badge">${source}</span>
                     <span>${tickerCount} tickers</span>
-                    <span>${buyFeedItems} buy feed items (1W)</span>
                     <span>${durationStr} total</span>
                 </div>
             </div>
@@ -1856,4 +1859,198 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-// Force deployment Wed Sep  3 14:51:04 PDT 2025
+// ── LLM Usage ────────────────────────────────────────────────────────────────
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+}
+
+async function loadLLMUsageToday() {
+    const el = document.getElementById('llm-usage-today');
+    if (!el) return;
+    try {
+        const resp = await fetch(`${LLM_USAGE_API_BASE}/today?t=${Date.now()}`);
+        const data = await resp.json();
+        if (!data || data.total_calls === 0) {
+            el.textContent = 'No LLM calls recorded today.';
+            return;
+        }
+        const modelRows = Object.entries(data.by_model || {})
+            .sort((a, b) => b[1] - a[1])
+            .map(([model, count]) => `<tr><td>${escapeHtml(model)}</td><td class="count">${Number(count).toLocaleString()}</td></tr>`)
+            .join('');
+        const serviceRows = Object.entries(data.by_service || {})
+            .sort((a, b) => b[1] - a[1])
+            .map(([svc, count]) => `<tr><td>${escapeHtml(svc)}</td><td class="count">${Number(count).toLocaleString()}</td></tr>`)
+            .join('');
+        const maxHourly = Math.max(...data.hourly_calls, 1);
+        const hourlyBars = data.hourly_calls.map((c, i) => {
+            const pct = (c / maxHourly) * 100;
+            const label = i.toString().padStart(2, '0');
+            return `<div class="hourly-bar-wrapper" title="${escapeHtml(label)}:00 ET — ${Number(c).toLocaleString()} calls">
+                <div class="hourly-bar" style="height:${Math.max(pct, 1)}%"></div>
+                <span class="hourly-label">${i % 4 === 0 ? escapeHtml(label) : ''}</span>
+            </div>`;
+        }).join('');
+
+        // Endpoint breakdown
+        const componentRows = Object.entries(data.by_component || {})
+            .sort((a, b) => b[1] - a[1])
+            .map(([comp, count]) => `<tr><td>${escapeHtml(comp)}</td><td class="count">${Number(count).toLocaleString()}</td></tr>`)
+            .join('');
+
+        // Cost estimation section
+        const costEstimate = buildCostEstimate(data);
+
+        // All values from our own trusted backend API
+        el.innerHTML = `
+            <div class="metric-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="metric">
+                    <div class="metric-value">${Number(data.total_calls).toLocaleString()}</div>
+                    <div class="metric-label">Total Calls (${escapeHtml(data.date)})</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">${Object.keys(data.by_model || {}).length}</div>
+                    <div class="metric-label">Models Used</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:2rem;flex-wrap:wrap;margin-top:1rem;">
+                <div style="flex:1;min-width:200px;">
+                    <h4 style="margin:0 0 .5rem">By Model</h4>
+                    <table class="llm-table"><tbody>${modelRows}</tbody></table>
+                </div>
+                <div style="flex:1;min-width:200px;">
+                    <h4 style="margin:0 0 .5rem">By Service</h4>
+                    <table class="llm-table"><tbody>${serviceRows}</tbody></table>
+                </div>
+                <div style="flex:1;min-width:200px;">
+                    <h4 style="margin:0 0 .5rem">By Endpoint</h4>
+                    <table class="llm-table"><tbody>${componentRows}</tbody></table>
+                </div>
+            </div>
+            <h4 style="margin:1rem 0 .5rem">Hourly Distribution (ET)</h4>
+            <div class="hourly-chart">${hourlyBars}</div>
+            ${costEstimate}
+        `;
+    } catch (err) {
+        console.error('Error loading LLM usage today:', err);
+        el.textContent = 'Failed to load LLM usage';
+    }
+}
+
+// Per-model cost estimates ($/1K input tokens, $/1K output tokens)
+// Approximate — assumes ~2K input + ~500 output tokens per ticker analysis call
+const MODEL_COSTS = {
+    'gpt-5-mini':       { input: 0.00030, output: 0.00120, label: 'GPT-5 Mini' },
+    'gpt-4o':           { input: 0.00250, output: 0.01000, label: 'GPT-4o' },
+    'gpt-4o-mini':      { input: 0.00015, output: 0.00060, label: 'GPT-4o Mini' },
+    'claude-opus-4-6':  { input: 0.01500, output: 0.07500, label: 'Claude Opus 4.6' },
+    'claude-sonnet-4-6':{ input: 0.00300, output: 0.01500, label: 'Claude Sonnet 4.6' },
+    'claude-haiku-4-5': { input: 0.00080, output: 0.00400, label: 'Claude Haiku 4.5' },
+};
+const AVG_INPUT_TOKENS = 2000;
+const AVG_OUTPUT_TOKENS = 500;
+
+function estimateCost(callCount, modelKey) {
+    const m = MODEL_COSTS[modelKey];
+    if (!m) return null;
+    const inputCost = (callCount * AVG_INPUT_TOKENS / 1000) * m.input;
+    const outputCost = (callCount * AVG_OUTPUT_TOKENS / 1000) * m.output;
+    return inputCost + outputCost;
+}
+
+function buildCostEstimate(data) {
+    const byModel = data.by_model || {};
+    // Current cost
+    let currentTotal = 0;
+    const currentRows = Object.entries(byModel)
+        .sort((a, b) => b[1] - a[1])
+        .map(([model, count]) => {
+            const cost = estimateCost(count, model);
+            if (cost !== null) currentTotal += cost;
+            return `<tr>
+                <td>${escapeHtml(model)}</td>
+                <td class="count">${Number(count).toLocaleString()}</td>
+                <td class="count">${cost !== null ? '$' + cost.toFixed(2) : '—'}</td>
+            </tr>`;
+        }).join('');
+
+    // What-if: all calls on each model
+    const totalCalls = data.total_calls;
+    const whatIfRows = Object.entries(MODEL_COSTS)
+        .map(([key, m]) => {
+            const cost = estimateCost(totalCalls, key);
+            const diff = cost - currentTotal;
+            const diffStr = diff > 0 ? `+$${diff.toFixed(2)}` : `-$${Math.abs(diff).toFixed(2)}`;
+            const diffClass = diff > 0 ? 'cost-up' : 'cost-down';
+            return `<tr>
+                <td>${escapeHtml(m.label)}</td>
+                <td class="count">$${cost.toFixed(2)}</td>
+                <td class="count ${diffClass}">${diffStr}</td>
+            </tr>`;
+        }).join('');
+
+    return `
+        <h4 style="margin:1.5rem 0 .5rem">Cost Estimate (today)</h4>
+        <p class="cost-note">Based on ~${AVG_INPUT_TOKENS} input + ~${AVG_OUTPUT_TOKENS} output tokens per call</p>
+        <div style="display:flex;gap:2rem;flex-wrap:wrap;">
+            <div style="flex:1;min-width:250px;">
+                <h5 style="margin:0 0 .5rem">Current Cost</h5>
+                <table class="llm-table">
+                    <thead><tr><th>Model</th><th>Calls</th><th>Est. Cost</th></tr></thead>
+                    <tbody>${currentRows}</tbody>
+                    <tfoot><tr><td><strong>Total</strong></td><td></td><td class="count"><strong>$${currentTotal.toFixed(2)}</strong></td></tr></tfoot>
+                </table>
+            </div>
+            <div style="flex:1;min-width:250px;">
+                <h5 style="margin:0 0 .5rem">What If All ${Number(totalCalls).toLocaleString()} Calls Used...</h5>
+                <table class="llm-table">
+                    <thead><tr><th>Model</th><th>Est. Cost</th><th>vs Current</th></tr></thead>
+                    <tbody>${whatIfRows}</tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+async function loadLLMUsageWeek() {
+    const el = document.getElementById('llm-usage-week');
+    if (!el) return;
+    try {
+        const resp = await fetch(`${LLM_USAGE_API_BASE}/week?t=${Date.now()}`);
+        const days = await resp.json();
+        if (!days || days.length === 0) {
+            el.textContent = 'No usage data available.';
+            return;
+        }
+        const maxDay = Math.max(...days.map(d => d.total_calls), 1);
+        const dayBars = days.map(d => {
+            const pct = (d.total_calls / maxDay) * 100;
+            const label = escapeHtml(d.date.slice(5));
+            const models = Object.entries(d.by_model || {})
+                .sort((a, b) => b[1] - a[1])
+                .map(([m, c]) => `${escapeHtml(m)}: ${Number(c).toLocaleString()}`)
+                .join(', ');
+            return `<div class="daily-bar-wrapper" title="${escapeHtml(d.date)} — ${Number(d.total_calls).toLocaleString()} calls\n${models}">
+                <div class="daily-bar" style="height:${Math.max(pct, 1)}%"></div>
+                <span class="daily-count">${d.total_calls > 0 ? Number(d.total_calls).toLocaleString() : ''}</span>
+                <span class="daily-label">${label}</span>
+            </div>`;
+        }).join('');
+
+        const totalWeek = days.reduce((s, d) => s + d.total_calls, 0);
+        // All values from our own trusted backend API
+        el.innerHTML = `
+            <div class="metric" style="margin-bottom:1rem;">
+                <div class="metric-value">${Number(totalWeek).toLocaleString()}</div>
+                <div class="metric-label">Total Calls (7-day)</div>
+            </div>
+            <div class="weekly-chart">${dayBars}</div>
+        `;
+    } catch (err) {
+        console.error('Error loading LLM usage week:', err);
+        el.textContent = 'Failed to load weekly usage';
+    }
+}
