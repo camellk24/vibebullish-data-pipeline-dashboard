@@ -34,9 +34,11 @@ styles/dashboard.css → Dark theme (matches iOS app Theme.swift)
 vercel.json         → Vercel deployment config
 ```
 
-The dashboard polls two backend endpoints every 60 seconds:
-- `GET /api/llm-usage/today` — today's usage summary (by model, service, component, hourly, top tickers)
+The dashboard polls two backend endpoints every 60 seconds (auto-refresh pauses when viewing historical dates):
+- `GET /api/llm-usage/today?date=YYYY-MM-DD` — usage summary for a specific date (defaults to today ET)
 - `GET /api/llm-usage/week` — last 7 days of daily summaries
+
+A date picker in the header allows navigating to any historical date with arrow buttons, a date input, and a Today button.
 
 ### Sections
 
