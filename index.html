@@ -21,8 +21,14 @@
                 <h1 class="logo">VibeBullish</h1>
                 <span class="badge">LLM Usage</span>
             </div>
+            <div class="header-center">
+                <button class="date-nav-btn" id="date-prev" title="Previous day">&larr;</button>
+                <input type="date" class="date-picker" id="date-picker">
+                <button class="date-nav-btn" id="date-today" title="Jump to today">Today</button>
+                <button class="date-nav-btn" id="date-next" title="Next day">&rarr;</button>
+            </div>
             <div class="header-right">
-                <span class="live-dot"></span>
+                <span class="live-dot" id="live-dot"></span>
                 <span class="header-meta" id="last-updated">Loading...</span>
             </div>
         </header>
@@ -30,7 +36,7 @@
         <!-- Hero metrics -->
         <section class="hero-metrics" id="hero-metrics">
             <div class="metric-card hero">
-                <div class="metric-label">Total Calls Today</div>
+                <div class="metric-label" id="m-total-label">Total Calls Today</div>
                 <div class="metric-value" id="m-total">—</div>
                 <div class="metric-sub" id="m-date"></div>
             </div>
@@ -43,7 +49,7 @@
                 <div class="metric-value" id="m-tickers">—</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Est. Cost Today</div>
+                <div class="metric-label" id="m-cost-label">Est. Cost</div>
                 <div class="metric-value" id="m-cost">—</div>
             </div>
         </section>

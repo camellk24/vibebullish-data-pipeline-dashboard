@@ -4,6 +4,7 @@
 
 const API = 'https://api.vibebullish.com/api/llm-usage';
 const REFRESH_MS = 60_000;
+let selectedDate = null; // null = today (live), string = 'YYYY-MM-DD'
 
 // Per-model cost ($/1K tokens)
 const MODELS = {
@@ -45,7 +46,8 @@ function dayName(dateStr) {
 // ── Fetchers ──────────────────────────────────────────────────────────────
 
 async function fetchToday() {
-    const r = await fetch(`${API}/today?t=${Date.now()}`);
+    const dateParam = selectedDate ? `&date=${selectedDate}` : '';
+    const r = await fetch(`${API}/today?t=${Date.now()}${dateParam}`);
     return r.json();
 }
 
@@ -60,6 +62,7 @@ function renderHero(data) {
     const el = (id) => document.getElementById(id);
     el('m-total').textContent = data.total_calls ? fmt(data.total_calls) : '0';
     el('m-date').textContent = data.date || '';
+    el('m-total-label').textContent = selectedDate ? `Total Calls` : 'Total Calls Today';
     el('m-models').textContent = Object.keys(data.by_model || {}).length;
     el('m-tickers').textContent = data.unique_tickers || '0';
 
@@ -267,14 +270,83 @@ async function refresh() {
         renderWeekly(week);
 
         const now = new Date();
-        document.getElementById('last-updated').textContent =
-            now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('last-updated').textContent = selectedDate
+            ? `Viewing ${selectedDate}`
+            : now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+        // Live dot: visible only when viewing today
+        const dot = document.getElementById('live-dot');
+        if (dot) dot.style.display = selectedDate ? 'none' : '';
     } catch (err) {
         console.error('Dashboard refresh failed:', err);
         document.getElementById('last-updated').textContent = 'Error';
     }
 }
 
-// Initial load + auto-refresh
+// ── Date picker ───────────────────────────────────────────────────────────
+
+function todayET() {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+function shiftDate(dateStr, days) {
+    const d = new Date(dateStr + 'T12:00:00');
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+
+function initDatePicker() {
+    const picker = document.getElementById('date-picker');
+    const today = todayET();
+    picker.value = today;
+    picker.max = today;
+
+    picker.addEventListener('change', () => {
+        const val = picker.value;
+        selectedDate = val === todayET() ? null : val;
+        refresh();
+    });
+
+    document.getElementById('date-prev').addEventListener('click', () => {
+        const current = picker.value || todayET();
+        const prev = shiftDate(current, -1);
+        picker.value = prev;
+        selectedDate = prev === todayET() ? null : prev;
+        refresh();
+    });
+
+    document.getElementById('date-next').addEventListener('click', () => {
+        const current = picker.value || todayET();
+        const next = shiftDate(current, 1);
+        const today = todayET();
+        if (next > today) return; // don't go past today
+        picker.value = next;
+        selectedDate = next === today ? null : next;
+        refresh();
+    });
+
+    document.getElementById('date-today').addEventListener('click', () => {
+        picker.value = todayET();
+        selectedDate = null;
+        refresh();
+    });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+let refreshTimer = null;
+
+function startAutoRefresh() {
+    stopAutoRefresh();
+    refreshTimer = setInterval(() => {
+        if (!selectedDate) refresh(); // only auto-refresh when viewing today
+    }, REFRESH_MS);
+}
+
+function stopAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+}
+
+initDatePicker();
 refresh();
-setInterval(refresh, REFRESH_MS);
+startAutoRefresh();

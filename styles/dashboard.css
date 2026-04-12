@@ -144,6 +144,50 @@ body {
     border-radius: 20px;
 }
 
+.header-center {
+    display: flex;
+    align-items: center;
+    gap: var(--s-xs);
+}
+
+.date-picker {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    color-scheme: dark;
+}
+
+.date-picker:hover,
+.date-picker:focus {
+    border-color: rgba(168, 85, 247, 0.4);
+    outline: none;
+}
+
+.date-nav-btn {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    white-space: nowrap;
+}
+
+.date-nav-btn:hover {
+    border-color: rgba(168, 85, 247, 0.3);
+    color: var(--text-primary);
+    background: var(--bg-tint);
+}
+
 .header-right {
     display: flex;
     align-items: center;
