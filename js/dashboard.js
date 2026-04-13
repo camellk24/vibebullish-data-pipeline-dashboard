@@ -367,8 +367,8 @@ async function refresh() {
 
 // ── Date picker ───────────────────────────────────────────────────────────
 
-function todayET() {
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+function todayLocal() {
+    return new Date().toLocaleDateString('en-CA');
 }
 
 function shiftDate(dateStr, days) {
@@ -379,28 +379,28 @@ function shiftDate(dateStr, days) {
 
 function initDatePicker() {
     const picker = document.getElementById('date-picker');
-    const today = todayET();
+    const today = todayLocal();
     picker.value = today;
     picker.max = today;
 
     picker.addEventListener('change', () => {
         const val = picker.value;
-        selectedDate = val === todayET() ? null : val;
+        selectedDate = val === todayLocal() ? null : val;
         refresh();
     });
 
     document.getElementById('date-prev').addEventListener('click', () => {
-        const current = picker.value || todayET();
+        const current = picker.value || todayLocal();
         const prev = shiftDate(current, -1);
         picker.value = prev;
-        selectedDate = prev === todayET() ? null : prev;
+        selectedDate = prev === todayLocal() ? null : prev;
         refresh();
     });
 
     document.getElementById('date-next').addEventListener('click', () => {
-        const current = picker.value || todayET();
+        const current = picker.value || todayLocal();
         const next = shiftDate(current, 1);
-        const today = todayET();
+        const today = todayLocal();
         if (next > today) return; // don't go past today
         picker.value = next;
         selectedDate = next === today ? null : next;
@@ -408,7 +408,7 @@ function initDatePicker() {
     });
 
     document.getElementById('date-today').addEventListener('click', () => {
-        picker.value = todayET();
+        picker.value = todayLocal();
         selectedDate = null;
         refresh();
     });
