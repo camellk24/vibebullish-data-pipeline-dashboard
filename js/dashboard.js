@@ -305,27 +305,30 @@ function renderTickerScans(data) {
         return;
     }
 
-    // Group by ticker, show most recent scan time
+    // Group by ticker, show most recent scan time + source
     const byTicker = {};
     for (const s of scans) {
         if (!byTicker[s.ticker]) {
-            byTicker[s.ticker] = { count: 0, models: {}, lastTime: s.time };
+            byTicker[s.ticker] = { count: 0, models: {}, sources: {}, lastTime: s.time };
         }
         byTicker[s.ticker].count++;
         byTicker[s.ticker].models[s.model] = (byTicker[s.ticker].models[s.model] || 0) + 1;
+        if (s.source) byTicker[s.ticker].sources[s.source] = (byTicker[s.ticker].sources[s.source] || 0) + 1;
     }
 
     const sorted = Object.entries(byTicker).sort((a, b) => b[1].count - a[1].count);
 
     // Trusted backend data
     container.innerHTML = `<table class="data-table">
-        <thead><tr><th>Ticker</th><th class="r">Scans</th><th>Model</th><th class="r">Last</th></tr></thead>
+        <thead><tr><th>Ticker</th><th>Source</th><th class="r">Scans</th><th>Model</th><th class="r">Last</th></tr></thead>
         <tbody>${sorted.map(([ticker, info]) => {
             const modelStr = Object.entries(info.models)
                 .map(([m, c]) => c > 1 ? `${esc(m)} x${c}` : esc(m))
                 .join(', ');
+            const sourceStr = Object.keys(info.sources).map(s => esc(s)).join(', ') || '—';
             return `<tr>
                 <td class="model-name">${esc(ticker)}</td>
+                <td><span class="source-tag">${sourceStr}</span></td>
                 <td class="r">${info.count}</td>
                 <td class="dim-val">${modelStr}</td>
                 <td class="r dim-val">${esc(info.lastTime)}</td>
