@@ -357,7 +357,7 @@ async function refresh() {
         const now = new Date();
         document.getElementById('last-updated').textContent = selectedDate
             ? `Viewing ${selectedDate}`
-            : now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            : now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET';
 
         // Live dot: visible only when viewing today
         const dot = document.getElementById('live-dot');
@@ -370,8 +370,8 @@ async function refresh() {
 
 // ── Date picker ───────────────────────────────────────────────────────────
 
-function todayLocal() {
-    return new Date().toLocaleDateString('en-CA');
+function todayET() {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
 function shiftDate(dateStr, days) {
@@ -382,28 +382,28 @@ function shiftDate(dateStr, days) {
 
 function initDatePicker() {
     const picker = document.getElementById('date-picker');
-    const today = todayLocal();
+    const today = todayET();
     picker.value = today;
     picker.max = today;
 
     picker.addEventListener('change', () => {
         const val = picker.value;
-        selectedDate = val === todayLocal() ? null : val;
+        selectedDate = val === todayET() ? null : val;
         refresh();
     });
 
     document.getElementById('date-prev').addEventListener('click', () => {
-        const current = picker.value || todayLocal();
+        const current = picker.value || todayET();
         const prev = shiftDate(current, -1);
         picker.value = prev;
-        selectedDate = prev === todayLocal() ? null : prev;
+        selectedDate = prev === todayET() ? null : prev;
         refresh();
     });
 
     document.getElementById('date-next').addEventListener('click', () => {
-        const current = picker.value || todayLocal();
+        const current = picker.value || todayET();
         const next = shiftDate(current, 1);
-        const today = todayLocal();
+        const today = todayET();
         if (next > today) return; // don't go past today
         picker.value = next;
         selectedDate = next === today ? null : next;
@@ -411,7 +411,7 @@ function initDatePicker() {
     });
 
     document.getElementById('date-today').addEventListener('click', () => {
-        picker.value = todayLocal();
+        picker.value = todayET();
         selectedDate = null;
         refresh();
     });
