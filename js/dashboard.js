@@ -319,50 +319,36 @@ function renderTickerScans(data) {
     // Sort by latest scan time (descending)
     const sorted = Object.entries(byTicker).sort((a, b) => b[1].lastTime.localeCompare(a[1].lastTime));
 
-    const INITIAL_LIMIT = 20;
-    const needsToggle = sorted.length > INITIAL_LIMIT;
+    const LIMIT = 50;
+    const needsToggle = sorted.length > LIMIT;
 
-    function buildRow([ticker, info]) {
+    // Trusted backend data — build all rows, hide extras
+    const allRows = sorted.map(([ticker, info], i) => {
         const modelStr = Object.entries(info.models)
             .map(([m, c]) => c > 1 ? `${esc(m)} x${c}` : esc(m))
             .join(', ');
         const sourceStr = Object.keys(info.sources).map(s => esc(s)).join(', ') || '—';
-        return `<tr>
+        const hidden = i >= LIMIT ? ' class="scan-expandable" style="display:none"' : '';
+        return `<tr${hidden}>
             <td class="model-name">${esc(ticker)}</td>
             <td><span class="source-tag">${sourceStr}</span></td>
             <td class="r">${info.count}</td>
             <td class="dim-val">${modelStr}</td>
             <td class="r dim-val">${esc(info.lastTime)}</td>
         </tr>`;
-    }
+    }).join('');
 
-    const visibleRows = sorted.slice(0, INITIAL_LIMIT).map(buildRow).join('');
-    const hiddenRows = sorted.slice(INITIAL_LIMIT).map(buildRow).join('');
-
-    // Trusted backend data
     container.innerHTML = `<table class="data-table">
         <thead><tr><th>Ticker</th><th>Source</th><th class="r">Scans</th><th>Model</th><th class="r">Last</th></tr></thead>
-        <tbody>${visibleRows}${needsToggle ? `<tr class="scan-hidden-rows" style="display:none">${hiddenRows}</tr>` : ''}</tbody>
+        <tbody>${allRows}</tbody>
     </table>${needsToggle ? `<button class="expand-toggle" onclick="toggleScanRows(this)">Show all ${sorted.length} tickers</button>` : ''}`;
-
-    // Fix: hidden rows need to be siblings, not wrapped in a single <tr>
-    if (needsToggle) {
-        const tbody = container.querySelector('tbody');
-        const placeholder = tbody.querySelector('.scan-hidden-rows');
-        placeholder.remove();
-        const temp = document.createElement('tbody');
-        temp.innerHTML = hiddenRows;
-        const rows = Array.from(temp.children);
-        rows.forEach(r => { r.classList.add('scan-expandable'); r.style.display = 'none'; tbody.appendChild(r); });
-    }
 }
 
 function toggleScanRows(btn) {
     const rows = btn.previousElementSibling.querySelectorAll('.scan-expandable');
     const expanding = rows[0] && rows[0].style.display === 'none';
     rows.forEach(r => r.style.display = expanding ? '' : 'none');
-    const total = rows.length + 20;
-    btn.textContent = expanding ? 'Show top 20' : `Show all ${total} tickers`;
+    btn.textContent = expanding ? `Show top 50` : `Show all ${rows.length + 50} tickers`;
 }
 
 // ── Main loop ─────────────────────────────────────────────────────────────
