@@ -733,3 +733,61 @@ body {
         transform: translateY(0);
     }
 }
+
+/* ── Catalyst Scanner ─────────────────────────────────────────────────────── */
+
+.catalyst-entries {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-sm);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.catalyst-entry {
+    padding: var(--s-sm) var(--s-md);
+    background: var(--bg-tint);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+}
+
+.catalyst-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    margin-bottom: 4px;
+}
+
+.catalyst-time {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-quaternary);
+}
+
+.catalyst-impact {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.catalyst-category {
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    background: var(--bg-elevated);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.catalyst-sentiment {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+}
+
+.catalyst-text {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    line-height: 1.4;
+}

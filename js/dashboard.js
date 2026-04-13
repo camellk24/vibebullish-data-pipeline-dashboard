@@ -56,6 +56,12 @@ async function fetchWeek() {
     return r.json();
 }
 
+async function fetchScanner() {
+    const dateParam = selectedDate ? `&date=${selectedDate}` : '';
+    const r = await fetch(`${API}/scanner?t=${Date.now()}${dateParam}`);
+    return r.json();
+}
+
 // ── Renderers ─────────────────────────────────────────────────────────────
 
 function renderHero(data) {
@@ -254,11 +260,85 @@ function renderWeekly(days) {
     }).join('');
 }
 
+// ── Scanner Report ────────────────────────────────────────────────────────
+
+const IMPACT_COLORS = { high: 'var(--negative)', moderate: 'var(--warning)', low: 'var(--text-tertiary)' };
+const SENTIMENT_ICONS = { bullish: '+', bearish: '-', mixed: '~' };
+
+function renderCatalysts(data) {
+    const container = document.getElementById('catalyst-list');
+    const badge = document.getElementById('catalyst-count');
+    const catalysts = data.catalysts || [];
+
+    badge.textContent = `${catalysts.length} detected`;
+
+    if (!catalysts.length) {
+        container.textContent = 'No catalysts detected.';
+        return;
+    }
+
+    // Trusted backend data
+    container.innerHTML = `<div class="catalyst-entries">${catalysts.map(c => {
+        const impactColor = IMPACT_COLORS[c.impact] || 'var(--text-tertiary)';
+        const sentIcon = SENTIMENT_ICONS[c.sentiment] || '?';
+        return `<div class="catalyst-entry">
+            <div class="catalyst-meta">
+                <span class="catalyst-time">${esc(c.detected_at)}</span>
+                <span class="catalyst-impact" style="color:${impactColor}">${esc(c.impact)}</span>
+                <span class="catalyst-category">${esc(c.category)}</span>
+                <span class="catalyst-sentiment">${esc(sentIcon)} ${esc(c.sentiment)}</span>
+            </div>
+            <div class="catalyst-text">${esc(c.catalyst)}</div>
+        </div>`;
+    }).join('')}</div>`;
+}
+
+function renderTickerScans(data) {
+    const container = document.getElementById('ticker-scan-list');
+    const badge = document.getElementById('scan-count');
+    const scans = data.ticker_scans || [];
+
+    badge.textContent = `${data.total_scans || 0} scans / ${data.unique_tickers || 0} unique`;
+
+    if (!scans.length) {
+        container.textContent = 'No ticker scans recorded yet.';
+        return;
+    }
+
+    // Group by ticker, show most recent scan time
+    const byTicker = {};
+    for (const s of scans) {
+        if (!byTicker[s.ticker]) {
+            byTicker[s.ticker] = { count: 0, models: {}, lastTime: s.time };
+        }
+        byTicker[s.ticker].count++;
+        byTicker[s.ticker].models[s.model] = (byTicker[s.ticker].models[s.model] || 0) + 1;
+    }
+
+    const sorted = Object.entries(byTicker).sort((a, b) => b[1].count - a[1].count);
+
+    // Trusted backend data
+    container.innerHTML = `<table class="data-table">
+        <thead><tr><th>Ticker</th><th class="r">Scans</th><th>Model</th><th class="r">Last</th></tr></thead>
+        <tbody>${sorted.map(([ticker, info]) => {
+            const modelStr = Object.entries(info.models)
+                .map(([m, c]) => c > 1 ? `${esc(m)} x${c}` : esc(m))
+                .join(', ');
+            return `<tr>
+                <td class="model-name">${esc(ticker)}</td>
+                <td class="r">${info.count}</td>
+                <td class="dim-val">${modelStr}</td>
+                <td class="r dim-val">${esc(info.lastTime)}</td>
+            </tr>`;
+        }).join('')}</tbody>
+    </table>`;
+}
+
 // ── Main loop ─────────────────────────────────────────────────────────────
 
 async function refresh() {
     try {
-        const [today, week] = await Promise.all([fetchToday(), fetchWeek()]);
+        const [today, week, scanner] = await Promise.all([fetchToday(), fetchWeek(), fetchScanner()]);
 
         renderHero(today);
         renderModelBreakdown(today);
@@ -268,6 +348,8 @@ async function refresh() {
         renderTickers(today);
         renderCost(today);
         renderWeekly(week);
+        renderCatalysts(scanner);
+        renderTickerScans(scanner);
 
         const now = new Date();
         document.getElementById('last-updated').textContent = selectedDate
