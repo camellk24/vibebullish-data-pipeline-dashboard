@@ -351,6 +351,49 @@ function toggleScanRows(btn) {
     btn.textContent = expanding ? `Show top 50` : `Show all ${rows.length + 50} tickers`;
 }
 
+// ── Web Search Catalyst Stats ──────────────────────────────────────────────
+
+function renderWebSearchStats(data) {
+    const container = document.getElementById('web-search-stats');
+    const badge = document.getElementById('web-search-count');
+    const calls = data.web_search_llm_calls || 0;
+
+    badge.textContent = calls + ' LLM calls';
+
+    // Count tickers discovered via web search from the ticker scans
+    const webTickers = (data.ticker_scans || []).filter(s => s.source === 'web_search');
+    const uniqueWebTickers = new Set(webTickers.map(t => t.ticker)).size;
+
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    if (calls === 0 && webTickers.length === 0) {
+        const msg = document.createElement('span');
+        msg.className = 'dim-val';
+        msg.textContent = 'No web search activity yet. Source runs every 10min (market) / 2h (overnight).';
+        container.appendChild(msg);
+        return;
+    }
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:8px 0';
+
+    [['LLM Calls', calls], ['Tickers Found', uniqueWebTickers], ['Scans Triggered', webTickers.length]].forEach(([label, value]) => {
+        const cell = document.createElement('div');
+        const lbl = document.createElement('div');
+        lbl.className = 'dim-val';
+        lbl.style.cssText = 'font-size:11px;margin-bottom:4px';
+        lbl.textContent = label;
+        const val = document.createElement('div');
+        val.style.cssText = 'font-size:24px;font-weight:700;font-family:var(--mono)';
+        val.textContent = value;
+        cell.appendChild(lbl);
+        cell.appendChild(val);
+        grid.appendChild(cell);
+    });
+
+    container.appendChild(grid);
+}
+
 // ── Main loop ─────────────────────────────────────────────────────────────
 
 async function refresh() {
@@ -367,6 +410,7 @@ async function refresh() {
         renderWeekly(week);
         renderCatalysts(scanner);
         renderTickerScans(scanner);
+        renderWebSearchStats(scanner);
 
         const now = new Date();
         document.getElementById('last-updated').textContent = selectedDate
