@@ -214,6 +214,42 @@ body {
     font-family: var(--font-mono);
 }
 
+/* ── Tab navigation ───────────────────────────────────────────────────────── */
+
+.dashboard-tabs {
+    display: flex;
+    gap: var(--s-xs);
+    margin-bottom: var(--s-lg);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.tab {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: var(--s-sm) var(--s-md);
+    margin-bottom: -1px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    letter-spacing: -0.01em;
+}
+
+.tab:hover {
+    color: var(--text-secondary);
+}
+
+.tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+}
+
 /* ── Hero Metrics ─────────────────────────────────────────────────────────── */
 
 .hero-metrics {

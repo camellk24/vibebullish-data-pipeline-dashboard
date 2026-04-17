@@ -2,8 +2,11 @@
 // VibeBullish LLM Usage Dashboard
 // ═══════════════════════════════════════════════════════════════════════════
 
-const API = 'https://api.vibebullish.com/api/llm-usage';
+const API_BASE = 'https://api.vibebullish.com';
+const API = API_BASE + '/api/llm-usage';
+const INTERNAL_API_TOKEN = ''; // Set to your INTERNAL_API_TOKEN value if the endpoint requires auth
 const REFRESH_MS = 60_000;
+const WS_STATUS_REFRESH_MS = 30_000;
 let selectedDate = null; // null = today (live), string = 'YYYY-MM-DD'
 
 // Per-model cost ($/1K tokens)
@@ -490,6 +493,127 @@ function stopAutoRefresh() {
     if (refreshTimer) clearInterval(refreshTimer);
 }
 
+// ── Tab switching ─────────────────────────────────────────────────────────
+
+function initTabs() {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabs.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tabId = btn.getAttribute('data-tab');
+            document.getElementById('tab-llm-usage').style.display = tabId === 'llm-usage' ? '' : 'none';
+            document.getElementById('tab-system-health').style.display = tabId === 'system-health' ? '' : 'none';
+            if (tabId === 'system-health') fetchWSStatus();
+        });
+    });
+}
+
+// ── WebSocket health ──────────────────────────────────────────────────────
+
+async function fetchWSStatus() {
+    try {
+        const headers = {};
+        if (INTERNAL_API_TOKEN) headers['X-Internal-Token'] = INTERNAL_API_TOKEN;
+        const r = await fetch(`${API_BASE}/api/internal/ws-status?t=${Date.now()}`, { headers });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        renderWSStatus(data);
+        const badge = document.getElementById('ws-status-badge');
+        if (badge) badge.textContent = data.healthy ? 'Connected' : 'Disconnected';
+    } catch (err) {
+        console.error('WS status fetch failed:', err);
+        const el = document.getElementById('ws-status-content');
+        if (el) {
+            el.textContent = '';
+            const msg = document.createElement('span');
+            msg.style.color = 'var(--text-tertiary)';
+            msg.textContent = 'Failed to load WebSocket status.';
+            el.appendChild(msg);
+        }
+        const badge = document.getElementById('ws-status-badge');
+        if (badge) badge.textContent = 'Error';
+    }
+}
+
+function renderWSStatus(data) {
+    const el = document.getElementById('ws-status-content');
+    if (!el) return;
+    el.textContent = '';
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;';
+
+    function addMetric(label, value, valueColor) {
+        const cell = document.createElement('div');
+        const labelEl = document.createElement('div');
+        labelEl.style.cssText = 'color:var(--text-tertiary);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;font-family:var(--font-body);font-weight:500;';
+        labelEl.textContent = label;
+        const valueEl = document.createElement('div');
+        valueEl.style.cssText = `color:${valueColor || 'var(--text-primary)'};font-size:22px;font-weight:700;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;line-height:1;`;
+        valueEl.textContent = value;
+        cell.appendChild(labelEl);
+        cell.appendChild(valueEl);
+        grid.appendChild(cell);
+    }
+
+    const dot = data.healthy ? '\u{1F7E2}' : '\u{1F534}';
+    const statusText = data.healthy ? 'Connected' : 'Disconnected';
+    let uptime = '';
+    if (data.connected_since) {
+        const mins = Math.floor((Date.now() - new Date(data.connected_since).getTime()) / 60000);
+        if (mins < 60) {
+            uptime = ` ${mins}m`;
+        } else {
+            const hrs = Math.floor(mins / 60);
+            const rem = mins % 60;
+            uptime = rem > 0 ? ` ${hrs}h ${rem}m` : ` ${hrs}h`;
+        }
+    }
+    addMetric('Status', `${dot} ${statusText}${uptime}`, data.healthy ? 'var(--positive)' : 'var(--negative)');
+    addMetric('Bars/sec', (data.bars_per_sec || 0).toFixed(1));
+    addMetric('Cache Size', (data.cache_size || 0).toLocaleString());
+    addMetric('Bars Today', (data.bars_received || 0).toLocaleString());
+    addMetric('Catalyst Triggers', String(data.catalyst_triggers_today || 0));
+    addMetric('Tripwires Fired', String(data.tripwires_fired_today || 0));
+    addMetric('Reconnects', String(data.reconnect_count || 0));
+    addMetric('24h Uptime', (data.uptime_pct_24h || 0).toFixed(1) + '%');
+
+    el.appendChild(grid);
+
+    // Last bar / disconnect timestamps as a footer note
+    if (data.last_bar_at || data.last_disconnect) {
+        const footer = document.createElement('div');
+        footer.style.cssText = 'margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-quaternary);font-family:var(--font-mono);display:flex;gap:24px;flex-wrap:wrap;';
+        if (data.last_bar_at) {
+            const span = document.createElement('span');
+            span.textContent = 'Last bar: ' + new Date(data.last_bar_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET';
+            footer.appendChild(span);
+        }
+        if (data.last_disconnect) {
+            const span = document.createElement('span');
+            span.textContent = 'Last disconnect: ' + new Date(data.last_disconnect).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ET';
+            footer.appendChild(span);
+        }
+        el.appendChild(footer);
+    }
+}
+
+let wsStatusTimer = null;
+
+function startWSStatusPolling() {
+    if (wsStatusTimer) clearInterval(wsStatusTimer);
+    wsStatusTimer = setInterval(() => {
+        // Only poll when system-health tab is active
+        const tab = document.querySelector('.tab[data-tab="system-health"]');
+        if (tab && tab.classList.contains('active')) fetchWSStatus();
+    }, WS_STATUS_REFRESH_MS);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
 initDatePicker();
+initTabs();
 refresh();
 startAutoRefresh();
+startWSStatusPolling();

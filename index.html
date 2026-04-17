@@ -33,6 +33,15 @@
             </div>
         </header>
 
+        <!-- Tab navigation -->
+        <nav class="dashboard-tabs">
+            <button class="tab active" data-tab="llm-usage">LLM Usage</button>
+            <button class="tab" data-tab="system-health">System Health</button>
+        </nav>
+
+        <!-- Tab: LLM Usage -->
+        <div id="tab-llm-usage">
+
         <!-- Hero metrics -->
         <section class="hero-metrics" id="hero-metrics">
             <div class="metric-card hero">
@@ -146,6 +155,21 @@
                 </div>
             </div>
         </section>
+
+        </div><!-- /tab-llm-usage -->
+
+        <!-- Tab: System Health -->
+        <div id="tab-system-health" style="display:none">
+            <section class="card">
+                <div class="card-header">
+                    <h2>WebSocket Health</h2>
+                    <span class="card-badge" id="ws-status-badge">Loading...</span>
+                </div>
+                <div id="ws-status-content">
+                    <span class="dim">Fetching status...</span>
+                </div>
+            </section>
+        </div><!-- /tab-system-health -->
 
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
