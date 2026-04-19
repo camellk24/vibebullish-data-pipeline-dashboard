@@ -117,7 +117,7 @@ function renderServiceBreakdown(data) {
 
 function renderEndpointBreakdown(data) {
     const container = document.getElementById('endpoint-breakdown');
-    renderSimpleTable(container, data.by_component, data.total_calls);
+    renderComponentTable(container, data.by_component, data.total_calls);
 }
 
 function renderSimpleTable(container, map, total) {
@@ -134,6 +134,55 @@ function renderSimpleTable(container, map, total) {
             <td class="r">${fmt(v)}</td>
             <td class="r dim-val">${((v / total) * 100).toFixed(1)}%</td>
         </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function renderComponentTable(container, map, total) {
+    const entries = Object.entries(map || {}).sort((a, b) => b[1] - a[1]);
+    if (!entries.length) {
+        container.textContent = 'No data';
+        return;
+    }
+
+    // Partition into crypto and stocks
+    const cryptoEntries = [];
+    const stockEntries = [];
+
+    for (const [name, count] of entries) {
+        if (name.startsWith('crypto_')) {
+            cryptoEntries.push([name, count]);
+        } else {
+            stockEntries.push([name, count]);
+        }
+    }
+
+    // Build table with section headers
+    let rows = '';
+
+    // Stocks section
+    if (stockEntries.length > 0) {
+        rows += `<tr style="border-bottom:1px solid var(--border)"><td colspan="3" style="padding-top:12px;padding-bottom:8px;font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Stocks</td></tr>`;
+        rows += stockEntries.map(([k, v]) => `<tr>
+            <td class="model-name">${esc(k)}</td>
+            <td class="r">${fmt(v)}</td>
+            <td class="r dim-val">${((v / total) * 100).toFixed(1)}%</td>
+        </tr>`).join('');
+    }
+
+    // Crypto section
+    if (cryptoEntries.length > 0) {
+        rows += `<tr style="border-bottom:1px solid var(--border)"><td colspan="3" style="padding-top:12px;padding-bottom:8px;font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.05em;">Crypto</td></tr>`;
+        rows += cryptoEntries.map(([k, v]) => `<tr>
+            <td class="model-name">${esc(k)}</td>
+            <td class="r">${fmt(v)}</td>
+            <td class="r dim-val">${((v / total) * 100).toFixed(1)}%</td>
+        </tr>`).join('');
+    }
+
+    // Trusted backend data
+    container.innerHTML = `<table class="data-table">
+        <thead><tr><th>Name</th><th class="r">Calls</th><th class="r">%</th></tr></thead>
+        <tbody>${rows}</tbody>
     </table>`;
 }
 
