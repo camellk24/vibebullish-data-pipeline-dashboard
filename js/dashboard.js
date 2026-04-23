@@ -546,16 +546,90 @@ function stopAutoRefresh() {
 
 function initTabs() {
     const tabs = document.querySelectorAll('.tab');
+    const tabIds = ['tab-llm-usage', 'tab-api-usage', 'tab-system-health'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             const tabId = btn.getAttribute('data-tab');
-            document.getElementById('tab-llm-usage').style.display = tabId === 'llm-usage' ? '' : 'none';
-            document.getElementById('tab-system-health').style.display = tabId === 'system-health' ? '' : 'none';
+            tabIds.forEach(id => {
+                document.getElementById(id).style.display = id === 'tab-' + tabId ? '' : 'none';
+            });
             if (tabId === 'system-health') fetchWSStatus();
+            if (tabId === 'api-usage') fetchAPIUsage();
         });
     });
+}
+
+// ── API Usage tab ───────────────────────────────────────────────────────
+
+// Brave Search pricing: $5 per 1,000 requests
+const BRAVE_COST_PER_REQUEST = 0.005;
+
+async function fetchAPIUsage() {
+    try {
+        const dateParam = selectedDate ? `&date=${selectedDate}` : '';
+        const r = await fetch(`${API}/api?t=${Date.now()}${dateParam}`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
+        renderAPIUsage(data);
+    } catch (e) {
+        console.error('API usage fetch failed:', e);
+    }
+}
+
+function renderAPIUsage(data) {
+    // Hero metrics
+    const el = (id) => document.getElementById(id);
+    el('api-total-calls').textContent = data.total_calls || 0;
+    el('api-brave-news').textContent = (data.by_api && data.by_api['brave_news_search']) || 0;
+    el('api-brave-sentiment').textContent = (data.by_api && data.by_api['brave_sentiment']) || 0;
+
+    const totalBrave = ((data.by_api && data.by_api['brave_news_search']) || 0) +
+                       ((data.by_api && data.by_api['brave_sentiment']) || 0);
+    const cost = (totalBrave * BRAVE_COST_PER_REQUEST).toFixed(2);
+    el('api-est-cost').textContent = '$' + cost;
+
+    // Hourly chart — build with DOM methods
+    const hourlyEl = el('api-hourly-chart');
+    hourlyEl.textContent = '';
+    if (data.hourly_calls) {
+        const max = Math.max(...data.hourly_calls, 1);
+        data.hourly_calls.forEach((v, i) => {
+            const col = document.createElement('div');
+            col.className = 'chart-bar-col';
+            const bar = document.createElement('div');
+            bar.className = 'chart-bar';
+            bar.style.height = ((v / max) * 100) + '%';
+            bar.title = i.toString().padStart(2, '0') + ':00 — ' + v + ' calls';
+            col.appendChild(bar);
+            const label = document.createElement('span');
+            label.className = 'chart-label';
+            label.textContent = i % 3 === 0 ? i.toString().padStart(2, '0') : '';
+            col.appendChild(label);
+            hourlyEl.appendChild(col);
+        });
+    } else {
+        hourlyEl.textContent = 'No data';
+    }
+
+    // Top tickers — build with DOM methods
+    const tickerEl = el('api-top-tickers');
+    tickerEl.textContent = '';
+    if (data.top_tickers && data.top_tickers.length > 0) {
+        data.top_tickers.forEach(t => {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.textContent = t.ticker + ' ';
+            const count = document.createElement('span');
+            count.className = 'dim';
+            count.textContent = t.calls;
+            chip.appendChild(count);
+            tickerEl.appendChild(chip);
+        });
+    } else {
+        tickerEl.textContent = 'No ticker data yet';
+    }
 }
 
 // ── WebSocket health ──────────────────────────────────────────────────────

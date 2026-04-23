@@ -36,6 +36,7 @@
         <!-- Tab navigation -->
         <nav class="dashboard-tabs">
             <button class="tab active" data-tab="llm-usage">LLM Usage</button>
+            <button class="tab" data-tab="api-usage">API Usage</button>
             <button class="tab" data-tab="system-health">System Health</button>
         </nav>
 
@@ -157,6 +158,38 @@
         </section>
 
         </div><!-- /tab-llm-usage -->
+
+        <!-- Tab: API Usage -->
+        <div id="tab-api-usage" style="display:none">
+            <section class="hero-metrics" id="api-hero-metrics">
+                <div class="metric-card hero">
+                    <div class="metric-label">Total API Calls</div>
+                    <div class="metric-value" id="api-total-calls">—</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Brave News Search</div>
+                    <div class="metric-value" id="api-brave-news">—</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Brave Sentiment</div>
+                    <div class="metric-value" id="api-brave-sentiment">—</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Est. Cost</div>
+                    <div class="metric-value" id="api-est-cost">—</div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header"><h2>Hourly Distribution (ET)</h2></div>
+                <div class="chart-bar-row" id="api-hourly-chart"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header"><h2>Top Tickers</h2></div>
+                <div class="chip-grid" id="api-top-tickers"></div>
+            </section>
+        </div><!-- /tab-api-usage -->
 
         <!-- Tab: System Health -->
         <div id="tab-system-health" style="display:none">
