@@ -303,12 +303,12 @@ function renderBTCalibration(data) {
         var wrap = document.createElement('div');
         wrap.style.cssText = 'flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;cursor:default;';
 
-        // Accuracy label
+        // Accuracy label — accuracy_1d is already a percentage (e.g., 57.14)
         var accPct = b.accuracy_1d != null ? b.accuracy_1d : null;
         var accLabel = document.createElement('div');
         accLabel.style.cssText = 'font-family:var(--font-mono);font-size:0.7rem;font-weight:600;margin-bottom:4px;';
-        accLabel.style.color = accPct != null ? btAccColor(accPct * 100) : 'var(--text-quaternary)';
-        accLabel.textContent = accPct != null ? (accPct * 100).toFixed(0) + '%' : '--';
+        accLabel.style.color = accPct != null ? btAccColor(accPct) : 'var(--text-quaternary)';
+        accLabel.textContent = accPct != null ? accPct.toFixed(1) + '%' : '--';
         wrap.appendChild(accLabel);
 
         // Count
