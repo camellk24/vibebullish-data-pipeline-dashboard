@@ -14,7 +14,7 @@ const MODELS = {
     'gpt-5-mini':        { input: 0.00030, output: 0.00120, label: 'GPT-5 Mini',        fam: 'gpt' },
     'gpt-4o':            { input: 0.00250, output: 0.01000, label: 'GPT-4o',             fam: 'gpt' },
     'gpt-4o-mini':       { input: 0.00015, output: 0.00060, label: 'GPT-4o Mini',        fam: 'gpt' },
-    'claude-opus-4-6':   { input: 0.01500, output: 0.07500, label: 'Claude Opus 4.6',    fam: 'claude' },
+    'claude-opus-4-7':   { input: 0.00500, output: 0.02500, label: 'Claude Opus 4.7',    fam: 'claude' },
     'claude-sonnet-4-6': { input: 0.00300, output: 0.01500, label: 'Claude Sonnet 4.6',  fam: 'claude' },
     'claude-haiku-4-5':  { input: 0.00080, output: 0.00400, label: 'Claude Haiku 4.5',   fam: 'claude' },
 };
@@ -220,7 +220,7 @@ function renderTickers(data) {
     container.className = 'ticker-grid';
     container.innerHTML = tickers.map(t => {
         const mods = Object.entries(t.models || {})
-            .map(([m, c]) => `${esc(m.replace('gpt-5-mini','g5m').replace('claude-opus-4-6','opus'))}: ${c}`)
+            .map(([m, c]) => `${esc(m.replace('gpt-5-mini','g5m').replace('claude-opus-4-7','opus'))}: ${c}`)
             .join(' · ');
         return `<div class="ticker-chip">
             <span class="symbol">${esc(t.ticker)}</span>
