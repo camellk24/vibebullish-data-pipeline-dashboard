@@ -38,6 +38,7 @@
             <button class="tab active" data-tab="llm-usage">LLM Usage</button>
             <button class="tab" data-tab="api-usage">API Usage</button>
             <button class="tab" data-tab="system-health">System Health</button>
+            <button class="tab" data-tab="backtesting">Backtesting</button>
         </nav>
 
         <!-- Tab: LLM Usage -->
@@ -204,6 +205,30 @@
             </section>
         </div><!-- /tab-system-health -->
 
+        <!-- Tab: Backtesting -->
+        <div id="tab-backtesting" style="display:none">
+            <section class="hero-metrics" id="bt-hero-metrics"></section>
+            <section id="bt-alert-section" style="display:none"></section>
+            <section class="grid-2" id="bt-grid-verdict-model">
+                <div class="card">
+                    <div class="card-header"><h2>By Verdict</h2></div>
+                    <div id="bt-by-verdict"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h2>By Model</h2></div>
+                    <div id="bt-by-model"></div>
+                </div>
+            </section>
+            <section class="card">
+                <div class="card-header"><h2>Confidence Calibration</h2></div>
+                <div id="bt-calibration"></div>
+            </section>
+            <section class="card">
+                <div class="card-header"><h2>7-Day Accuracy Trend</h2></div>
+                <div id="bt-trend"></div>
+            </section>
+        </div><!-- /tab-backtesting -->
+
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
             <span class="dim">Auto-refreshes every 60s</span>
@@ -211,5 +236,6 @@
     </div>
 
     <script src="js/dashboard.js"></script>
+    <script src="js/backtesting.js"></script>
 </body>
 </html>
