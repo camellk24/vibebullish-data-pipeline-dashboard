@@ -170,7 +170,8 @@ function renderBTByVerdict(data) {
     entries.forEach(function(pair) {
         var verdict = pair[0];
         var info = pair[1];
-        var acc = info.accuracy_1d; // {correct, total, pct}
+        var acc = info.accuracy_1d;
+        var accPct = (acc && acc.pct != null) ? acc.pct : null;
 
         var row = document.createElement('div');
         row.className = 'model-row';
@@ -189,22 +190,22 @@ function renderBTByVerdict(data) {
         infoDiv.appendChild(countDiv);
         row.appendChild(infoDiv);
 
-        // Bar
+        // Bar represents ACCURACY — width = accuracy %
         var track = document.createElement('div');
         track.className = 'model-bar-track';
         var fill = document.createElement('div');
         fill.className = 'model-bar-fill';
-        fill.style.width = (((info.total || 0) / maxCount) * 100) + '%';
+        fill.style.width = (accPct != null ? accPct : 0) + '%';
         fill.style.background = 'var(--grad-bar)';
         track.appendChild(fill);
         row.appendChild(track);
 
-        // Accuracy
+        // Accuracy label
         var pctDiv = document.createElement('div');
         pctDiv.className = 'model-pct';
-        if (acc && acc.pct != null) {
-            pctDiv.style.color = btAccColor(acc.pct);
-            pctDiv.textContent = btFmtPct(acc.pct);
+        if (accPct != null) {
+            pctDiv.style.color = btAccColor(accPct);
+            pctDiv.textContent = btFmtPct(accPct);
         } else {
             pctDiv.textContent = '--';
         }
@@ -236,6 +237,7 @@ function renderBTByModel(data) {
         var model = pair[0];
         var info = pair[1];
         var acc = info.accuracy_1d;
+        var accPct = (acc && acc.pct != null) ? acc.pct : null;
 
         var row = document.createElement('div');
         row.className = 'model-row';
@@ -255,21 +257,21 @@ function renderBTByModel(data) {
         infoDiv.appendChild(countDiv);
         row.appendChild(infoDiv);
 
-        // Bar
+        // Bar represents ACCURACY (not count) — width = accuracy %
         var track = document.createElement('div');
         track.className = 'model-bar-track';
         var fill = document.createElement('div');
         fill.className = 'model-bar-fill ' + modelFamily(model);
-        fill.style.width = (((info.total || 0) / maxCount) * 100) + '%';
+        fill.style.width = (accPct != null ? accPct : 0) + '%';
         track.appendChild(fill);
         row.appendChild(track);
 
-        // Accuracy
+        // Accuracy label
         var pctDiv = document.createElement('div');
         pctDiv.className = 'model-pct';
-        if (acc && acc.pct != null) {
-            pctDiv.style.color = btAccColor(acc.pct);
-            pctDiv.textContent = btFmtPct(acc.pct);
+        if (accPct != null) {
+            pctDiv.style.color = btAccColor(accPct);
+            pctDiv.textContent = btFmtPct(accPct);
         } else {
             pctDiv.textContent = '--';
         }
