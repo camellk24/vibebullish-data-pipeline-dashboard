@@ -19,13 +19,7 @@
         <header class="header">
             <div class="header-left">
                 <h1 class="logo">VibeBullish</h1>
-                <span class="badge">LLM Usage</span>
-            </div>
-            <div class="header-center">
-                <button class="date-nav-btn" id="date-prev" title="Previous day">&larr;</button>
-                <input type="date" class="date-picker" id="date-picker">
-                <button class="date-nav-btn" id="date-today" title="Jump to today">Today</button>
-                <button class="date-nav-btn" id="date-next" title="Next day">&rarr;</button>
+                <span class="badge">Ops Dashboard</span>
             </div>
             <div class="header-right">
                 <span class="live-dot" id="live-dot"></span>
@@ -43,6 +37,14 @@
 
         <!-- Tab: LLM Usage -->
         <div id="tab-llm-usage">
+
+        <!-- Date picker (LLM Usage only) -->
+        <div class="llm-date-picker" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:var(--s-lg);">
+            <button class="date-nav-btn" id="date-prev" title="Previous day">&larr;</button>
+            <input type="date" class="date-picker" id="date-picker">
+            <button class="date-nav-btn" id="date-today" title="Jump to today">Today</button>
+            <button class="date-nav-btn" id="date-next" title="Next day">&rarr;</button>
+        </div>
 
         <!-- Hero metrics -->
         <section class="hero-metrics" id="hero-metrics">
