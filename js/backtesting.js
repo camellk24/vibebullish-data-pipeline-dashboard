@@ -151,6 +151,19 @@ var VERDICT_COLORS = {
     trim: '#FDE68A', sell: '#FCA5A5', urgent_sell: 'var(--negative)'
 };
 
+function btAccCell(acc) {
+    var cell = document.createElement('div');
+    cell.style.cssText = 'flex:1;text-align:center;font-family:var(--font-mono);font-size:0.8rem;font-weight:600;';
+    if (acc && acc.pct != null) {
+        cell.style.color = btAccColor(acc.pct);
+        cell.textContent = btFmtPct(acc.pct);
+    } else {
+        cell.style.color = 'var(--text-quaternary)';
+        cell.textContent = '--';
+    }
+    return cell;
+}
+
 function renderBTByVerdict(data) {
     var c = document.getElementById('bt-by-verdict');
     btClear(c);
@@ -164,52 +177,47 @@ function renderBTByVerdict(data) {
         return;
     }
 
+    // Header row
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:8px;';
+    var spacer = document.createElement('div');
+    spacer.style.cssText = 'flex:0 0 140px;';
+    header.appendChild(spacer);
+    ['1D', '1W', '1M'].forEach(function(h) {
+        var lbl = document.createElement('div');
+        lbl.style.cssText = 'flex:1;text-align:center;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;';
+        lbl.textContent = h;
+        header.appendChild(lbl);
+    });
+    c.appendChild(header);
+
     var entries = Object.entries(bv).sort(function(a, b) { return (b[1].total || 0) - (a[1].total || 0); });
-    var maxCount = entries.reduce(function(m, e) { return Math.max(m, e[1].total || 0); }, 1);
 
     entries.forEach(function(pair) {
         var verdict = pair[0];
         var info = pair[1];
-        var acc = info.accuracy_1d;
-        var accPct = (acc && acc.pct != null) ? acc.pct : null;
 
         var row = document.createElement('div');
-        row.className = 'model-row';
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider);';
 
-        // Info
+        // Name + count
         var infoDiv = document.createElement('div');
-        infoDiv.className = 'model-info';
+        infoDiv.style.cssText = 'flex:0 0 140px;';
         var nameDiv = document.createElement('div');
-        nameDiv.className = 'name';
+        nameDiv.style.cssText = 'font-family:var(--font-mono);font-size:0.85rem;font-weight:600;';
         nameDiv.style.color = VERDICT_COLORS[verdict] || 'var(--text-primary)';
         nameDiv.textContent = verdict.replace(/_/g, ' ');
         infoDiv.appendChild(nameDiv);
         var countDiv = document.createElement('div');
-        countDiv.className = 'count';
-        countDiv.textContent = (info.total || 0).toLocaleString() + ' predictions';
+        countDiv.style.cssText = 'font-size:0.7rem;color:var(--text-quaternary);';
+        countDiv.textContent = (info.total || 0).toLocaleString();
         infoDiv.appendChild(countDiv);
         row.appendChild(infoDiv);
 
-        // Bar represents ACCURACY — width = accuracy %
-        var track = document.createElement('div');
-        track.className = 'model-bar-track';
-        var fill = document.createElement('div');
-        fill.className = 'model-bar-fill';
-        fill.style.width = (accPct != null ? accPct : 0) + '%';
-        fill.style.background = 'var(--grad-bar)';
-        track.appendChild(fill);
-        row.appendChild(track);
-
-        // Accuracy label
-        var pctDiv = document.createElement('div');
-        pctDiv.className = 'model-pct';
-        if (accPct != null) {
-            pctDiv.style.color = btAccColor(accPct);
-            pctDiv.textContent = btFmtPct(accPct);
-        } else {
-            pctDiv.textContent = '--';
-        }
-        row.appendChild(pctDiv);
+        // 1D / 1W / 1M accuracy cells
+        row.appendChild(btAccCell(info.accuracy_1d));
+        row.appendChild(btAccCell(info.accuracy_1w));
+        row.appendChild(btAccCell(info.accuracy_1m));
 
         c.appendChild(row);
     });
@@ -230,52 +238,49 @@ function renderBTByModel(data) {
         return;
     }
 
+    // Header row
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:8px;';
+    var spacer = document.createElement('div');
+    spacer.style.cssText = 'flex:0 0 180px;';
+    header.appendChild(spacer);
+    ['1D', '1W', '1M'].forEach(function(h) {
+        var lbl = document.createElement('div');
+        lbl.style.cssText = 'flex:1;text-align:center;font-family:var(--font-mono);font-size:0.7rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;';
+        lbl.textContent = h;
+        header.appendChild(lbl);
+    });
+    c.appendChild(header);
+
     var entries = Object.entries(bm).sort(function(a, b) { return (b[1].total || 0) - (a[1].total || 0); });
-    var maxCount = entries.reduce(function(m, e) { return Math.max(m, e[1].total || 0); }, 1);
 
     entries.forEach(function(pair) {
         var model = pair[0];
         var info = pair[1];
-        var acc = info.accuracy_1d;
-        var accPct = (acc && acc.pct != null) ? acc.pct : null;
 
         var row = document.createElement('div');
-        row.className = 'model-row';
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider);';
 
+        // Name + count
         var infoDiv = document.createElement('div');
-        infoDiv.className = 'model-info';
+        infoDiv.style.cssText = 'flex:0 0 180px;';
         var nameDiv = document.createElement('div');
-        nameDiv.className = 'name';
+        nameDiv.style.cssText = 'font-family:var(--font-mono);font-size:0.8rem;display:flex;align-items:center;gap:6px;';
         var dot = document.createElement('span');
         dot.className = 'model-dot ' + modelFamily(model);
         nameDiv.appendChild(dot);
         nameDiv.appendChild(document.createTextNode(model));
         infoDiv.appendChild(nameDiv);
         var countDiv = document.createElement('div');
-        countDiv.className = 'count';
-        countDiv.textContent = (info.total || 0).toLocaleString() + ' predictions';
+        countDiv.style.cssText = 'font-size:0.7rem;color:var(--text-quaternary);';
+        countDiv.textContent = (info.total || 0).toLocaleString();
         infoDiv.appendChild(countDiv);
         row.appendChild(infoDiv);
 
-        // Bar represents ACCURACY (not count) — width = accuracy %
-        var track = document.createElement('div');
-        track.className = 'model-bar-track';
-        var fill = document.createElement('div');
-        fill.className = 'model-bar-fill ' + modelFamily(model);
-        fill.style.width = (accPct != null ? accPct : 0) + '%';
-        track.appendChild(fill);
-        row.appendChild(track);
-
-        // Accuracy label
-        var pctDiv = document.createElement('div');
-        pctDiv.className = 'model-pct';
-        if (accPct != null) {
-            pctDiv.style.color = btAccColor(accPct);
-            pctDiv.textContent = btFmtPct(accPct);
-        } else {
-            pctDiv.textContent = '--';
-        }
-        row.appendChild(pctDiv);
+        // 1D / 1W / 1M accuracy cells
+        row.appendChild(btAccCell(info.accuracy_1d));
+        row.appendChild(btAccCell(info.accuracy_1w));
+        row.appendChild(btAccCell(info.accuracy_1m));
 
         c.appendChild(row);
     });
