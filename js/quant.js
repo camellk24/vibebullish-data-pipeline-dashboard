@@ -240,8 +240,8 @@ function renderTopPredictions(data) {
 
     var thead = document.createElement('thead');
     var headerRow = document.createElement('tr');
-    var headers = ['Ticker', 'Probability', 'Return 1M', 'Verdict', 'Price', 'Catalyst'];
-    var rightAligned = { 'Probability': true, 'Return 1M': true, 'Price': true };
+    var headers = ['Ticker', 'Probability', '1W', '1M', '3M', 'Verdict', 'Price', 'Catalyst'];
+    var rightAligned = { 'Probability': true, '1W': true, '1M': true, '3M': true, 'Price': true };
     for (var h = 0; h < headers.length; h++) {
         var th = document.createElement('th');
         th.textContent = headers[h];
@@ -271,16 +271,12 @@ function renderTopPredictions(data) {
         tdProb.textContent = p.probability != null ? (p.probability * 100).toFixed(1) + '%' : '--';
         tr.appendChild(tdProb);
 
-        // Expected return
-        var tdRet = document.createElement('td');
-        tdRet.className = 'r';
-        tdRet.style.fontFamily = "'JetBrains Mono', monospace";
-        var retColor = '#8a8a9e';
-        if (p.expected_return_1m != null && p.expected_return_1m > 0) retColor = '#00E5A0';
-        else if (p.expected_return_1m != null && p.expected_return_1m < 0) retColor = '#FF4560';
-        tdRet.style.color = retColor;
-        tdRet.textContent = p.expected_return_1m != null ? p.expected_return_1m.toFixed(1) + '%' : '--';
-        tr.appendChild(tdRet);
+        // 1W return
+        tr.appendChild(makeReturnCell(p.expected_return_1w));
+        // 1M return
+        tr.appendChild(makeReturnCell(p.expected_return_1m));
+        // 3M return
+        tr.appendChild(makeReturnCell(p.expected_return_3m));
 
         // Verdict
         var tdVerdict = document.createElement('td');
@@ -310,6 +306,20 @@ function renderTopPredictions(data) {
 }
 
 // ── Auto-refresh ─────────────────────────────────────────────────────────
+
+function makeReturnCell(val) {
+    var td = document.createElement('td');
+    td.className = 'r';
+    td.style.fontFamily = "'JetBrains Mono', monospace";
+    if (val != null) {
+        td.style.color = val > 0 ? '#00E5A0' : val < 0 ? '#FF4560' : '#8a8a9e';
+        td.textContent = (val > 0 ? '+' : '') + val.toFixed(1) + '%';
+    } else {
+        td.style.color = '#8a8a9e';
+        td.textContent = '--';
+    }
+    return td;
+}
 
 (function initQuantRefresh() {
     // Refresh every 60s when the quant tab is active
