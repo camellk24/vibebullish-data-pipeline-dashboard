@@ -13,6 +13,8 @@ async function fetchBacktestingStats() {
         renderBTAlert(data);
         renderBTByVerdict(data);
         renderBTByModel(data);
+        renderBTDetector(data);
+        renderBTHorizonMAE(data);
         renderBTCalibration(data);
     } catch (err) {
         console.error('Backtesting fetch failed:', err);
@@ -345,4 +347,131 @@ function renderBTCalibration(data) {
     });
 
     c.appendChild(chart);
+}
+
+// ── Change Detector Metrics ──────────────────────────────────────────────
+
+function renderBTDetector(data) {
+    var c = document.getElementById('bt-detector');
+    btClear(c);
+
+    var det = data.detector_metrics;
+    if (!det || det.total_decisions === 0) {
+        var msg = document.createElement('span');
+        msg.className = 'dim';
+        msg.textContent = 'Collecting data... Change detector metrics will appear once decisions are logged.';
+        c.appendChild(msg);
+        return;
+    }
+
+    var table = document.createElement('div');
+    table.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0;';
+
+    function addRow(label, value, opts) {
+        var lbl = document.createElement('div');
+        lbl.style.cssText = 'font-family:var(--font-mono);font-size:0.75rem;color:var(--text-secondary);padding:6px 0;border-bottom:1px solid var(--divider);';
+        lbl.textContent = label;
+        table.appendChild(lbl);
+
+        var val = document.createElement('div');
+        val.style.cssText = 'font-family:var(--font-mono);font-size:0.8rem;font-weight:600;padding:6px 0;text-align:right;border-bottom:1px solid var(--divider);';
+        if (opts && opts.color) val.style.color = opts.color;
+        val.textContent = value;
+        table.appendChild(val);
+    }
+
+    addRow('Total Decisions', det.total_decisions.toLocaleString());
+    addRow('Escalated', det.escalated.toLocaleString());
+    addRow('Skipped', det.skipped.toLocaleString());
+
+    // Precision / wasted rate with color coding
+    var precColor = det.precision >= 60 ? 'var(--positive)' : det.precision < 40 ? 'var(--negative)' : 'var(--neutral)';
+    addRow('Precision', btFmtPct(det.precision), { color: precColor });
+    var wastedColor = det.wasted_call_rate <= 20 ? 'var(--positive)' : det.wasted_call_rate > 40 ? 'var(--negative)' : 'var(--neutral)';
+    addRow('Wasted Call Rate', btFmtPct(det.wasted_call_rate), { color: wastedColor });
+
+    addRow('Verdict Changes', det.verdict_changes.toLocaleString(), { color: 'var(--positive)' });
+    addRow('Conviction Changes', det.conviction_changes.toLocaleString(), { color: 'var(--positive)' });
+    addRow('Target Revisions', det.target_revisions.toLocaleString(), { color: 'var(--positive)' });
+    addRow('Wasted Calls', det.wasted_calls.toLocaleString(), { color: 'var(--negative)' });
+    addRow('Correct Skips', det.correct_skips.toLocaleString(), { color: 'var(--positive)' });
+    addRow('Missed Signals', det.missed_signals.toLocaleString(), { color: 'var(--negative)' });
+
+    c.appendChild(table);
+}
+
+// ── Per-Horizon Target MAE ───────────────────────────────────────────────
+
+function renderBTHorizonMAE(data) {
+    var c = document.getElementById('bt-horizon-mae');
+    btClear(c);
+
+    var horizons = data.horizon_target_accuracy;
+    if (!horizons || horizons.length === 0) {
+        // Fall back to existing price_target_accuracy if horizon data not available
+        var pta = data.price_target_accuracy || {};
+        var keys = Object.keys(pta);
+        if (keys.length === 0) {
+            var msg = document.createElement('span');
+            msg.className = 'dim';
+            msg.textContent = 'No target accuracy data yet.';
+            c.appendChild(msg);
+            return;
+        }
+        // Render existing MAE data as a table
+        horizons = [];
+        var order = ['1d', '1w', '1m'];
+        order.forEach(function(h) {
+            if (pta[h]) {
+                horizons.push({ horizon: h, count: pta[h].count, mae_pct: pta[h].mae_pct });
+            }
+        });
+        if (horizons.length === 0) {
+            var msg2 = document.createElement('span');
+            msg2.className = 'dim';
+            msg2.textContent = 'No target accuracy data yet.';
+            c.appendChild(msg2);
+            return;
+        }
+    }
+
+    var HORIZON_LABELS = { '1d': '1 Day', '1w': '1 Week', '1m': '1 Month' };
+
+    // Header
+    var header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:8px;';
+    ['Horizon', 'Samples', 'MAE %'].forEach(function(h, i) {
+        var lbl = document.createElement('div');
+        lbl.style.cssText = 'font-family:var(--font-mono);font-size:0.7rem;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:1px;' +
+            (i === 0 ? 'flex:0 0 100px;' : 'flex:1;text-align:center;');
+        lbl.textContent = h;
+        header.appendChild(lbl);
+    });
+    c.appendChild(header);
+
+    horizons.forEach(function(h) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--divider);';
+
+        var nameDiv = document.createElement('div');
+        nameDiv.style.cssText = 'flex:0 0 100px;font-family:var(--font-mono);font-size:0.85rem;font-weight:600;';
+        nameDiv.textContent = HORIZON_LABELS[h.horizon] || h.horizon;
+        row.appendChild(nameDiv);
+
+        var countDiv = document.createElement('div');
+        countDiv.style.cssText = 'flex:1;text-align:center;font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);';
+        countDiv.textContent = (h.count || 0).toLocaleString();
+        row.appendChild(countDiv);
+
+        var maeDiv = document.createElement('div');
+        maeDiv.style.cssText = 'flex:1;text-align:center;font-family:var(--font-mono);font-size:0.8rem;font-weight:600;';
+        var maeVal = h.mae_pct;
+        // Lower MAE is better: green <= 5%, red > 15%, neutral otherwise
+        var maeColor = maeVal <= 5 ? 'var(--positive)' : maeVal > 15 ? 'var(--negative)' : 'var(--neutral)';
+        maeDiv.style.color = maeColor;
+        maeDiv.textContent = maeVal != null ? maeVal.toFixed(1) + '%' : '--';
+        row.appendChild(maeDiv);
+
+        c.appendChild(row);
+    });
 }
