@@ -33,6 +33,7 @@
             <button class="tab" data-tab="api-usage">API Usage</button>
             <button class="tab" data-tab="system-health">System Health</button>
             <button class="tab" data-tab="backtesting">Backtesting</button>
+            <button class="tab" data-tab="quant-quality">Quant Quality</button>
         </nav>
 
         <!-- Tab: LLM Usage -->
@@ -241,6 +242,56 @@
             </section>
         </div><!-- /tab-backtesting -->
 
+        <!-- Tab: Quant Quality -->
+        <div id="tab-quant-quality" style="display:none">
+            <!-- Hero metrics row -->
+            <section class="hero-metrics" id="quant-hero">
+                <div class="metric-card hero">
+                    <div class="metric-label">Total Signals</div>
+                    <div class="metric-value" id="q-total">&mdash;</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">With LightGBM</div>
+                    <div class="metric-value" id="q-with-prob">&mdash;</div>
+                    <div class="metric-sub" id="q-with-prob-pct"></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Without LightGBM</div>
+                    <div class="metric-value" id="q-without-prob">&mdash;</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Last Updated</div>
+                    <div class="metric-value" id="q-last-updated">&mdash;</div>
+                    <div class="metric-sub" id="q-freshness"></div>
+                </div>
+            </section>
+
+            <!-- Two-column layout -->
+            <section class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Probability Distribution</h2>
+                    </div>
+                    <div id="q-prob-dist"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Verdict Distribution</h2>
+                    </div>
+                    <div id="q-verdict-dist"></div>
+                </div>
+            </section>
+
+            <!-- Top Predictions by Confidence -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Top Predictions by Confidence</h2>
+                    <span class="card-badge" id="q-top-count"></span>
+                </div>
+                <div id="q-top-predictions"></div>
+            </section>
+        </div><!-- /tab-quant-quality -->
+
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
             <span class="dim">Auto-refreshes every 60s</span>
@@ -249,5 +300,6 @@
 
     <script src="js/dashboard.js"></script>
     <script src="js/backtesting.js"></script>
+    <script src="js/quant.js"></script>
 </body>
 </html>

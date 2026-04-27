@@ -546,7 +546,7 @@ function stopAutoRefresh() {
 
 function initTabs() {
     const tabs = document.querySelectorAll('.tab');
-    const tabIds = ['tab-llm-usage', 'tab-api-usage', 'tab-system-health', 'tab-backtesting'];
+    const tabIds = ['tab-llm-usage', 'tab-api-usage', 'tab-system-health', 'tab-backtesting', 'tab-quant-quality'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
@@ -558,6 +558,7 @@ function initTabs() {
             if (tabId === 'system-health') fetchWSStatus();
             if (tabId === 'api-usage') fetchAPIUsage();
             if (tabId === 'backtesting') fetchBacktestingStats();
+            if (tabId === 'quant-quality') refreshQuantHealth();
         });
     });
 }
