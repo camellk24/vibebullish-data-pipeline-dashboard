@@ -240,8 +240,8 @@ function renderTopPredictions(data) {
 
     var thead = document.createElement('thead');
     var headerRow = document.createElement('tr');
-    var headers = ['Ticker', 'Probability', '1W', '1M', '3M', 'Verdict', 'Price', 'Catalyst'];
-    var rightAligned = { 'Probability': true, '1W': true, '1M': true, '3M': true, 'Price': true };
+    var headers = ['Ticker', 'Probability', '1D', '1W', '1M', '3M', '1Y', 'Verdict', 'Price', 'Catalyst'];
+    var rightAligned = { 'Probability': true, '1D': true, '1W': true, '1M': true, '3M': true, '1Y': true, 'Price': true };
     for (var h = 0; h < headers.length; h++) {
         var th = document.createElement('th');
         th.textContent = headers[h];
@@ -271,12 +271,12 @@ function renderTopPredictions(data) {
         tdProb.textContent = p.probability != null ? (p.probability * 100).toFixed(1) + '%' : '--';
         tr.appendChild(tdProb);
 
-        // 1W return
+        // Returns: 1D, 1W, 1M, 3M, 1Y
+        tr.appendChild(makeReturnCell(p.expected_return_1d));
         tr.appendChild(makeReturnCell(p.expected_return_1w));
-        // 1M return
         tr.appendChild(makeReturnCell(p.expected_return_1m));
-        // 3M return
         tr.appendChild(makeReturnCell(p.expected_return_3m));
+        tr.appendChild(makeReturnCell(p.expected_return_1y));
 
         // Verdict
         var tdVerdict = document.createElement('td');
