@@ -11,6 +11,7 @@ async function refreshQuantHealth() {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         var data = await r.json();
         renderQuantHero(data);
+        renderTrainingMetrics(data);
         renderProbabilityDist(data);
         renderVerdictDist(data);
         renderTopPredictions(data);
@@ -90,6 +91,63 @@ function renderQuantHero(data) {
         el('q-last-updated').textContent = 'Never';
         el('q-freshness').textContent = '';
     }
+}
+
+// ── Training Metrics ─────────────────────────────────────────────────────
+
+function renderTrainingMetrics(data) {
+    var container = document.getElementById('q-training-metrics');
+    if (!container) return;
+    var tm = data.training_metrics;
+    if (!tm || !tm.metrics) {
+        container.innerHTML = '<p style="color:#8a8a9e;font-size:0.85rem;">No training metrics yet — waiting for first LightGBM training cycle.</p>';
+        return;
+    }
+
+    var metrics = tm.metrics;
+    var html = '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">';
+
+    // Summary cards
+    html += '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:0.7rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase;">Tickers</div>';
+    html += '<div style="font-size:1.3rem;font-weight:700;color:#e8e8ed;font-family:\'JetBrains Mono\',monospace;">' + qFmt(tm.tickers || 0) + '</div></div>';
+
+    html += '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:0.7rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase;">Rows</div>';
+    html += '<div style="font-size:1.3rem;font-weight:700;color:#e8e8ed;font-family:\'JetBrains Mono\',monospace;">' + qFmt(tm.rows || 0) + '</div></div>';
+
+    html += '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:0.7rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase;">Duration</div>';
+    html += '<div style="font-size:1.3rem;font-weight:700;color:#e8e8ed;font-family:\'JetBrains Mono\',monospace;">' + (tm.duration_s || 0).toFixed(0) + 's</div></div>';
+
+    html += '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">';
+    html += '<div style="font-size:0.7rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase;">Trained</div>';
+    html += '<div style="font-size:1.3rem;font-weight:700;color:#e8e8ed;font-family:\'JetBrains Mono\',monospace;">' + qTimeAgo(tm.trained_at) + '</div></div>';
+    html += '</div>';
+
+    // Per-timeframe metrics table
+    html += '<table class="data-table"><thead><tr>';
+    html += '<th>Timeframe</th><th class="r">R²</th><th class="r">RMSE</th><th class="r">MAE</th><th class="r">Samples</th>';
+    html += '</tr></thead><tbody>';
+
+    var timeframes = ['1d', '5d', '20d'];
+    for (var i = 0; i < timeframes.length; i++) {
+        var tf = timeframes[i];
+        var m = metrics[tf];
+        if (!m) continue;
+
+        var r2Color = m.r2 > 0.1 ? '#00E5A0' : m.r2 > 0 ? '#FBBF24' : '#FF4560';
+        html += '<tr>';
+        html += '<td style="font-weight:600;color:#e8e8ed;">' + tf.toUpperCase() + '</td>';
+        html += '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + r2Color + ';">' + m.r2.toFixed(4) + '</td>';
+        html += '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e;">' + m.rmse.toFixed(2) + '</td>';
+        html += '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e;">' + m.mae.toFixed(2) + '%</td>';
+        html += '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e;">' + qFmt(m.train_samples) + '</td>';
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+
+    container.innerHTML = html;
 }
 
 // ── Probability Distribution ─────────────────────────────────────────────
