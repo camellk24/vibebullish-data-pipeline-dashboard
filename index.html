@@ -34,6 +34,7 @@
             <button class="tab" data-tab="system-health">System Health</button>
             <button class="tab" data-tab="backtesting">Backtesting</button>
             <button class="tab" data-tab="quant-quality">Quant Quality</button>
+            <button class="tab" data-tab="data-collector">Data Collector</button>
         </nav>
 
         <!-- Tab: LLM Usage -->
@@ -300,6 +301,67 @@
             </section>
         </div><!-- /tab-quant-quality -->
 
+        <!-- Tab: Data Collector -->
+        <div id="tab-data-collector" style="display:none">
+            <section class="hero-metrics" id="dc-hero">
+                <div class="metric-card hero">
+                    <div class="metric-label">Pending</div>
+                    <div class="metric-value" id="dc-pending">&mdash;</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">In Progress</div>
+                    <div class="metric-value" id="dc-inprogress">&mdash;</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Completed/hr</div>
+                    <div class="metric-value" id="dc-completed">&mdash;</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Failed/hr</div>
+                    <div class="metric-value" id="dc-failed">&mdash;</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Avg Latency</div>
+                    <div class="metric-value" id="dc-latency">&mdash;</div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Queue by Source</h2>
+                </div>
+                <div id="dc-by-source"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Pending by Data Type</h2>
+                </div>
+                <div id="dc-by-type"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Table Coverage</h2>
+                </div>
+                <div id="dc-tables"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>API Usage (last hour)</h2>
+                </div>
+                <div id="dc-api"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Recent Errors</h2>
+                </div>
+                <div id="dc-errors"></div>
+            </section>
+        </div><!-- /tab-data-collector -->
+
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
             <span class="dim">Auto-refreshes every 60s</span>
@@ -309,5 +371,6 @@
     <script src="js/dashboard.js"></script>
     <script src="js/backtesting.js"></script>
     <script src="js/quant.js"></script>
+    <script src="js/data-collector.js"></script>
 </body>
 </html>
