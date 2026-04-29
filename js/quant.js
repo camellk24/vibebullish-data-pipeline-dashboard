@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 var QUANT_API = API_BASE + '/api/quant/health';
+var QUANT_RUNS_API = API_BASE + '/api/quant/training-runs?limit=10';
 var quantRefreshTimer = null;
 
 async function refreshQuantHealth() {
@@ -19,6 +20,87 @@ async function refreshQuantHealth() {
         console.error('Quant health fetch failed:', err);
         renderQuantEmpty();
     }
+    refreshQuantTrainingRuns();
+}
+
+async function refreshQuantTrainingRuns() {
+    try {
+        var r = await fetch(QUANT_RUNS_API + '&t=' + Date.now());
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var data = await r.json();
+        renderQuantRuns(data.runs || []);
+    } catch (err) {
+        console.error('Quant training runs fetch failed:', err);
+    }
+}
+
+function renderQuantRuns(runs) {
+    var c = document.getElementById('quant-runs-table');
+    if (!c) return;
+    var badge = document.getElementById('quant-runs-count');
+    if (badge) badge.textContent = runs.length ? (runs.length + ' runs') : 'no runs yet';
+    c.innerHTML = '';
+    if (!runs.length) {
+        c.innerHTML = '<p style="color:#8a8a9e;font-size:0.85rem">No training runs recorded yet.</p>';
+        return;
+    }
+
+    var t = document.createElement('table');
+    t.className = 'data-table';
+    t.innerHTML = '<thead><tr>' +
+        '<th>Time</th>' +
+        '<th class="r">Tickers</th>' +
+        '<th class="r">Rows</th>' +
+        '<th class="r">1d R²</th>' +
+        '<th class="r">5d R²</th>' +
+        '<th class="r">20d R²</th>' +
+        '<th class="r">Duration</th>' +
+        '<th>Git</th>' +
+        '<th>Seed</th>' +
+        '</tr></thead><tbody></tbody>';
+    var tbody = t.querySelector('tbody');
+
+    function r2Cell(v) {
+        if (v == null) return '<td class="r">—</td>';
+        var color = v > 0.1 ? '#00E5A0' : v > 0 ? '#FBBF24' : '#FF4560';
+        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + v.toFixed(4) + '</td>';
+    }
+
+    function timeAgo(iso) {
+        if (!iso) return '—';
+        var t = new Date(iso);
+        var sec = (Date.now() - t.getTime()) / 1000;
+        if (sec < 60) return Math.round(sec) + 's ago';
+        if (sec < 3600) return Math.round(sec / 60) + 'm ago';
+        if (sec < 86400) return Math.round(sec / 3600) + 'h ago';
+        return Math.round(sec / 86400) + 'd ago';
+    }
+
+    runs.forEach(function(run) {
+        var m = run.metrics || {};
+        var r1d = m['1d'] && m['1d'].r2;
+        var r5d = m['5d'] && m['5d'].r2;
+        var r20d = m['20d'] && m['20d'].r2;
+        var dur = run.duration_s ? run.duration_s.toFixed(0) + 's' : '—';
+        var tickerCount = (run.tickers || []).length;
+        var tickerHint = (run.tickers || []).slice(0, 5).join(', ') +
+            (tickerCount > 5 ? (', +' + (tickerCount - 5) + ' more') : '');
+        var sha = (run.git_sha || '').substring(0, 7) || 'unknown';
+
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td title="' + qEsc(run.started_at || '') + '">' + timeAgo(run.started_at) + '</td>' +
+            '<td class="r" title="' + qEsc(tickerHint) + '" style="cursor:help">' + tickerCount + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + (run.n_rows || 0).toLocaleString() + '</td>' +
+            r2Cell(r1d) +
+            r2Cell(r5d) +
+            r2Cell(r20d) +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + dur + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:#8a8a9e">' + qEsc(sha) + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:#8a8a9e">' + (run.random_seed != null ? run.random_seed : '—') + '</td>';
+        tbody.appendChild(tr);
+    });
+    c.appendChild(t);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
