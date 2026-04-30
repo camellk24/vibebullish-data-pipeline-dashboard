@@ -162,19 +162,25 @@ function renderDCErrors(errors) {
   }
   const t = document.createElement('table');
   t.className = 'data-table';
+  t.style.tableLayout = 'fixed';
+  t.style.width = '100%';
   t.innerHTML = `
     <thead><tr>
-      <th>Ticker</th><th>Type</th><th>Error</th><th>When</th>
+      <th style="width:80px">Ticker</th>
+      <th style="width:120px">Type</th>
+      <th style="width:90px">When</th>
+      <th>Error</th>
     </tr></thead><tbody></tbody>`;
   const tbody = t.querySelector('tbody');
+  const escapeAttr = (s) => String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
   errors.forEach(e => {
     const tr = document.createElement('tr');
     const when = e.at ? new Date(e.at).toLocaleTimeString() : '—';
     tr.innerHTML = `
       <td style="font-family:'JetBrains Mono',monospace">${e.ticker}</td>
       <td style="color:#A855F7">${e.data_type}</td>
-      <td style="color:#FF4560;font-size:0.85rem">${e.error}</td>
-      <td style="color:#8a8a9e;font-size:0.8rem">${when}</td>`;
+      <td style="color:#8a8a9e;font-size:0.8rem">${when}</td>
+      <td style="color:#FF4560;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0" title="${escapeAttr(e.error)}">${e.error}</td>`;
     tbody.appendChild(tr);
   });
   c.appendChild(t);
