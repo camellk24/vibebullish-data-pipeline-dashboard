@@ -84,9 +84,13 @@ function renderQuantRuns(runs) {
         var r20d = m['20d'] && m['20d'].r2;
         var r60d = m['60d'] && m['60d'].r2;
         var dur = run.duration_s ? run.duration_s.toFixed(0) + 's' : '—';
-        var tickerCount = (run.tickers || []).length;
+        // Use the n_tickers column (truth — actual count trained on) rather
+        // than tickers.length (the persisted JSONB array, which historically
+        // stored the hardcoded universe constant rather than the dynamic
+        // post-quality-filter list). Hover hint still shows ticker names.
+        var tickerCount = run.n_tickers != null ? run.n_tickers : (run.tickers || []).length;
         var tickerHint = (run.tickers || []).slice(0, 5).join(', ') +
-            (tickerCount > 5 ? (', +' + (tickerCount - 5) + ' more') : '');
+            ((run.tickers || []).length > 5 ? (', +' + ((run.tickers || []).length - 5) + ' more') : '');
         var sha = (run.git_sha || '').substring(0, 7) || 'unknown';
 
         var tr = document.createElement('tr');
