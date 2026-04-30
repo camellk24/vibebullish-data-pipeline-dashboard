@@ -54,6 +54,7 @@ function renderQuantRuns(runs) {
         '<th class="r">1d R²</th>' +
         '<th class="r">5d R²</th>' +
         '<th class="r">20d R²</th>' +
+        '<th class="r">60d R²</th>' +
         '<th class="r">Duration</th>' +
         '<th>Git</th>' +
         '<th>Seed</th>' +
@@ -81,6 +82,7 @@ function renderQuantRuns(runs) {
         var r1d = m['1d'] && m['1d'].r2;
         var r5d = m['5d'] && m['5d'].r2;
         var r20d = m['20d'] && m['20d'].r2;
+        var r60d = m['60d'] && m['60d'].r2;
         var dur = run.duration_s ? run.duration_s.toFixed(0) + 's' : '—';
         var tickerCount = (run.tickers || []).length;
         var tickerHint = (run.tickers || []).slice(0, 5).join(', ') +
@@ -95,6 +97,7 @@ function renderQuantRuns(runs) {
             r2Cell(r1d) +
             r2Cell(r5d) +
             r2Cell(r20d) +
+            r2Cell(r60d) +
             '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + dur + '</td>' +
             '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:#8a8a9e">' + qEsc(sha) + '</td>' +
             '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:#8a8a9e">' + (run.random_seed != null ? run.random_seed : '—') + '</td>';
