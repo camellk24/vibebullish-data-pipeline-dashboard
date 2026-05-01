@@ -4,6 +4,7 @@
 
 var QUANT_API = API_BASE + '/api/quant/health';
 var QUANT_RUNS_API = API_BASE + '/api/quant/training-runs?limit=10';
+var QUANT_BACKTESTS_API = API_BASE + '/api/quant/backtests?limit=20';
 var quantRefreshTimer = null;
 
 async function refreshQuantHealth() {
@@ -21,6 +22,7 @@ async function refreshQuantHealth() {
         renderQuantEmpty();
     }
     refreshQuantTrainingRuns();
+    refreshQuantBacktests();
 }
 
 async function refreshQuantTrainingRuns() {
@@ -32,6 +34,98 @@ async function refreshQuantTrainingRuns() {
     } catch (err) {
         console.error('Quant training runs fetch failed:', err);
     }
+}
+
+async function refreshQuantBacktests() {
+    try {
+        var r = await fetch(QUANT_BACKTESTS_API + '&t=' + Date.now());
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var data = await r.json();
+        renderQuantBacktests(data.backtests || []);
+    } catch (err) {
+        console.error('Quant backtests fetch failed:', err);
+    }
+}
+
+function renderQuantBacktests(rows) {
+    var c = document.getElementById('quant-backtests-table');
+    if (!c) return;
+    var badge = document.getElementById('quant-backtests-count');
+    if (badge) badge.textContent = rows.length ? (rows.length + ' runs') : 'none yet';
+    c.innerHTML = '';
+    if (!rows.length) {
+        c.innerHTML = '<p style="color:#8a8a9e;font-size:0.85rem">No backtests recorded yet. Hit /lightgbm/backtest to log one.</p>';
+        return;
+    }
+
+    var t = document.createElement('table');
+    t.className = 'data-table';
+    t.innerHTML = '<thead><tr>' +
+        '<th>Time</th>' +
+        '<th>Cohort</th>' +
+        '<th>TF</th>' +
+        '<th class="r">Top-N</th>' +
+        '<th class="r">Cost (bps)</th>' +
+        '<th class="r">Periods</th>' +
+        '<th class="r">Cum %</th>' +
+        '<th class="r">Ann %</th>' +
+        '<th class="r">SPY Ann %</th>' +
+        '<th class="r">Alpha %</th>' +
+        '<th class="r">Sharpe</th>' +
+        '<th class="r">Max DD %</th>' +
+        '<th class="r">Hit %</th>' +
+        '<th>Window</th>' +
+        '</tr></thead><tbody></tbody>';
+    var tbody = t.querySelector('tbody');
+
+    function num(v, digits) {
+        if (v == null) return '—';
+        return Number(v).toFixed(digits == null ? 2 : digits);
+    }
+
+    function colorCell(v, posGood) {
+        if (v == null) return '<td class="r">—</td>';
+        var positive = posGood ? v > 0 : v < 0;
+        var color = positive ? '#00E5A0' : (v == 0 ? '#8a8a9e' : '#FF4560');
+        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 2) + '</td>';
+    }
+
+    function sharpeCell(v) {
+        if (v == null) return '<td class="r">—</td>';
+        var color = v > 1 ? '#00E5A0' : v > 0 ? '#FBBF24' : '#FF4560';
+        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 2) + '</td>';
+    }
+
+    function ago(iso) {
+        if (!iso) return '—';
+        var sec = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (sec < 60) return Math.round(sec) + 's';
+        if (sec < 3600) return Math.round(sec / 60) + 'm';
+        if (sec < 86400) return Math.round(sec / 3600) + 'h';
+        return Math.round(sec / 86400) + 'd';
+    }
+
+    rows.forEach(function(b) {
+        var window = (b.date_range_start || '?') + ' → ' + (b.date_range_end || '?');
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td title="' + qEsc(b.created_at || '') + '">' + ago(b.created_at) + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.8rem">' + qEsc(b.cohort_id || '') + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.8rem">' + qEsc(b.timeframe || '') + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + (b.top_n != null ? b.top_n : '—') + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + num(b.cost_bps, 1) + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + (b.n_periods != null ? b.n_periods : '—') + '</td>' +
+            colorCell(b.cumulative_return_pct, true) +
+            colorCell(b.annualized_return_pct, true) +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + num(b.spy_annualized_return_pct, 2) + '</td>' +
+            colorCell(b.alpha_annualized_pct, true) +
+            sharpeCell(b.sharpe_annualized) +
+            colorCell(b.max_drawdown_pct, false) +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + num(b.hit_rate_pct, 1) + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.7rem;color:#8a8a9e" title="' + qEsc(window) + '">' + qEsc(window) + '</td>';
+        tbody.appendChild(tr);
+    });
+    c.appendChild(t);
 }
 
 function renderQuantRuns(runs) {
