@@ -5,8 +5,8 @@
 var QUANT_API = API_BASE + '/api/quant/health';
 var QUANT_RUNS_API = API_BASE + '/api/quant/training-runs?limit=10';
 var QUANT_BACKTESTS_API = API_BASE + '/api/quant/backtests?limit=20';
-var QUANT_LIVE_COHORT = 'uni_1308';
-var QUANT_LIVE_TOP_N = 20;
+var QUANT_LIVE_COHORT = 'tradeable_v2';
+var QUANT_LIVE_TOP_N = 10;
 var QUANT_LIVE_COST_BPS = 5;
 var QUANT_LIVE_TIMEFRAMES = ['1d', '5d', '20d'];
 var quantRefreshTimer = null;
