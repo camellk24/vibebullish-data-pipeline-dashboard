@@ -5,6 +5,10 @@
 var QUANT_API = API_BASE + '/api/quant/health';
 var QUANT_RUNS_API = API_BASE + '/api/quant/training-runs?limit=10';
 var QUANT_BACKTESTS_API = API_BASE + '/api/quant/backtests?limit=20';
+var QUANT_LIVE_COHORT = 'uni_1308';
+var QUANT_LIVE_TOP_N = 20;
+var QUANT_LIVE_COST_BPS = 5;
+var QUANT_LIVE_TIMEFRAMES = ['1d', '5d', '20d'];
 var quantRefreshTimer = null;
 
 async function refreshQuantHealth() {
@@ -23,6 +27,154 @@ async function refreshQuantHealth() {
     }
     refreshQuantTrainingRuns();
     refreshQuantBacktests();
+    refreshQuantLive();
+}
+
+async function refreshQuantLive() {
+    var cohort = QUANT_LIVE_COHORT;
+    var topN = QUANT_LIVE_TOP_N;
+    var costBps = QUANT_LIVE_COST_BPS;
+    try {
+        // Fetch stats for each timeframe in parallel
+        var statsPromises = QUANT_LIVE_TIMEFRAMES.map(function(tf) {
+            var url = API_BASE + '/api/quant/live-stats?cohort=' + cohort +
+                '&timeframe=' + tf + '&top_n=' + topN + '&cost_bps=' + costBps +
+                '&t=' + Date.now();
+            return fetch(url).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+        });
+        var preds1dPromise = fetch(API_BASE + '/api/quant/live-predictions?cohort=' + cohort +
+            '&timeframe=1d&limit=' + topN + '&t=' + Date.now())
+            .then(function(r) { return r.ok ? r.json() : { predictions: [] }; })
+            .catch(function() { return { predictions: [] }; });
+
+        var results = await Promise.all(statsPromises.concat([preds1dPromise]));
+        var statsArr = results.slice(0, QUANT_LIVE_TIMEFRAMES.length);
+        var predsResp = results[results.length - 1];
+        renderQuantLiveStats(statsArr);
+        renderQuantLivePredictions(predsResp.predictions || []);
+    } catch (err) {
+        console.error('Quant live fetch failed:', err);
+        var badge = document.getElementById('quant-live-status');
+        if (badge) badge.textContent = 'error';
+    }
+}
+
+function renderQuantLiveStats(statsArr) {
+    var c = document.getElementById('quant-live-stats');
+    if (!c) return;
+    var badge = document.getElementById('quant-live-status');
+
+    var anyResolved = false;
+    var totalPeriods = 0;
+    statsArr.forEach(function(s) {
+        if (s && s.n_resolved_periods > 0) {
+            anyResolved = true;
+            totalPeriods += s.n_resolved_periods;
+        }
+    });
+    if (badge) {
+        badge.textContent = anyResolved ? (totalPeriods + ' resolved bets') : 'no resolved data yet';
+    }
+
+    var html = '<table class="data-table"><thead><tr>' +
+        '<th>TF</th>' +
+        '<th class="r">Periods</th>' +
+        '<th class="r">Cum %</th>' +
+        '<th class="r">Ann %</th>' +
+        '<th class="r">SPY Ann %</th>' +
+        '<th class="r">Alpha %</th>' +
+        '<th class="r">Sharpe</th>' +
+        '<th class="r">Max DD %</th>' +
+        '<th class="r">Hit %</th>' +
+        '<th>Window</th>' +
+        '</tr></thead><tbody>';
+
+    function num(v, d) { return v == null ? '—' : Number(v).toFixed(d == null ? 2 : d); }
+    function colorCell(v, posGood) {
+        if (v == null) return '<td class="r">—</td>';
+        var positive = posGood ? v > 0 : v < 0;
+        var color = positive ? '#00E5A0' : (v == 0 ? '#8a8a9e' : '#FF4560');
+        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 2) + '</td>';
+    }
+    function sharpeCell(v) {
+        if (v == null) return '<td class="r">—</td>';
+        var color = v > 1 ? '#00E5A0' : v > 0 ? '#FBBF24' : '#FF4560';
+        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 2) + '</td>';
+    }
+
+    QUANT_LIVE_TIMEFRAMES.forEach(function(tf, i) {
+        var s = statsArr[i];
+        if (!s) {
+            html += '<tr><td>' + tf + '</td><td class="r" colspan="9" style="color:#8a8a9e">fetch failed</td></tr>';
+            return;
+        }
+        if (!s.summary) {
+            html += '<tr><td style="font-family:\'JetBrains Mono\',monospace">' + tf + '</td>' +
+                '<td class="r">0</td>' +
+                '<td colspan="8" style="color:#8a8a9e;font-size:0.8rem">' + qEsc(s.note || 'no resolved data yet') + '</td></tr>';
+            return;
+        }
+        var sm = s.summary;
+        var win = (s.date_range && s.date_range[0]) ? (s.date_range[0] + ' → ' + s.date_range[1]) : '—';
+        html += '<tr>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace">' + tf + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + s.n_resolved_periods + '</td>' +
+            colorCell(sm.cumulative_return_pct, true) +
+            colorCell(sm.annualized_return_pct, true) +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + num(sm.spy_annualized_return_pct, 2) + '</td>' +
+            colorCell(sm.alpha_annualized_pct, true) +
+            sharpeCell(sm.sharpe_annualized) +
+            colorCell(sm.max_drawdown_pct, false) +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + num(sm.hit_rate_pct, 1) + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.7rem;color:#8a8a9e">' + qEsc(win) + '</td>' +
+            '</tr>';
+    });
+    html += '</tbody></table>';
+    c.innerHTML = html;
+}
+
+function renderQuantLivePredictions(preds) {
+    var c = document.getElementById('quant-live-predictions');
+    if (!c) return;
+    if (!preds.length) {
+        c.innerHTML = '<p style="color:#8a8a9e;font-size:0.85rem">No live snapshots yet. POST /lightgbm/snapshot_live to capture today\'s top picks.</p>';
+        return;
+    }
+    // Group by prediction_date, show most recent date's top picks
+    var latestDate = preds[0].prediction_date;
+    var todayPicks = preds.filter(function(p) { return p.prediction_date === latestDate; });
+    var resolved = todayPicks.filter(function(p) { return p.y_true != null; }).length;
+
+    var html = '<div style="font-size:0.85rem;color:#8a8a9e;margin-bottom:0.5rem">' +
+        'Latest 1d snapshot: <strong style="color:#fff">' + qEsc(latestDate) + '</strong> · ' +
+        todayPicks.length + ' picks · ' + resolved + ' resolved' +
+        '</div>';
+    html += '<table class="data-table"><thead><tr>' +
+        '<th class="r">Rank</th><th>Ticker</th>' +
+        '<th class="r">Pred %</th><th class="r">Entry $</th>' +
+        '<th>Target Date</th><th class="r">Exit $</th>' +
+        '<th class="r">Actual %</th><th>Status</th>' +
+        '</tr></thead><tbody>';
+    todayPicks.forEach(function(p) {
+        var pred = Number(p.y_pred).toFixed(2);
+        var entry = Number(p.entry_price).toFixed(2);
+        var status = p.y_true == null ? '<span style="color:#FBBF24">pending</span>' : '<span style="color:#00E5A0">resolved</span>';
+        var actual = p.y_true == null ? '—' :
+            ('<span style="color:' + (p.y_true > 0 ? '#00E5A0' : '#FF4560') + '">' + Number(p.y_true).toFixed(2) + '</span>');
+        var exit = p.exit_price == null ? '—' : Number(p.exit_price).toFixed(2);
+        html += '<tr>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + p.pred_rank + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace">' + qEsc(p.ticker) + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + pred + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + entry + '</td>' +
+            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:#8a8a9e">' + qEsc(p.target_date) + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + exit + '</td>' +
+            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + actual + '</td>' +
+            '<td style="font-size:0.8rem">' + status + '</td>' +
+            '</tr>';
+    });
+    html += '</tbody></table>';
+    c.innerHTML = html;
 }
 
 async function refreshQuantTrainingRuns() {
