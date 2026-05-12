@@ -546,7 +546,7 @@ function stopAutoRefresh() {
 
 function initTabs() {
     const tabs = document.querySelectorAll('.tab');
-    const tabIds = ['tab-llm-usage', 'tab-api-usage', 'tab-system-health', 'tab-backtesting', 'tab-quant-quality', 'tab-data-collector'];
+    const tabIds = ['tab-llm-usage', 'tab-api-usage', 'tab-system-health', 'tab-backtesting', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-llm-analysis-logs', 'tab-catalyst-accuracy'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
@@ -558,10 +558,123 @@ function initTabs() {
             if (tabId === 'system-health') fetchWSStatus();
             if (tabId === 'api-usage') fetchAPIUsage();
             if (tabId === 'backtesting') fetchBacktestingStats();
+            if (tabId === 'action-engine') fetchActionEngineBacktest();
             if (tabId === 'quant-quality') refreshQuantHealth();
             if (tabId === 'data-collector') refreshDataCollectorHealth();
         });
     });
+}
+
+// ── Action Engine backtest tab ────────────────────────────────────────────
+
+async function fetchActionEngineBacktest() {
+    try {
+        const resp = await fetch('https://api.vibebullish.com/api/action-engine/backtest/stats?days=30');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const d = await resp.json();
+        renderActionEngineBacktest(d);
+    } catch (e) {
+        document.getElementById('ae-hero').innerHTML = `<div class="card"><div class="card-body" style="color:#f87171">Failed to load: ${e.message}</div></div>`;
+    }
+}
+
+function renderActionEngineBacktest(d) {
+    const hero = document.getElementById('ae-hero');
+    hero.innerHTML = `
+        <div class="metric-card hero">
+            <div class="metric-label">Decisions (${d.window_days}d)</div>
+            <div class="metric-value">${d.total_decisions.toLocaleString()}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Resolved</div>
+            <div class="metric-value">${d.resolved_decisions.toLocaleString()}</div>
+            <div class="metric-sub">${d.resolution_coverage_pct.toFixed(1)}% coverage</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Overall Hit %</div>
+            <div class="metric-value">${d.overall_hit_pct.toFixed(1)}%</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Avg Return</div>
+            <div class="metric-value">${d.overall_avg_return_pct >= 0 ? '+' : ''}${d.overall_avg_return_pct.toFixed(2)}%</div>
+            <div class="metric-sub">avg \|PT err\|: ${d.overall_avg_abs_error_pt.toFixed(1)}pt</div>
+        </div>
+    `;
+
+    const renderBuckets = (id, buckets, label) => {
+        if (!buckets || buckets.length === 0) {
+            document.getElementById(id).innerHTML = '<div style="color:#999;padding:1rem">No data</div>';
+            return;
+        }
+        const rows = buckets.map(b => {
+            const hitColor = b.n_resolved >= 5
+                ? (b.hit_pct >= 55 ? '#4ade80' : b.hit_pct >= 45 ? '#fbbf24' : '#f87171')
+                : '#666';
+            const retColor = b.avg_return_pct > 0 ? '#4ade80' : b.avg_return_pct < 0 ? '#f87171' : '#999';
+            return `
+                <tr>
+                    <td style="font-weight:600">${b.key}</td>
+                    <td style="text-align:right">${b.n_decisions.toLocaleString()}</td>
+                    <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
+                    <td style="text-align:right;color:${hitColor};font-weight:600">${b.hit_pct.toFixed(1)}%</td>
+                    <td style="text-align:right;color:${retColor};font-weight:600">${b.avg_return_pct >= 0 ? '+' : ''}${b.avg_return_pct.toFixed(2)}%</td>
+                </tr>
+            `;
+        }).join('');
+        document.getElementById(id).innerHTML = `
+            <table style="width:100%;border-collapse:collapse">
+                <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
+                    <th style="text-align:left;padding:0.5rem">${label}</th>
+                    <th style="text-align:right;padding:0.5rem">Decisions</th>
+                    <th style="text-align:right;padding:0.5rem">Resolved</th>
+                    <th style="text-align:right;padding:0.5rem">Hit %</th>
+                    <th style="text-align:right;padding:0.5rem">Avg Ret</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    };
+
+    renderBuckets('ae-by-intensity', d.by_intensity, 'Intensity');
+    renderBuckets('ae-by-horizon', d.by_horizon, 'Horizon');
+    renderBuckets('ae-by-trigger', d.by_trigger, 'Trigger');
+    renderBuckets('ae-by-direction', d.by_direction, 'Direction');
+
+    const recent = d.recent_resolutions || [];
+    if (recent.length === 0) {
+        document.getElementById('ae-recent').innerHTML = '<div style="color:#999;padding:1rem">No resolutions yet</div>';
+    } else {
+        const rows = recent.map(r => {
+            const retColor = r.realized_return_pct > 0 ? '#4ade80' : r.realized_return_pct < 0 ? '#f87171' : '#999';
+            const hitBadge = r.hit ? '<span style="color:#4ade80">✓</span>' : '<span style="color:#f87171">✗</span>';
+            const intensityStr = r.intensity ? `/${r.intensity}` : '';
+            return `
+                <tr>
+                    <td style="padding:0.4rem 0.5rem;font-weight:600">${r.ticker}</td>
+                    <td style="padding:0.4rem 0.5rem">${r.direction}${intensityStr}</td>
+                    <td style="padding:0.4rem 0.5rem">${r.horizon}</td>
+                    <td style="padding:0.4rem 0.5rem;font-size:0.85rem;color:#888">${r.trigger_type}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right;color:${retColor};font-weight:600">${r.realized_return_pct >= 0 ? '+' : ''}${r.realized_return_pct.toFixed(2)}%</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:center">${hitBadge}</td>
+                    <td style="padding:0.4rem 0.5rem;font-size:0.8rem;color:#666">${r.resolved_at.slice(0,10)}</td>
+                </tr>
+            `;
+        }).join('');
+        document.getElementById('ae-recent').innerHTML = `
+            <table style="width:100%;border-collapse:collapse">
+                <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
+                    <th style="text-align:left;padding:0.5rem">Ticker</th>
+                    <th style="text-align:left;padding:0.5rem">Call</th>
+                    <th style="text-align:left;padding:0.5rem">Horizon</th>
+                    <th style="text-align:left;padding:0.5rem">Trigger</th>
+                    <th style="text-align:right;padding:0.5rem">Realized</th>
+                    <th style="text-align:center;padding:0.5rem">Hit</th>
+                    <th style="text-align:left;padding:0.5rem">Resolved</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    }
 }
 
 // ── API Usage tab ───────────────────────────────────────────────────────
