@@ -203,6 +203,16 @@
         <div id="tab-system-health" style="display:none">
             <section class="card">
                 <div class="card-header">
+                    <h2>Scanner Activity (last 24h)</h2>
+                    <span class="card-badge" id="scanner-window-badge">24h</span>
+                </div>
+                <section class="hero-metrics" id="scanner-hero-metrics"></section>
+                <div id="scanner-by-source-content">
+                    <span class="dim">Fetching scanner metrics...</span>
+                </div>
+            </section>
+            <section class="card">
+                <div class="card-header">
                     <h2>WebSocket Health</h2>
                     <span class="card-badge" id="ws-status-badge">Loading...</span>
                 </div>
@@ -550,5 +560,6 @@
     <script src="js/data-collector.js"></script>
     <script src="js/llm-analysis-logs.js"></script>
     <script src="js/catalyst-accuracy.js"></script>
+    <script src="js/scanner-metrics.js"></script>
 </body>
 </html>
