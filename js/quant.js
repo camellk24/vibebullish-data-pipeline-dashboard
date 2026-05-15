@@ -5,10 +5,12 @@
 var QUANT_API = API_BASE + '/api/quant/health';
 var QUANT_RUNS_API = API_BASE + '/api/quant/training-runs?limit=10';
 var QUANT_BACKTESTS_API = API_BASE + '/api/quant/backtests?limit=20';
-var QUANT_LIVE_COHORT = 'tradeable_v2';
-var QUANT_LIVE_TOP_N = 10;
-var QUANT_LIVE_COST_BPS = 5;
-var QUANT_LIVE_TIMEFRAMES = ['1d', '5d', '20d'];
+// Live-stats migrated 2026-05-15: was /api/quant/live-stats (read
+// lgbm_live_predictions which got retired) → now uses
+// /api/action-engine/backtest/stats which reads action_decisions +
+// action_resolutions, the canonical price-prediction substrate.
+var QUANT_LIVE_STATS_API = API_BASE + '/api/action-engine/backtest/stats?days=30';
+var QUANT_LIVE_PREDS_TOP_N = 10;
 var quantRefreshTimer = null;
 
 async function refreshQuantHealth() {
@@ -31,27 +33,26 @@ async function refreshQuantHealth() {
 }
 
 async function refreshQuantLive() {
-    var cohort = QUANT_LIVE_COHORT;
-    var topN = QUANT_LIVE_TOP_N;
-    var costBps = QUANT_LIVE_COST_BPS;
     try {
-        // Fetch stats for each timeframe in parallel
-        var statsPromises = QUANT_LIVE_TIMEFRAMES.map(function(tf) {
-            var url = API_BASE + '/api/quant/live-stats?cohort=' + cohort +
-                '&timeframe=' + tf + '&top_n=' + topN + '&cost_bps=' + costBps +
-                '&t=' + Date.now();
-            return fetch(url).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
-        });
-        var preds1dPromise = fetch(API_BASE + '/api/quant/live-predictions?cohort=' + cohort +
-            '&timeframe=1d&limit=' + topN + '&t=' + Date.now())
+        // Stats: one call to /api/action-engine/backtest/stats which returns
+        // top-line + by_horizon / by_intensity / by_trigger / by_direction
+        // rollups computed against action_decisions + action_resolutions.
+        var statsPromise = fetch(QUANT_LIVE_STATS_API + '&t=' + Date.now())
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .catch(function() { return null; });
+        // Predictions: read recent action_decisions (1d horizon, top-N).
+        // The /api/quant/live-predictions endpoint was migrated 2026-05-15
+        // to read action_decisions LEFT JOIN action_resolutions; same shape
+        // as before with cohort_id always empty (action_decisions doesn't
+        // tag cohort).
+        var predsPromise = fetch(API_BASE + '/api/quant/live-predictions' +
+            '?timeframe=1d&limit=' + QUANT_LIVE_PREDS_TOP_N + '&t=' + Date.now())
             .then(function(r) { return r.ok ? r.json() : { predictions: [] }; })
             .catch(function() { return { predictions: [] }; });
 
-        var results = await Promise.all(statsPromises.concat([preds1dPromise]));
-        var statsArr = results.slice(0, QUANT_LIVE_TIMEFRAMES.length);
-        var predsResp = results[results.length - 1];
-        renderQuantLiveStats(statsArr);
-        renderQuantLivePredictions(predsResp.predictions || []);
+        var results = await Promise.all([statsPromise, predsPromise]);
+        renderQuantLiveStats(results[0]);
+        renderQuantLivePredictions(results[1].predictions || []);
     } catch (err) {
         console.error('Quant live fetch failed:', err);
         var badge = document.getElementById('quant-live-status');
@@ -59,76 +60,80 @@ async function refreshQuantLive() {
     }
 }
 
-function renderQuantLiveStats(statsArr) {
+function renderQuantLiveStats(stats) {
     var c = document.getElementById('quant-live-stats');
     if (!c) return;
     var badge = document.getElementById('quant-live-status');
 
-    var anyResolved = false;
-    var totalPeriods = 0;
-    statsArr.forEach(function(s) {
-        if (s && s.n_resolved_periods > 0) {
-            anyResolved = true;
-            totalPeriods += s.n_resolved_periods;
-        }
-    });
-    if (badge) {
-        badge.textContent = anyResolved ? (totalPeriods + ' resolved bets') : 'no resolved data yet';
+    if (!stats) {
+        if (badge) badge.textContent = 'fetch failed';
+        c.innerHTML = '<p style="color:#8a8a9e;font-size:0.85rem">Could not load action engine backtest stats.</p>';
+        return;
     }
-
-    var html = '<table class="data-table"><thead><tr>' +
-        '<th>TF</th>' +
-        '<th class="r">Periods</th>' +
-        '<th class="r">Cum %</th>' +
-        '<th class="r">Ann %</th>' +
-        '<th class="r">SPY Ann %</th>' +
-        '<th class="r">Alpha %</th>' +
-        '<th class="r">Sharpe</th>' +
-        '<th class="r">Max DD %</th>' +
-        '<th class="r">Hit %</th>' +
-        '<th>Window</th>' +
-        '</tr></thead><tbody>';
+    if (badge) {
+        badge.textContent = stats.resolved_decisions
+            ? (stats.resolved_decisions + ' resolved decisions / ' + stats.total_decisions + ' total · ' + stats.window_days + 'd window')
+            : 'no resolved decisions yet (' + stats.window_days + 'd window)';
+    }
 
     function num(v, d) { return v == null ? '—' : Number(v).toFixed(d == null ? 2 : d); }
-    function colorCell(v, posGood) {
+    function returnCell(v) {
         if (v == null) return '<td class="r">—</td>';
-        var positive = posGood ? v > 0 : v < 0;
-        var color = positive ? '#00E5A0' : (v == 0 ? '#8a8a9e' : '#FF4560');
+        var color = v > 0 ? '#00E5A0' : (v < 0 ? '#FF4560' : '#8a8a9e');
         return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 2) + '</td>';
     }
-    function sharpeCell(v) {
+    function hitCell(v) {
         if (v == null) return '<td class="r">—</td>';
-        var color = v > 1 ? '#00E5A0' : v > 0 ? '#FBBF24' : '#FF4560';
-        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 2) + '</td>';
+        var color = v >= 60 ? '#00E5A0' : (v >= 50 ? '#FBBF24' : '#FF4560');
+        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 1) + '</td>';
     }
 
-    QUANT_LIVE_TIMEFRAMES.forEach(function(tf, i) {
-        var s = statsArr[i];
-        if (!s) {
-            html += '<tr><td>' + tf + '</td><td class="r" colspan="9" style="color:#8a8a9e">fetch failed</td></tr>';
-            return;
-        }
-        if (!s.summary) {
-            html += '<tr><td style="font-family:\'JetBrains Mono\',monospace">' + tf + '</td>' +
-                '<td class="r">0</td>' +
-                '<td colspan="8" style="color:#8a8a9e;font-size:0.8rem">' + qEsc(s.note || 'no resolved data yet') + '</td></tr>';
-            return;
-        }
-        var sm = s.summary;
-        var win = (s.date_range && s.date_range[0]) ? (s.date_range[0] + ' → ' + s.date_range[1]) : '—';
-        html += '<tr>' +
-            '<td style="font-family:\'JetBrains Mono\',monospace">' + tf + '</td>' +
-            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + s.n_resolved_periods + '</td>' +
-            colorCell(sm.cumulative_return_pct, true) +
-            colorCell(sm.annualized_return_pct, true) +
-            '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + num(sm.spy_annualized_return_pct, 2) + '</td>' +
-            colorCell(sm.alpha_annualized_pct, true) +
-            sharpeCell(sm.sharpe_annualized) +
-            colorCell(sm.max_drawdown_pct, false) +
-            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + num(sm.hit_rate_pct, 1) + '</td>' +
-            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.7rem;color:#8a8a9e">' + qEsc(win) + '</td>' +
-            '</tr>';
-    });
+    // Top-line summary
+    var html = '<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">' +
+        '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
+        '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase">Hit %</div>' +
+        '<div style="font-size:1.3rem;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:' +
+        (stats.overall_hit_pct >= 60 ? '#00E5A0' : stats.overall_hit_pct >= 50 ? '#FBBF24' : '#FF4560') + '">' +
+        num(stats.overall_hit_pct, 1) + '</div></div>' +
+        '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
+        '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase">Avg Return %</div>' +
+        '<div style="font-size:1.3rem;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:' +
+        (stats.overall_avg_return_pct > 0 ? '#00E5A0' : stats.overall_avg_return_pct < 0 ? '#FF4560' : '#8a8a9e') + '">' +
+        num(stats.overall_avg_return_pct, 2) + '</div></div>' +
+        '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
+        '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase">Coverage %</div>' +
+        '<div style="font-size:1.3rem;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' +
+        num(stats.resolution_coverage_pct, 1) + '</div></div>' +
+        '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
+        '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase">Avg PT Error</div>' +
+        '<div style="font-size:1.3rem;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' +
+        num(stats.overall_avg_abs_error_pt, 2) + '</div></div>' +
+        '</div>';
+
+    // By-horizon table — closest match to the prior per-timeframe layout.
+    var horizons = stats.by_horizon || [];
+    html += '<table class="data-table"><thead><tr>' +
+        '<th>Horizon</th>' +
+        '<th class="r">Decisions</th>' +
+        '<th class="r">Resolved</th>' +
+        '<th class="r">Hit %</th>' +
+        '<th class="r">Avg Return %</th>' +
+        '<th class="r">Avg PT Error</th>' +
+        '</tr></thead><tbody>';
+    if (!horizons.length) {
+        html += '<tr><td colspan="6" style="color:#8a8a9e;font-size:0.8rem">no resolved decisions in window yet</td></tr>';
+    } else {
+        horizons.forEach(function(b) {
+            html += '<tr>' +
+                '<td style="font-family:\'JetBrains Mono\',monospace">' + qEsc(b.key) + '</td>' +
+                '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + b.n_decisions + '</td>' +
+                '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + b.n_resolved + '</td>' +
+                hitCell(b.hit_pct) +
+                returnCell(b.avg_return_pct) +
+                '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + num(b.avg_abs_error_pt, 2) + '</td>' +
+                '</tr>';
+        });
+    }
     html += '</tbody></table>';
     c.innerHTML = html;
 }
