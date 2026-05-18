@@ -576,6 +576,83 @@ async function fetchActionEngineBacktest() {
         document.getElementById('ae-hero').innerHTML = `<div class="card"><div class="card-body" style="color:#f87171">Failed to load: ${e.message}</div></div>`;
     }
     fetchActionEngineCalibration();
+    fetchActionEngineTrend();
+}
+
+async function fetchActionEngineTrend() {
+    try {
+        const resp = await fetch('https://api.vibebullish.com/api/action-engine/backtest/trend?days=7');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const d = await resp.json();
+        renderActionEngineTrend(d);
+    } catch (e) {
+        document.getElementById('ae-trend').innerHTML = `<div style="color:#f87171;padding:1rem">Trend unavailable: ${e.message}</div>`;
+    }
+}
+
+function renderActionEngineTrend(d) {
+    const points = d.points || [];
+    const summaryEl = document.getElementById('ae-trend-summary');
+    if (points.length === 0) {
+        document.getElementById('ae-trend').innerHTML = '<div style="color:#999;padding:1rem">No data in window</div>';
+        if (summaryEl) summaryEl.textContent = '';
+        return;
+    }
+    // Header summary: total resolved + cumulative hit_pct over window
+    let totalResolved = 0;
+    let totalHits = 0;
+    for (const p of points) {
+        totalResolved += p.n_resolved;
+        totalHits += p.n_resolved * (p.hit_pct / 100);
+    }
+    const cumHitPct = totalResolved > 0 ? (totalHits / totalResolved) * 100 : 0;
+    if (summaryEl) {
+        summaryEl.textContent = `cumulative ${cumHitPct.toFixed(1)}% over ${totalResolved} resolved`;
+        summaryEl.style.color = cumHitPct >= 55 ? '#4ade80' : cumHitPct >= 45 ? '#fbbf24' : '#f87171';
+    }
+
+    // Find max n_decisions for bar scaling
+    let maxN = 1;
+    for (const p of points) {
+        if (p.n_decisions > maxN) maxN = p.n_decisions;
+    }
+
+    // Render as a horizontal bar chart per day: date | bar | hit_pct | avg_ret
+    const rows = points.map(p => {
+        const barPct = (p.n_decisions / maxN) * 100;
+        const hitColor = p.n_resolved >= 3
+            ? (p.hit_pct >= 55 ? '#4ade80' : p.hit_pct >= 45 ? '#fbbf24' : '#f87171')
+            : '#666';
+        const retColor = p.avg_return_pct > 0 ? '#4ade80' : p.avg_return_pct < 0 ? '#f87171' : '#999';
+        const hitText = p.n_resolved > 0 ? `${p.hit_pct.toFixed(1)}%` : '—';
+        const retText = p.n_resolved > 0
+            ? `${p.avg_return_pct >= 0 ? '+' : ''}${p.avg_return_pct.toFixed(2)}%`
+            : '—';
+        return `
+            <tr>
+                <td style="padding:0.4rem 0.5rem;font-family:monospace;font-size:0.85rem;color:#888">${p.date}</td>
+                <td style="padding:0.4rem 0.5rem;width:50%">
+                    <div style="background:#1f2937;border-radius:3px;overflow:hidden;height:18px;position:relative">
+                        <div style="background:#3b82f6;width:${barPct}%;height:100%"></div>
+                        <span style="position:absolute;top:0;left:6px;font-size:0.8rem;line-height:18px;color:#fff">${p.n_decisions} dec · ${p.n_resolved} res</span>
+                    </div>
+                </td>
+                <td style="padding:0.4rem 0.5rem;text-align:right;color:${hitColor};font-weight:600">${hitText}</td>
+                <td style="padding:0.4rem 0.5rem;text-align:right;color:${retColor};font-weight:600">${retText}</td>
+            </tr>
+        `;
+    }).join('');
+    document.getElementById('ae-trend').innerHTML = `
+        <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
+                <th style="text-align:left;padding:0.5rem">Date (UTC)</th>
+                <th style="text-align:left;padding:0.5rem">Decisions / Resolved</th>
+                <th style="text-align:right;padding:0.5rem">Hit %</th>
+                <th style="text-align:right;padding:0.5rem">Avg Return</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
 }
 
 async function fetchActionEngineCalibration() {
