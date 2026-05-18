@@ -575,6 +575,69 @@ async function fetchActionEngineBacktest() {
     } catch (e) {
         document.getElementById('ae-hero').innerHTML = `<div class="card"><div class="card-body" style="color:#f87171">Failed to load: ${e.message}</div></div>`;
     }
+    fetchActionEngineCalibration();
+}
+
+async function fetchActionEngineCalibration() {
+    try {
+        const resp = await fetch('https://api.vibebullish.com/api/action-engine/backtest/calibration?horizon=60d&days=60');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const d = await resp.json();
+        renderActionEngineCalibration(d);
+    } catch (e) {
+        document.getElementById('ae-calibration').innerHTML = `<div style="color:#f87171;padding:1rem">Calibration unavailable: ${e.message}</div>`;
+    }
+}
+
+function renderActionEngineCalibration(d) {
+    const buckets = d.buckets || [];
+    const healthEl = document.getElementById('ae-calibration-health');
+    if (healthEl) {
+        if (d.monotonic_healthy) {
+            healthEl.textContent = '✓ monotonic (LARGE > MID > SMALL realized)';
+            healthEl.style.color = '#4ade80';
+        } else {
+            healthEl.textContent = '✗ non-monotonic — intensity thresholds may need tuning';
+            healthEl.style.color = '#fbbf24';
+        }
+    }
+    if (buckets.length === 0) {
+        document.getElementById('ae-calibration').innerHTML = '<div style="color:#999;padding:1rem">No resolved decisions yet</div>';
+        return;
+    }
+    const rows = buckets.map(b => {
+        const hitColor = b.n_resolved >= 5
+            ? (b.hit_rate >= 0.55 ? '#4ade80' : b.hit_rate >= 0.45 ? '#fbbf24' : '#f87171')
+            : '#666';
+        const realizedColor = b.mean_realized > 0 ? '#4ade80' : b.mean_realized < 0 ? '#f87171' : '#999';
+        const errorPp = (b.mean_realized - b.mean_y_pred);
+        const errColor = Math.abs(errorPp) < 2 ? '#4ade80' : Math.abs(errorPp) < 5 ? '#fbbf24' : '#f87171';
+        return `
+            <tr>
+                <td style="font-weight:600">${b.intensity}</td>
+                <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
+                <td style="text-align:right">${b.mean_y_pred >= 0 ? '+' : ''}${b.mean_y_pred.toFixed(2)}%</td>
+                <td style="text-align:right;color:${realizedColor};font-weight:600">${b.mean_realized >= 0 ? '+' : ''}${b.mean_realized.toFixed(2)}%</td>
+                <td style="text-align:right;color:${errColor}">${errorPp >= 0 ? '+' : ''}${errorPp.toFixed(2)}pp</td>
+                <td style="text-align:right;color:#666;font-size:0.85rem">${b.p10.toFixed(1)} / ${b.p50.toFixed(1)} / ${b.p90.toFixed(1)}</td>
+                <td style="text-align:right;color:${hitColor};font-weight:600">${(b.hit_rate * 100).toFixed(1)}%</td>
+            </tr>
+        `;
+    }).join('');
+    document.getElementById('ae-calibration').innerHTML = `
+        <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
+                <th style="text-align:left;padding:0.5rem">Intensity</th>
+                <th style="text-align:right;padding:0.5rem">Resolved</th>
+                <th style="text-align:right;padding:0.5rem">Mean Predicted</th>
+                <th style="text-align:right;padding:0.5rem">Mean Realized</th>
+                <th style="text-align:right;padding:0.5rem">Error</th>
+                <th style="text-align:right;padding:0.5rem;font-size:0.75rem">p10 / p50 / p90 realized</th>
+                <th style="text-align:right;padding:0.5rem">Hit Rate</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
 }
 
 function renderActionEngineBacktest(d) {
