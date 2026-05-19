@@ -671,15 +671,15 @@ function renderActionEngineCalibration(d) {
     const healthEl = document.getElementById('ae-calibration-health');
     if (healthEl) {
         if (d.monotonic_healthy) {
-            healthEl.textContent = '✓ monotonic (LARGE > MID > SMALL realized)';
+            healthEl.textContent = '✓ monotonic (mean realized rises with confidence band)';
             healthEl.style.color = '#4ade80';
         } else {
-            healthEl.textContent = '✗ non-monotonic — intensity thresholds may need tuning';
+            healthEl.textContent = '✗ non-monotonic — LLM confidence scale may need tuning';
             healthEl.style.color = '#fbbf24';
         }
     }
     if (buckets.length === 0) {
-        document.getElementById('ae-calibration').innerHTML = '<div style="color:#999;padding:1rem">No resolved decisions yet</div>';
+        document.getElementById('ae-calibration').innerHTML = '<div style="color:#999;padding:1rem">No resolved APPROVE decisions yet</div>';
         return;
     }
     const rows = buckets.map(b => {
@@ -691,7 +691,7 @@ function renderActionEngineCalibration(d) {
         const errColor = Math.abs(errorPp) < 2 ? '#4ade80' : Math.abs(errorPp) < 5 ? '#fbbf24' : '#f87171';
         return `
             <tr>
-                <td style="font-weight:600">${b.intensity}</td>
+                <td style="font-weight:600">${b.band}</td>
                 <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
                 <td style="text-align:right">${b.mean_y_pred >= 0 ? '+' : ''}${b.mean_y_pred.toFixed(2)}%</td>
                 <td style="text-align:right;color:${realizedColor};font-weight:600">${b.mean_realized >= 0 ? '+' : ''}${b.mean_realized.toFixed(2)}%</td>
@@ -704,7 +704,7 @@ function renderActionEngineCalibration(d) {
     document.getElementById('ae-calibration').innerHTML = `
         <table style="width:100%;border-collapse:collapse">
             <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
-                <th style="text-align:left;padding:0.5rem">Intensity</th>
+                <th style="text-align:left;padding:0.5rem">Confidence Band</th>
                 <th style="text-align:right;padding:0.5rem">Resolved</th>
                 <th style="text-align:right;padding:0.5rem">Mean Predicted</th>
                 <th style="text-align:right;padding:0.5rem">Mean Realized</th>
@@ -774,10 +774,11 @@ function renderActionEngineBacktest(d) {
         `;
     };
 
-    renderBuckets('ae-by-intensity', d.by_intensity, 'Intensity');
+    renderBuckets('ae-by-v2-stance', d.by_v2_stance, 'Stance');
     renderBuckets('ae-by-horizon', d.by_horizon, 'Horizon');
     renderBuckets('ae-by-trigger', d.by_trigger, 'Trigger');
-    renderBuckets('ae-by-direction', d.by_direction, 'Direction');
+    renderBuckets('ae-by-action-predicate', d.by_action_predicate, 'Predicate');
+    renderBuckets('ae-by-confidence-band', d.by_confidence_band, 'Confidence Band');
 
     const recent = d.recent_resolutions || [];
     if (recent.length === 0) {
@@ -786,11 +787,20 @@ function renderActionEngineBacktest(d) {
         const rows = recent.map(r => {
             const retColor = r.realized_return_pct > 0 ? '#4ade80' : r.realized_return_pct < 0 ? '#f87171' : '#999';
             const hitBadge = r.hit ? '<span style="color:#4ade80">✓</span>' : '<span style="color:#f87171">✗</span>';
-            const intensityStr = r.intensity ? `/${r.intensity}` : '';
+            const stanceColor = r.v2_stance === 'APPROVE' ? '#4ade80'
+                : r.v2_stance === 'VETO' ? '#f87171'
+                : r.v2_stance === 'NEUTRAL' ? '#fbbf24' : '#666';
+            const stanceStr = r.v2_stance
+                ? `<span style="color:${stanceColor}">${r.v2_stance}</span>${r.v2_confidence != null ? ` <span style="color:#888;font-size:0.85rem">${r.v2_confidence}</span>` : ''}`
+                : '<span style="color:#666">—</span>';
+            const yp60Str = r.y_pred_60d != null
+                ? `<span style="color:${r.y_pred_60d >= 0 ? '#4ade80' : '#f87171'}">${r.y_pred_60d >= 0 ? '+' : ''}${r.y_pred_60d.toFixed(2)}%</span>`
+                : '<span style="color:#666">—</span>';
             return `
                 <tr>
                     <td style="padding:0.4rem 0.5rem;font-weight:600">${r.ticker}</td>
-                    <td style="padding:0.4rem 0.5rem">${r.direction}${intensityStr}</td>
+                    <td style="padding:0.4rem 0.5rem">${stanceStr}</td>
+                    <td style="padding:0.4rem 0.5rem">${yp60Str}</td>
                     <td style="padding:0.4rem 0.5rem">${r.horizon}</td>
                     <td style="padding:0.4rem 0.5rem;font-size:0.85rem;color:#888">${r.trigger_type}</td>
                     <td style="padding:0.4rem 0.5rem;text-align:right;color:${retColor};font-weight:600">${r.realized_return_pct >= 0 ? '+' : ''}${r.realized_return_pct.toFixed(2)}%</td>
@@ -803,7 +813,8 @@ function renderActionEngineBacktest(d) {
             <table style="width:100%;border-collapse:collapse">
                 <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
                     <th style="text-align:left;padding:0.5rem">Ticker</th>
-                    <th style="text-align:left;padding:0.5rem">Call</th>
+                    <th style="text-align:left;padding:0.5rem">Stance / Conf</th>
+                    <th style="text-align:left;padding:0.5rem">y_pred_60d</th>
                     <th style="text-align:left;padding:0.5rem">Horizon</th>
                     <th style="text-align:left;padding:0.5rem">Trigger</th>
                     <th style="text-align:right;padding:0.5rem">Realized</th>
