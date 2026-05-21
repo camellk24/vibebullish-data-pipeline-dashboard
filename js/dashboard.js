@@ -793,14 +793,14 @@ function renderActionEngineBacktest(d) {
             const stanceStr = r.v2_stance
                 ? `<span style="color:${stanceColor}">${r.v2_stance}</span>${r.v2_confidence != null ? ` <span style="color:#888;font-size:0.85rem">${r.v2_confidence}</span>` : ''}`
                 : '<span style="color:#666">—</span>';
-            const yp60Str = r.y_pred_60d != null
-                ? `<span style="color:${r.y_pred_60d >= 0 ? '#4ade80' : '#f87171'}">${r.y_pred_60d >= 0 ? '+' : ''}${r.y_pred_60d.toFixed(2)}%</span>`
+            const predStr = r.predicted_pct != null
+                ? `<span style="color:${r.predicted_pct >= 0 ? '#4ade80' : '#f87171'}">${r.predicted_pct >= 0 ? '+' : ''}${r.predicted_pct.toFixed(2)}%</span>`
                 : '<span style="color:#666">—</span>';
             return `
                 <tr>
                     <td style="padding:0.4rem 0.5rem;font-weight:600">${r.ticker}</td>
                     <td style="padding:0.4rem 0.5rem">${stanceStr}</td>
-                    <td style="padding:0.4rem 0.5rem">${yp60Str}</td>
+                    <td style="padding:0.4rem 0.5rem">${predStr}</td>
                     <td style="padding:0.4rem 0.5rem">${r.horizon}</td>
                     <td style="padding:0.4rem 0.5rem;font-size:0.85rem;color:#888">${r.trigger_type}</td>
                     <td style="padding:0.4rem 0.5rem;text-align:right;color:${retColor};font-weight:600">${r.realized_return_pct >= 0 ? '+' : ''}${r.realized_return_pct.toFixed(2)}%</td>
@@ -814,7 +814,7 @@ function renderActionEngineBacktest(d) {
                 <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
                     <th style="text-align:left;padding:0.5rem">Ticker</th>
                     <th style="text-align:left;padding:0.5rem">Stance / Conf</th>
-                    <th style="text-align:left;padding:0.5rem">y_pred_60d</th>
+                    <th style="text-align:left;padding:0.5rem" title="adjusted_pt_pct — per-horizon LGBM prediction the hit is computed against">Predicted</th>
                     <th style="text-align:left;padding:0.5rem">Horizon</th>
                     <th style="text-align:left;padding:0.5rem">Trigger</th>
                     <th style="text-align:right;padding:0.5rem">Realized</th>
