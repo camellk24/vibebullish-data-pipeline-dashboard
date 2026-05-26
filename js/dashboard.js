@@ -965,6 +965,10 @@ function renderWSStatus(data) {
     addMetric('Bars Today', (data.bars_received || 0).toLocaleString());
     addMetric('Catalyst Triggers', String(data.catalyst_triggers_today || 0));
     addMetric('Tripwires Fired', String(data.tripwires_fired_today || 0));
+    addMetric('Halts Today', String(data.halts_fired_today || 0));
+    addMetric('Block Clusters', String(data.block_clusters_today || 0));
+    addMetric('RVOL Spikes', String(data.rvol_spikes_today || 0));
+    addMetric('Dispatcher Drops', String(data.trade_dispatcher_drops || 0));
     addMetric('Reconnects', String(data.reconnect_count || 0));
     addMetric('24h Uptime', (data.uptime_pct_24h || 0).toFixed(1) + '%');
 
