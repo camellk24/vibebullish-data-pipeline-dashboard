@@ -7,10 +7,6 @@
       "use": "@vercel/static"
     },
     {
-      "src": "enhanced-dashboard.html",
-      "use": "@vercel/static"
-    },
-    {
       "src": "styles/*",
       "use": "@vercel/static"
     },
