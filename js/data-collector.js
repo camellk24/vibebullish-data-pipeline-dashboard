@@ -15,6 +15,20 @@ async function refreshDataCollectorHealth() {
     renderDCErrors(data.recent_errors || []);
   } catch (err) {
     console.error('Data collector fetch failed:', err);
+    // Explicit error state — an outage must not look like an empty queue.
+    ['dc-pending', 'dc-inprogress', 'dc-completed', 'dc-failed', 'dc-latency'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    ['dc-by-source', 'dc-by-type', 'dc-tables', 'dc-api', 'dc-errors'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = '';
+      const span = document.createElement('span');
+      span.style.cssText = 'color:#FF4560;font-size:0.85rem';
+      span.textContent = 'Failed to load — ' + (err && err.message ? err.message : err);
+      el.appendChild(span);
+    });
   }
 }
 
@@ -54,7 +68,7 @@ function renderDCBySource(q) {
       <td class="r" style="font-family:'JetBrains Mono',monospace">${dcFmt(s.Pending)}</td>
       <td class="r" style="font-family:'JetBrains Mono',monospace;color:#00E5A0">${dcFmt(s.Completed)}</td>
       <td class="r" style="font-family:'JetBrains Mono',monospace;color:${s.Failed>0?'#FF4560':'#8a8a9e'}">${dcFmt(s.Failed)}</td>
-      <td class="r" style="font-family:'JetBrains Mono',monospace">${s.AvgMs}ms</td>
+      <td class="r" style="font-family:'JetBrains Mono',monospace">${dcFmt(s.AvgMs)}ms</td>
       <td class="r" style="font-family:'JetBrains Mono',monospace">${rate}</td>`;
     tbody.appendChild(tr);
   });
@@ -105,7 +119,7 @@ function renderDCTables(tables) {
       body += `<div style="font-size:1.4rem;font-weight:700;font-family:'JetBrains Mono',monospace">${dcFmt(data.total_rows)} rows</div>`;
       body += `<div style="color:#8a8a9e;font-size:0.8rem;margin-top:4px">Updated last 24h: ${dcFmt(data.updated_last_24h || 0)}</div>`;
       if (data.stalest_ticker) {
-        body += `<div style="color:#8a8a9e;font-size:0.8rem">Stalest: ${data.stalest_ticker} (${(data.stalest_age_hours || 0).toFixed(1)}h)</div>`;
+        body += `<div style="color:#8a8a9e;font-size:0.8rem">Stalest: ${esc(data.stalest_ticker)} (${(data.stalest_age_hours || 0).toFixed(1)}h)</div>`;
       }
       if (data.null_coverage) {
         body += '<div style="margin-top:10px">';
@@ -113,7 +127,7 @@ function renderDCTables(tables) {
           const color = cov > 80 ? '#00E5A0' : cov > 50 ? '#FBBF24' : '#FF4560';
           body += `
             <div style="display:flex;align-items:center;gap:8px;font-size:0.75rem;margin:3px 0">
-              <div style="width:120px;color:#8a8a9e">${col}</div>
+              <div style="width:120px;color:#8a8a9e">${esc(col)}</div>
               <div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
                 <div style="height:100%;width:${cov}%;background:${color}"></div>
               </div>
@@ -124,7 +138,7 @@ function renderDCTables(tables) {
       }
     } else if (data.total_tickers !== undefined) {
       body += `<div style="font-size:1.4rem;font-weight:700;font-family:'JetBrains Mono',monospace">${dcFmt(data.total_tickers)} tickers</div>`;
-      body += `<div style="color:#8a8a9e;font-size:0.8rem;margin-top:4px">Latest: ${data.latest_date || '—'}</div>`;
+      body += `<div style="color:#8a8a9e;font-size:0.8rem;margin-top:4px">Latest: ${data.latest_date ? esc(data.latest_date) : '—'}</div>`;
       body += `<div style="color:#8a8a9e;font-size:0.8rem">Today: ${dcFmt(data.tickers_with_today || 0)} • Stale 7d+: ${dcFmt(data.tickers_stale_7d || 0)}</div>`;
     }
     card.innerHTML = body;
@@ -172,15 +186,14 @@ function renderDCErrors(errors) {
       <th>Error</th>
     </tr></thead><tbody></tbody>`;
   const tbody = t.querySelector('tbody');
-  const escapeAttr = (s) => String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
   errors.forEach(e => {
     const tr = document.createElement('tr');
     const when = e.at ? new Date(e.at).toLocaleTimeString() : '—';
     tr.innerHTML = `
-      <td style="font-family:'JetBrains Mono',monospace">${e.ticker}</td>
-      <td style="color:#A855F7">${e.data_type}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${esc(e.ticker)}</td>
+      <td style="color:#A855F7">${esc(e.data_type)}</td>
       <td style="color:#8a8a9e;font-size:0.8rem">${when}</td>
-      <td style="color:#FF4560;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0" title="${escapeAttr(e.error)}">${e.error}</td>`;
+      <td style="color:#FF4560;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0" title="${esc(e.error)}">${esc(e.error)}</td>`;
     tbody.appendChild(tr);
   });
   c.appendChild(t);
