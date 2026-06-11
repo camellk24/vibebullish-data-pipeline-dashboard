@@ -93,7 +93,12 @@
                     metaShown = true;
                 }
             } catch (err) {
-                container.innerHTML = `<div style="color:#FF4560;padding:14px;">${err.message}</div>`;
+                // textContent, not innerHTML — err.message can carry upstream response text.
+                container.textContent = '';
+                const msg = document.createElement('div');
+                msg.style.cssText = 'color:#FF4560;padding:14px;';
+                msg.textContent = String(err.message || err);
+                container.appendChild(msg);
                 countEl.textContent = '';
             }
         }

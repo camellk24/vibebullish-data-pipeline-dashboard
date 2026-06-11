@@ -4,19 +4,30 @@
 
 const API_BASE = 'https://api.vibebullish.com';
 const API = API_BASE + '/api/llm-usage';
-const INTERNAL_API_TOKEN = ''; // Set to your INTERNAL_API_TOKEN value if the endpoint requires auth
+// NOTE: this is a public static site — it must NEVER embed INTERNAL_API_TOKEN
+// (the backend admin secret). Internal endpoints that require auth simply
+// degrade to their error state here.
 const REFRESH_MS = 60_000;
 const WS_STATUS_REFRESH_MS = 30_000;
 let selectedDate = null; // null = today (live), string = 'YYYY-MM-DD'
 
 // Per-model cost ($/1K tokens)
+// DeepSeek prices from https://api-docs.deepseek.com/quick_start/pricing
+// (fetched 2026-06-10; cache-miss input rates). `deepseek-chat` /
+// `deepseek-reasoner` are legacy aliases of deepseek-v4-flash (deprecated
+// upstream 2026-07-24) that may still appear in older llm_call_log rows;
+// the backend canonicalizes new calls to deepseek-v4-flash / deepseek-v4-pro.
 const MODELS = {
-    'gpt-5-mini':        { input: 0.00030, output: 0.00120, label: 'GPT-5 Mini',        fam: 'gpt' },
-    'gpt-4o':            { input: 0.00250, output: 0.01000, label: 'GPT-4o',             fam: 'gpt' },
-    'gpt-4o-mini':       { input: 0.00015, output: 0.00060, label: 'GPT-4o Mini',        fam: 'gpt' },
-    'claude-opus-4-7':   { input: 0.00500, output: 0.02500, label: 'Claude Opus 4.7',    fam: 'claude' },
-    'claude-sonnet-4-6': { input: 0.00300, output: 0.01500, label: 'Claude Sonnet 4.6',  fam: 'claude' },
-    'claude-haiku-4-5':  { input: 0.00080, output: 0.00400, label: 'Claude Haiku 4.5',   fam: 'claude' },
+    'gpt-5-mini':         { input: 0.00030,  output: 0.00120, label: 'GPT-5 Mini',          fam: 'gpt' },
+    'gpt-4o':             { input: 0.00250,  output: 0.01000, label: 'GPT-4o',              fam: 'gpt' },
+    'gpt-4o-mini':        { input: 0.00015,  output: 0.00060, label: 'GPT-4o Mini',         fam: 'gpt' },
+    'claude-opus-4-7':    { input: 0.00500,  output: 0.02500, label: 'Claude Opus 4.7',     fam: 'claude' },
+    'claude-sonnet-4-6':  { input: 0.00300,  output: 0.01500, label: 'Claude Sonnet 4.6',   fam: 'claude' },
+    'claude-haiku-4-5':   { input: 0.00080,  output: 0.00400, label: 'Claude Haiku 4.5',    fam: 'claude' },
+    'deepseek-v4-flash':  { input: 0.00014,  output: 0.00028, label: 'DeepSeek V4 Flash',   fam: 'deepseek' },
+    'deepseek-v4-pro':    { input: 0.000435, output: 0.00087, label: 'DeepSeek V4 Pro',     fam: 'deepseek' },
+    'deepseek-chat':      { input: 0.00014,  output: 0.00028, label: 'DeepSeek Chat (legacy alias)',     fam: 'deepseek', alias: true },
+    'deepseek-reasoner':  { input: 0.00014,  output: 0.00028, label: 'DeepSeek Reasoner (legacy alias)', fam: 'deepseek', alias: true },
 };
 const TOK_IN = 2000, TOK_OUT = 500;
 
@@ -48,21 +59,26 @@ function dayName(dateStr) {
 
 // ── Fetchers ──────────────────────────────────────────────────────────────
 
-async function fetchToday() {
-    const dateParam = selectedDate ? `&date=${selectedDate}` : '';
-    const r = await fetch(`${API}/today?t=${Date.now()}${dateParam}`);
+// All fetchers must throw on non-2xx so a backend outage renders as an
+// explicit error state, not a normal-looking zero-usage day.
+async function getJSON(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
 }
 
+async function fetchToday() {
+    const dateParam = selectedDate ? `&date=${selectedDate}` : '';
+    return getJSON(`${API}/today?t=${Date.now()}${dateParam}`);
+}
+
 async function fetchWeek() {
-    const r = await fetch(`${API}/week?t=${Date.now()}`);
-    return r.json();
+    return getJSON(`${API}/week?t=${Date.now()}`);
 }
 
 async function fetchScanner() {
     const dateParam = selectedDate ? `&date=${selectedDate}` : '';
-    const r = await fetch(`${API}/scanner?t=${Date.now()}${dateParam}`);
-    return r.json();
+    return getJSON(`${API}/scanner?t=${Date.now()}${dateParam}`);
 }
 
 // ── Renderers ─────────────────────────────────────────────────────────────
@@ -75,13 +91,19 @@ function renderHero(data) {
     el('m-models').textContent = Object.keys(data.by_model || {}).length;
     el('m-tickers').textContent = data.unique_tickers || '0';
 
-    // Cost
+    // Cost — surface unpriced models loudly so a missing MODELS entry
+    // (which understates the headline) is self-revealing.
     let total = 0;
+    let unpriced = 0;
     for (const [model, count] of Object.entries(data.by_model || {})) {
         const c = costFor(count, model);
-        if (c !== null) total += c;
+        if (c === null) unpriced++;
+        else total += c;
     }
-    el('m-cost').textContent = total > 0 ? `$${total.toFixed(2)}` : '$0.00';
+    el('m-cost').textContent = `$${total.toFixed(2)}`;
+    el('m-cost-label').textContent = unpriced > 0
+        ? `Est. Cost (${unpriced} model${unpriced === 1 ? '' : 's'} unpriced!)`
+        : 'Est. Cost';
 }
 
 function renderModelBreakdown(data) {
@@ -250,7 +272,7 @@ function renderCost(data) {
             return `<tr>
                 <td><span class="model-dot ${esc(fam)}"></span><span class="model-name">${esc(model)}</span></td>
                 <td class="r">${fmt(count)}</td>
-                <td class="r">${cost !== null ? '$' + cost.toFixed(2) : '—'}</td>
+                <td class="r">${cost !== null ? '$' + cost.toFixed(2) : '<span style="color:var(--warning,#FBBF24)">n/a (unpriced)</span>'}</td>
             </tr>`;
         }).join('');
 
@@ -264,9 +286,9 @@ function renderCost(data) {
         </tr></tfoot>
     </table>`;
 
-    // What-if table
+    // What-if table (skip legacy alias entries — same pricing as their canonical model)
     const total = data.total_calls;
-    const whatIfRows = Object.entries(MODELS).map(([key, m]) => {
+    const whatIfRows = Object.entries(MODELS).filter(([, m]) => !m.alias).map(([key, m]) => {
         const cost = costFor(total, key);
         const diff = cost - currentTotal;
         const cls = diff > 0 ? 'cost-up' : 'cost-down';
@@ -345,64 +367,6 @@ function renderCatalysts(data) {
     }).join('')}</div>`;
 }
 
-function renderTickerScans(data) {
-    const container = document.getElementById('ticker-scan-list');
-    const badge = document.getElementById('scan-count');
-    const scans = data.ticker_scans || [];
-
-    badge.textContent = `${data.total_scans || 0} scans / ${data.unique_tickers || 0} unique`;
-
-    if (!scans.length) {
-        container.textContent = 'No ticker scans recorded yet.';
-        return;
-    }
-
-    // Group by ticker, show most recent scan time + source
-    const byTicker = {};
-    for (const s of scans) {
-        if (!byTicker[s.ticker]) {
-            byTicker[s.ticker] = { count: 0, models: {}, sources: {}, lastTime: s.time };
-        }
-        byTicker[s.ticker].count++;
-        byTicker[s.ticker].models[s.model] = (byTicker[s.ticker].models[s.model] || 0) + 1;
-        if (s.source) byTicker[s.ticker].sources[s.source] = (byTicker[s.ticker].sources[s.source] || 0) + 1;
-    }
-
-    // Sort by latest scan time (descending)
-    const sorted = Object.entries(byTicker).sort((a, b) => b[1].lastTime.localeCompare(a[1].lastTime));
-
-    const LIMIT = 50;
-    const needsToggle = sorted.length > LIMIT;
-
-    // Trusted backend data — build all rows, hide extras
-    const allRows = sorted.map(([ticker, info], i) => {
-        const modelStr = Object.entries(info.models)
-            .map(([m, c]) => c > 1 ? `${esc(m)} x${c}` : esc(m))
-            .join(', ');
-        const sourceStr = Object.keys(info.sources).map(s => esc(s)).join(', ') || '—';
-        const hidden = i >= LIMIT ? ' class="scan-expandable" style="display:none"' : '';
-        return `<tr${hidden}>
-            <td class="model-name">${esc(ticker)}</td>
-            <td><span class="source-tag">${sourceStr}</span></td>
-            <td class="r">${info.count}</td>
-            <td class="dim-val">${modelStr}</td>
-            <td class="r dim-val">${esc(info.lastTime)}</td>
-        </tr>`;
-    }).join('');
-
-    container.innerHTML = `<table class="data-table">
-        <thead><tr><th>Ticker</th><th>Source</th><th class="r">Scans</th><th>Model</th><th class="r">Last</th></tr></thead>
-        <tbody>${allRows}</tbody>
-    </table>${needsToggle ? `<button class="expand-toggle" onclick="toggleScanRows(this)">Show all ${sorted.length} tickers</button>` : ''}`;
-}
-
-function toggleScanRows(btn) {
-    const rows = btn.previousElementSibling.querySelectorAll('.scan-expandable');
-    const expanding = rows[0] && rows[0].style.display === 'none';
-    rows.forEach(r => r.style.display = expanding ? '' : 'none');
-    btn.textContent = expanding ? `Show top 50` : `Show all ${rows.length + 50} tickers`;
-}
-
 // ── Web Search Catalyst Stats ──────────────────────────────────────────────
 
 function renderWebSearchStats(data) {
@@ -448,6 +412,28 @@ function renderWebSearchStats(data) {
 
 // ── Main loop ─────────────────────────────────────────────────────────────
 
+// Explicit error state: a backend outage must not look like a zero-usage day.
+function renderLoadError(err) {
+    const msg = `Failed to load — ${err && err.message ? err.message : err}`;
+    ['m-total', 'm-models', 'm-tickers', 'm-cost'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '—';
+    });
+    ['model-breakdown', 'hourly-chart', 'service-breakdown', 'endpoint-breakdown',
+     'ticker-grid', 'weekly-chart', 'catalyst-list', 'web-search-stats',
+     'cost-current', 'cost-whatif'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = '';
+        const span = document.createElement('span');
+        span.style.color = 'var(--negative, #FF4560)';
+        span.style.fontSize = '0.85rem';
+        span.textContent = msg; // textContent — upstream error text never hits innerHTML
+        el.appendChild(span);
+    });
+    document.getElementById('last-updated').textContent = 'Error — backend unreachable';
+}
+
 async function refresh() {
     try {
         const [today, week, scanner] = await Promise.all([fetchToday(), fetchWeek(), fetchScanner()]);
@@ -461,7 +447,6 @@ async function refresh() {
         renderCost(today);
         renderWeekly(week);
         renderCatalysts(scanner);
-        renderTickerScans(scanner);
         renderWebSearchStats(scanner);
 
         const now = new Date();
@@ -474,7 +459,7 @@ async function refresh() {
         if (dot) dot.style.display = selectedDate ? 'none' : '';
     } catch (err) {
         console.error('Dashboard refresh failed:', err);
-        document.getElementById('last-updated').textContent = 'Error';
+        renderLoadError(err);
     }
 }
 
@@ -546,7 +531,7 @@ function stopAutoRefresh() {
 
 function initTabs() {
     const tabs = document.querySelectorAll('.tab');
-    const tabIds = ['tab-llm-usage', 'tab-api-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-llm-analysis-logs', 'tab-catalyst-accuracy'];
+    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-llm-analysis-logs', 'tab-catalyst-accuracy'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
@@ -556,7 +541,6 @@ function initTabs() {
                 document.getElementById(id).style.display = id === 'tab-' + tabId ? '' : 'none';
             });
             if (tabId === 'system-health') fetchWSStatus();
-            if (tabId === 'api-usage') fetchAPIUsage();
             if (tabId === 'action-engine') fetchActionEngineBacktest();
             if (tabId === 'quant-quality') refreshQuantHealth();
             if (tabId === 'data-collector') refreshDataCollectorHealth();
@@ -573,7 +557,7 @@ async function fetchActionEngineBacktest() {
         const d = await resp.json();
         renderActionEngineBacktest(d);
     } catch (e) {
-        document.getElementById('ae-hero').innerHTML = `<div class="card"><div class="card-body" style="color:#f87171">Failed to load: ${e.message}</div></div>`;
+        document.getElementById('ae-hero').innerHTML = `<div class="card"><div class="card-body" style="color:#f87171">Failed to load: ${esc(e.message)}</div></div>`;
     }
     fetchActionEngineCalibration();
     fetchActionEngineTrend();
@@ -586,7 +570,7 @@ async function fetchActionEngineTrend() {
         const d = await resp.json();
         renderActionEngineTrend(d);
     } catch (e) {
-        document.getElementById('ae-trend').innerHTML = `<div style="color:#f87171;padding:1rem">Trend unavailable: ${e.message}</div>`;
+        document.getElementById('ae-trend').innerHTML = `<div style="color:#f87171;padding:1rem">Trend unavailable: ${esc(e.message)}</div>`;
     }
 }
 
@@ -630,7 +614,7 @@ function renderActionEngineTrend(d) {
             : '—';
         return `
             <tr>
-                <td style="padding:0.4rem 0.5rem;font-family:monospace;font-size:0.85rem;color:#888">${p.date}</td>
+                <td style="padding:0.4rem 0.5rem;font-family:monospace;font-size:0.85rem;color:#888">${esc(p.date)}</td>
                 <td style="padding:0.4rem 0.5rem;width:50%">
                     <div style="background:#1f2937;border-radius:3px;overflow:hidden;height:18px;position:relative">
                         <div style="background:#3b82f6;width:${barPct}%;height:100%"></div>
@@ -662,7 +646,7 @@ async function fetchActionEngineCalibration() {
         const d = await resp.json();
         renderActionEngineCalibration(d);
     } catch (e) {
-        document.getElementById('ae-calibration').innerHTML = `<div style="color:#f87171;padding:1rem">Calibration unavailable: ${e.message}</div>`;
+        document.getElementById('ae-calibration').innerHTML = `<div style="color:#f87171;padding:1rem">Calibration unavailable: ${esc(e.message)}</div>`;
     }
 }
 
@@ -691,7 +675,7 @@ function renderActionEngineCalibration(d) {
         const errColor = Math.abs(errorPp) < 2 ? '#4ade80' : Math.abs(errorPp) < 5 ? '#fbbf24' : '#f87171';
         return `
             <tr>
-                <td style="font-weight:600">${b.band}</td>
+                <td style="font-weight:600">${esc(b.band)}</td>
                 <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
                 <td style="text-align:right">${b.mean_y_pred >= 0 ? '+' : ''}${b.mean_y_pred.toFixed(2)}%</td>
                 <td style="text-align:right;color:${realizedColor};font-weight:600">${b.mean_realized >= 0 ? '+' : ''}${b.mean_realized.toFixed(2)}%</td>
@@ -752,7 +736,7 @@ function renderActionEngineBacktest(d) {
             const retColor = b.avg_return_pct > 0 ? '#4ade80' : b.avg_return_pct < 0 ? '#f87171' : '#999';
             return `
                 <tr>
-                    <td style="font-weight:600">${b.key}</td>
+                    <td style="font-weight:600">${esc(b.key)}</td>
                     <td style="text-align:right">${b.n_decisions.toLocaleString()}</td>
                     <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
                     <td style="text-align:right;color:${hitColor};font-weight:600">${b.hit_pct.toFixed(1)}%</td>
@@ -791,21 +775,21 @@ function renderActionEngineBacktest(d) {
                 : r.v2_stance === 'VETO' ? '#f87171'
                 : r.v2_stance === 'NEUTRAL' ? '#fbbf24' : '#666';
             const stanceStr = r.v2_stance
-                ? `<span style="color:${stanceColor}">${r.v2_stance}</span>${r.v2_confidence != null ? ` <span style="color:#888;font-size:0.85rem">${r.v2_confidence}</span>` : ''}`
+                ? `<span style="color:${stanceColor}">${esc(r.v2_stance)}</span>${r.v2_confidence != null ? ` <span style="color:#888;font-size:0.85rem">${esc(r.v2_confidence)}</span>` : ''}`
                 : '<span style="color:#666">—</span>';
             const predStr = r.predicted_pct != null
                 ? `<span style="color:${r.predicted_pct >= 0 ? '#4ade80' : '#f87171'}">${r.predicted_pct >= 0 ? '+' : ''}${r.predicted_pct.toFixed(2)}%</span>`
                 : '<span style="color:#666">—</span>';
             return `
                 <tr>
-                    <td style="padding:0.4rem 0.5rem;font-weight:600">${r.ticker}</td>
+                    <td style="padding:0.4rem 0.5rem;font-weight:600">${esc(r.ticker)}</td>
                     <td style="padding:0.4rem 0.5rem">${stanceStr}</td>
                     <td style="padding:0.4rem 0.5rem">${predStr}</td>
-                    <td style="padding:0.4rem 0.5rem">${r.horizon}</td>
-                    <td style="padding:0.4rem 0.5rem;font-size:0.85rem;color:#888">${r.trigger_type}</td>
+                    <td style="padding:0.4rem 0.5rem">${esc(r.horizon)}</td>
+                    <td style="padding:0.4rem 0.5rem;font-size:0.85rem;color:#888">${esc(r.trigger_type)}</td>
                     <td style="padding:0.4rem 0.5rem;text-align:right;color:${retColor};font-weight:600">${r.realized_return_pct >= 0 ? '+' : ''}${r.realized_return_pct.toFixed(2)}%</td>
                     <td style="padding:0.4rem 0.5rem;text-align:center">${hitBadge}</td>
-                    <td style="padding:0.4rem 0.5rem;font-size:0.8rem;color:#666">${r.resolved_at.slice(0,10)}</td>
+                    <td style="padding:0.4rem 0.5rem;font-size:0.8rem;color:#666">${esc(r.resolved_at.slice(0,10))}</td>
                 </tr>
             `;
         }).join('');
@@ -827,84 +811,14 @@ function renderActionEngineBacktest(d) {
     }
 }
 
-// ── API Usage tab ───────────────────────────────────────────────────────
-
-// Brave Search pricing: $5 per 1,000 requests
-const BRAVE_COST_PER_REQUEST = 0.005;
-
-async function fetchAPIUsage() {
-    try {
-        const dateParam = selectedDate ? `&date=${selectedDate}` : '';
-        const r = await fetch(`${API}/api?t=${Date.now()}${dateParam}`);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = await r.json();
-        renderAPIUsage(data);
-    } catch (e) {
-        console.error('API usage fetch failed:', e);
-    }
-}
-
-function renderAPIUsage(data) {
-    // Hero metrics
-    const el = (id) => document.getElementById(id);
-    el('api-total-calls').textContent = data.total_calls || 0;
-    el('api-brave-news').textContent = (data.by_api && data.by_api['brave_news_search']) || 0;
-    el('api-brave-sentiment').textContent = (data.by_api && data.by_api['brave_sentiment']) || 0;
-
-    const totalBrave = ((data.by_api && data.by_api['brave_news_search']) || 0) +
-                       ((data.by_api && data.by_api['brave_sentiment']) || 0);
-    const cost = (totalBrave * BRAVE_COST_PER_REQUEST).toFixed(2);
-    el('api-est-cost').textContent = '$' + cost;
-
-    // Hourly chart — build with DOM methods
-    const hourlyEl = el('api-hourly-chart');
-    hourlyEl.textContent = '';
-    if (data.hourly_calls) {
-        const max = Math.max(...data.hourly_calls, 1);
-        data.hourly_calls.forEach((v, i) => {
-            const col = document.createElement('div');
-            col.className = 'chart-bar-col';
-            const bar = document.createElement('div');
-            bar.className = 'chart-bar';
-            bar.style.height = ((v / max) * 100) + '%';
-            bar.title = i.toString().padStart(2, '0') + ':00 — ' + v + ' calls';
-            col.appendChild(bar);
-            const label = document.createElement('span');
-            label.className = 'chart-label';
-            label.textContent = i % 3 === 0 ? i.toString().padStart(2, '0') : '';
-            col.appendChild(label);
-            hourlyEl.appendChild(col);
-        });
-    } else {
-        hourlyEl.textContent = 'No data';
-    }
-
-    // Top tickers — build with DOM methods
-    const tickerEl = el('api-top-tickers');
-    tickerEl.textContent = '';
-    if (data.top_tickers && data.top_tickers.length > 0) {
-        data.top_tickers.forEach(t => {
-            const chip = document.createElement('span');
-            chip.className = 'chip';
-            chip.textContent = t.ticker + ' ';
-            const count = document.createElement('span');
-            count.className = 'dim';
-            count.textContent = t.calls;
-            chip.appendChild(count);
-            tickerEl.appendChild(chip);
-        });
-    } else {
-        tickerEl.textContent = 'No ticker data yet';
-    }
-}
-
 // ── WebSocket health ──────────────────────────────────────────────────────
 
 async function fetchWSStatus() {
     try {
-        const headers = {};
-        if (INTERNAL_API_TOKEN) headers['X-Internal-Token'] = INTERNAL_API_TOKEN;
-        const r = await fetch(`${API_BASE}/api/internal/ws-status?t=${Date.now()}`, { headers });
+        // No auth header: this is a public static bundle, so it must never
+        // carry INTERNAL_API_TOKEN. If the backend ever locks this endpoint
+        // down, the card degrades to the error state below.
+        const r = await fetch(`${API_BASE}/api/internal/ws-status?t=${Date.now()}`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
         renderWSStatus(data);

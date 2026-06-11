@@ -485,6 +485,10 @@ body {
     background: linear-gradient(90deg, #B45309, #D97706);
 }
 
+.model-bar-fill.deepseek {
+    background: linear-gradient(90deg, #2563EB, #3B82F6);
+}
+
 .model-pct {
     flex: 0 0 50px;
     text-align: right;
@@ -795,36 +799,6 @@ body {
     font-size: 0.8rem;
     color: var(--text-primary);
     line-height: 1.4;
-}
-
-.source-tag {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    color: var(--neutral);
-    background: rgba(181, 199, 247, 0.08);
-    padding: 2px 6px;
-    border-radius: 4px;
-    white-space: nowrap;
-}
-
-.expand-toggle {
-    display: block;
-    width: 100%;
-    margin-top: var(--s-sm);
-    padding: var(--s-sm);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--accent);
-    background: none;
-    border: 1px dashed rgba(168, 85, 247, 0.2);
-    border-radius: var(--r-sm);
-    cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
-}
-
-.expand-toggle:hover {
-    border-color: rgba(168, 85, 247, 0.4);
-    color: var(--text-primary);
 }
 
 /* ── Quant Quality: data table ────────────────────────────────────────── */

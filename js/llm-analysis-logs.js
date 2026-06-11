@@ -142,8 +142,13 @@
             renderHeroMetrics(rows);
             renderTable(rows);
         } catch (err) {
+            // textContent, not innerHTML — err.message can carry upstream response text.
             const el = document.getElementById('lal-table');
-            el.innerHTML = `<div style="color:#FF4560;padding:20px;text-align:center;">Fetch failed: ${err.message}</div>`;
+            el.textContent = '';
+            const msg = document.createElement('div');
+            msg.style.cssText = 'color:#FF4560;padding:20px;text-align:center;';
+            msg.textContent = `Fetch failed: ${err.message || err}`;
+            el.appendChild(msg);
         }
     }
 
