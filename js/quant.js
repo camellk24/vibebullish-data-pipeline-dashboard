@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 var QUANT_API = API_BASE + '/api/quant/health';
+var QUANTILE_REPORT_API = API_BASE + '/api/quantile-report';
 var QUANT_RUNS_API = API_BASE + '/api/quant/training-runs?limit=10';
 var QUANT_BACKTESTS_API = API_BASE + '/api/quant/backtests?limit=20';
 // Live-stats migrated 2026-05-15: was /api/quant/live-stats (read
@@ -729,3 +730,59 @@ function makeReturnCell(val) {
         }
     }, REFRESH_MS);
 })();
+
+
+// ── Model Quantiles (weekly rank-decile report) ─────────────────────────
+async function refreshQuantileReport() {
+    try {
+        var r = await fetch(QUANTILE_REPORT_API + '?t=' + Date.now());
+        if (!r.ok) return;
+        var d = await r.json();
+        var windowEl = document.getElementById('quantile-window');
+        if (windowEl) windowEl.textContent = d.window_start + ' → ' + d.window_end;
+        var headlineEl = document.getElementById('quantile-headline');
+        if (headlineEl) {
+            var pp = d.top_vs_middle_pp || 0;
+            headlineEl.textContent = pp < -0.5
+                ? 'Top decile trails the middle deciles by ' + Math.abs(pp).toFixed(1) + 'pp — crowded-top regime (extended-spike contamination).'
+                : pp > 0.5
+                    ? 'Top decile leads the middle by ' + pp.toFixed(1) + 'pp — ranking healthy.'
+                    : 'Top and middle deciles roughly even.';
+        }
+        var host = document.getElementById('quantile-configs');
+        if (!host) return;
+        host.innerHTML = '';
+        (d.configs || []).forEach(function (cfg) {
+            var col = document.createElement('div');
+            col.style.cssText = 'flex:1;min-width:260px';
+            var title = document.createElement('div');
+            title.style.cssText = 'font:600 10px monospace;letter-spacing:.1em;color:#a78bfa;margin-bottom:8px;text-transform:uppercase';
+            title.textContent = cfg.label || cfg.key;
+            col.appendChild(title);
+            var rows = cfg.rows || [];
+            var maxAbs = 0.01;
+            rows.forEach(function (row) { maxAbs = Math.max(maxAbs, Math.abs(row.MeanFwd || 0)); });
+            rows.forEach(function (row, i) {
+                var v = row.MeanFwd || 0;
+                var line = document.createElement('div');
+                line.style.cssText = 'display:flex;align-items:center;gap:7px;padding:1.5px 0;font:11px monospace';
+                var neg = v < 0;
+                var color = i === 9 ? (neg ? '#ff4560' : '#ffb020') : (neg ? '#ff4560' : '#00e5a0');
+                line.innerHTML =
+                    '<span style="width:26px;color:' + (i === 9 ? '#f2f6fa' : '#5c6b7d') + '">D' + (i + 1) + '</span>' +
+                    '<span style="flex:1;height:10px;background:#1a222d;border-radius:2px;position:relative;overflow:hidden">' +
+                    '<span style="position:absolute;top:0;bottom:0;' + (neg ? 'right' : 'left') + ':0;width:' +
+                    Math.max(2, Math.abs(v) / maxAbs * 100) + '%;background:' + color + ';opacity:' + (i === 9 ? 1 : 0.65) + ';border-radius:2px"></span></span>' +
+                    '<span style="width:52px;text-align:right;color:' + (neg ? '#ff4560' : '#00e5a0') + '">' + (v >= 0 ? '+' : '') + v.toFixed(2) + '%</span>';
+                col.appendChild(line);
+            });
+            host.appendChild(col);
+        });
+    } catch (e) { /* section stays empty */ }
+}
+refreshQuantileReport();
+document.addEventListener('click', function (e) {
+    if (e.target && e.target.matches && e.target.matches('[data-tab="quant-quality"]')) {
+        refreshQuantileReport();
+    }
+});

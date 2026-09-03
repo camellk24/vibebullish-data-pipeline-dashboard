@@ -252,6 +252,17 @@
                 </div>
             </section>
 
+            <!-- Model Quantiles (weekly rank-decile forward returns) -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>Model Quantiles</h2>
+                    <span class="card-badge" id="quantile-window"></span>
+                </div>
+                <p class="card-note" id="quantile-headline" style="margin:4px 0 10px;color:var(--text-secondary,#8fa0b3);font-size:13px"></p>
+                <div id="quantile-configs" style="display:flex;gap:24px;flex-wrap:wrap"></div>
+                <p style="margin-top:10px;color:#5c6b7d;font-size:11px">D1 = model's worst decile · D10 = best · mean forward return over the full $1B+ universe · a healthy ranker slopes up toward D10 · recomputed weekly</p>
+            </section>
+
             <!-- Recent Training Runs -->
             <section class="card">
                 <div class="card-header">
