@@ -1,10 +1,26 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": ".",
   "rewrites": [
-    { "source": "/dashboard", "destination": "/index.html" },
-    { "source": "/dashboard/:path*", "destination": "/:path*" },
-    { "source": "/data-pipeline-dashboard", "destination": "/index.html" },
-    { "source": "/data-pipeline-dashboard/:path*", "destination": "/:path*" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard/:path*",
+      "destination": "/:path*"
+    },
+    {
+      "source": "/data-pipeline-dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/data-pipeline-dashboard/:path*",
+      "destination": "/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
