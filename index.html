@@ -36,6 +36,7 @@
             <button class="tab" data-tab="data-collector">Data Collector</button>
             <button class="tab" data-tab="llm-analysis-logs">LLM Analysis Logs</button>
             <button class="tab" data-tab="catalyst-accuracy">Catalyst Accuracy</button>
+            <button class="tab" data-tab="agent-ops">Agents</button>
         </nav>
 
         <!-- Tab: LLM Usage -->
@@ -502,6 +503,36 @@
             </section>
         </div><!-- /tab-catalyst-accuracy -->
 
+
+        <!-- Tab: Agents -->
+        <div id="tab-agent-ops" style="display:none">
+            <div class="ao-head">
+                <p class="ao-intro">
+                    Every declared agent role in the system &mdash; what it did today, whether it is
+                    healthy right now, and whether anyone checks its output. Most roles are
+                    <strong>not graded</strong> and carry <strong>no provenance</strong>; those are shown
+                    as their own states, never as a zero or a blank.
+                </p>
+                <span class="ao-updated" id="ao-updated">loading&hellip;</span>
+            </div>
+
+            <section class="ao-summary" id="ao-summary"></section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Agent Roles</h2>
+                    <span class="card-badge">click a row for its contract</span>
+                </div>
+                <div class="ao-scroll" id="ao-table"></div>
+                <div class="ao-legend">
+                    <span><strong>UNGRADED</strong> &mdash; nothing scores this role&rsquo;s output against reality.</span>
+                    <span><strong>NO PROVENANCE</strong> &mdash; outputs carry no model or prompt version.</span>
+                    <span><strong>GATES TRADES</strong> &mdash; this role&rsquo;s output decides real positions.</span>
+                    <span><strong>unknown</strong> &mdash; the backend could not determine the value. Not a pass.</span>
+                </div>
+            </section>
+        </div><!-- /tab-agent-ops -->
+
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
             <span class="dim">Auto-refreshes every 60s</span>
@@ -514,5 +545,6 @@
     <script src="js/llm-analysis-logs.js"></script>
     <script src="js/catalyst-accuracy.js"></script>
     <script src="js/scanner-metrics.js"></script>
+    <script src="js/agent-ops.js"></script>
 </body>
 </html>

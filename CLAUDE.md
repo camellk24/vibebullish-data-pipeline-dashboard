@@ -30,9 +30,18 @@ const API = 'https://api.vibebullish.com/api/llm-usage';
 ```
 index.html          → Single page with all sections
 js/dashboard.js     → Fetch + render logic, cost estimation model
+js/agent-ops.js     → Agents tab (agent-role health + accountability)
+api/agent-ops.js    → Vercel serverless proxy (holds INTERNAL_API_TOKEN)
 styles/dashboard.css → Dark theme (matches iOS app Theme.swift)
-vercel.json         → Vercel deployment config
+vercel.json         → Vercel deployment config (zero-config + rewrites)
 ```
+
+### Secrets
+
+This site is **public**. No script under `js/` may ever contain a token. An internal,
+token-gated backend route is reached only through a serverless function under `api/`,
+which reads the secret from a Vercel environment variable server-side. See the Agents
+tab section of `README.md` for the required variables.
 
 The dashboard polls two backend endpoints every 60 seconds (auto-refresh pauses when viewing historical dates):
 - `GET /api/llm-usage/today?date=YYYY-MM-DD` — usage summary for a specific date (defaults to today ET)
