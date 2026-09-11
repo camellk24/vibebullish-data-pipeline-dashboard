@@ -829,3 +829,452 @@ body {
     background: rgba(255, 255, 255, 0.02);
 }
 
+
+/* ── Agents (agent ops) ───────────────────────────────────────────────────── */
+
+.ao-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-md);
+    flex-wrap: wrap;
+    margin-bottom: var(--s-md);
+    position: relative;
+    z-index: 1;
+}
+
+.ao-intro {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+    max-width: 660px;
+}
+
+.ao-updated {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+.ao-updated-stale { color: var(--warning); }
+
+/* Summary strip — hero card first, then four equal counters. */
+.ao-summary {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr;
+    gap: var(--s-md);
+    margin-bottom: var(--s-lg);
+    position: relative;
+    z-index: 1;
+}
+
+.ao-summary .metric-card { animation: fadeUp 0.5s ease-out both; }
+.ao-summary .metric-card:nth-child(1) { animation-delay: 0.05s; }
+.ao-summary .metric-card:nth-child(2) { animation-delay: 0.10s; }
+.ao-summary .metric-card:nth-child(3) { animation-delay: 0.15s; }
+.ao-summary .metric-card:nth-child(4) { animation-delay: 0.20s; }
+.ao-summary .metric-card:nth-child(5) { animation-delay: 0.25s; }
+
+.metric-card.ao-hero-alarm {
+    background: linear-gradient(135deg, rgba(255, 69, 96, 0.10), rgba(255, 69, 96, 0.03));
+    border-color: rgba(255, 181, 181, 0.28);
+}
+
+.ao-val-good { color: var(--positive); }
+.ao-val-bad  { color: var(--negative); }
+.ao-val-warn { color: var(--warning); }
+
+/* "unknown" is a state, never a blank. */
+.ao-unknown-val {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-quaternary);
+    border-bottom: 1px dashed var(--text-faint);
+}
+
+/* ── Agents table ─────────────────────────────────────────────────────────── */
+
+.ao-table { table-layout: auto; }
+
+.ao-table th { white-space: nowrap; }
+
+.ao-table td {
+    padding: 11px 14px;
+    vertical-align: middle;
+}
+
+.ao-row { cursor: pointer; transition: background 0.2s; }
+.ao-row:hover  { background: rgba(255, 255, 255, 0.03); }
+.ao-row:focus-visible { outline: 1px solid rgba(168, 85, 247, 0.5); outline-offset: -1px; }
+.ao-row-open { background: rgba(168, 85, 247, 0.06); }
+
+.ao-row-dormant { opacity: 0.42; }
+.ao-row-dormant:hover { opacity: 0.72; }
+
+.ao-role-cell { white-space: normal !important; min-width: 268px; }
+
+.ao-caret {
+    display: inline-block;
+    color: var(--text-quaternary);
+    font-size: 0.9rem;
+    margin-right: 6px;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ao-row-open .ao-caret { transform: rotate(90deg); }
+
+.ao-role-name {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.ao-owner,
+.ao-kind {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.ao-owner-backend  { color: var(--neutral);  background: rgba(181, 199, 247, 0.10); }
+.ao-owner-pipeline { color: var(--accent);   background: rgba(168, 85, 247, 0.12); }
+.ao-kind           { color: var(--text-quaternary); background: var(--bg-tint); }
+
+/* Status pills */
+.ao-pill {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 2px 10px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+}
+
+.ao-pill-healthy { color: var(--positive); background: rgba(182, 255, 206, 0.10); border-color: rgba(182, 255, 206, 0.22); }
+.ao-pill-stale   { color: var(--negative); background: rgba(255, 181, 181, 0.10); border-color: rgba(255, 181, 181, 0.30); }
+.ao-pill-idle    { color: var(--neutral);  background: rgba(181, 199, 247, 0.10); border-color: rgba(181, 199, 247, 0.22); }
+.ao-pill-dormant { color: var(--text-quaternary); background: var(--bg-tint); border-color: var(--border); }
+.ao-pill-unknown { color: var(--text-tertiary); background: transparent; border-style: dashed; border-color: var(--text-faint); }
+
+/* Numeric cells. Scoped to `.ao-table td` so they out-specify
+   `.data-table td { color: var(--text-secondary) }` — without this the red
+   failure counts silently render grey, which is the opposite of the point. */
+.ao-table .r { font-family: var(--font-mono); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.ao-table td.ao-zero     { color: var(--text-quaternary); }
+.ao-table td.ao-rel      { color: var(--text-secondary); }
+.ao-table td.ao-rel.ao-late { color: var(--negative); }
+.ao-table td.ao-val-bad  { color: var(--negative); font-weight: 600; }
+.ao-table td.ao-val-warn { color: var(--warning); }
+
+.ao-table td.ao-never {
+    color: var(--text-quaternary);
+    font-style: italic;
+}
+
+.ao-table td.ao-unknown-cell {
+    color: var(--text-quaternary);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+}
+
+/* Dashed underline marks a value we do not have, so it can never be
+   mistaken for a measured zero. */
+.ao-table td.ao-never > span,
+.ao-table td.ao-unknown-cell > span {
+    border-bottom: 1px dashed var(--text-faint);
+}
+
+/* Accountability badges */
+.ao-badges { white-space: normal !important; min-width: 190px; line-height: 1.9; }
+
+.ao-badge {
+    display: inline-block;
+    margin-right: 5px;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.ao-badge-gates    { color: var(--negative); background: rgba(255, 69, 96, 0.14);  border-color: rgba(255, 181, 181, 0.35); }
+.ao-badge-ungraded { color: var(--warning);  background: rgba(251, 191, 36, 0.12); border-color: rgba(251, 191, 36, 0.28); }
+.ao-badge-noprov   { color: var(--text-tertiary); background: var(--bg-tint); border-color: var(--border); }
+
+.ao-dimnote { color: var(--text-quaternary); font-size: 0.7rem; }
+
+/* ── Expanded detail ──────────────────────────────────────────────────────── */
+
+.ao-detail-row td {
+    padding: 0 14px 16px !important;
+    background: rgba(168, 85, 247, 0.04);
+    border-bottom: 1px solid var(--border);
+}
+
+.ao-detail {
+    display: grid;
+    /* minmax(0, …) not 1fr: a bare 1fr track carries an `auto` minimum, which
+       lets a long value push the track — and the whole panel — wider than the
+       card it lives in. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px var(--s-lg);
+    padding: var(--s-md);
+    background: var(--bg-tint);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    animation: fadeUp 0.3s ease-out both;
+    /* `.data-table td` sets white-space:nowrap, which every descendant here
+       would otherwise inherit and run straight out of the card. */
+    white-space: normal;
+}
+
+/* min-width:0 is load-bearing: as grid items these default to min-width:auto,
+   which lets their min-content width blow past the track and spill the whole
+   panel out of the card. */
+.ao-kv { display: flex; gap: var(--s-sm); align-items: baseline; min-width: 0; }
+
+.ao-k {
+    flex: 0 0 108px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-quaternary);
+}
+
+.ao-v {
+    flex: 1;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.ao-v code {
+    overflow-wrap: anywhere;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.ao-notgraded {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--warning);
+}
+
+.ao-fmode {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+.ao-fmode-failopen, .ao-fmode-fail-open { color: var(--warning); }
+.ao-fmode-failclosed, .ao-fmode-fail-closed { color: var(--positive); }
+.ao-fmode-silent { color: var(--negative); }
+
+.ao-quality {
+    grid-column: 1 / -1;
+    min-width: 0;
+    border-top: 1px solid var(--border);
+    padding-top: var(--s-md);
+    margin-top: var(--s-xs);
+}
+
+.ao-q-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-quaternary);
+    margin-bottom: var(--s-sm);
+}
+
+.ao-q-grid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--s-sm);
+}
+
+.ao-q-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: var(--s-sm) 10px;
+}
+
+.ao-q-val {
+    overflow-wrap: anywhere;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.ao-q-lbl {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-quaternary);
+    margin-top: 2px;
+}
+
+/* Never graded ≠ graded and scored zero. */
+.ao-quality-none {
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+    color: var(--warning);
+    background: rgba(251, 191, 36, 0.07);
+    border: 1px dashed rgba(251, 191, 36, 0.28);
+    border-radius: var(--r-sm);
+    padding: 10px var(--s-md);
+    margin-top: var(--s-sm);
+    line-height: 1.45;
+}
+
+/* ── Error / empty states ─────────────────────────────────────────────────── */
+
+.ao-error {
+    border: 1px dashed rgba(255, 181, 181, 0.35);
+    background: rgba(255, 69, 96, 0.05);
+    border-radius: var(--r-md);
+    padding: var(--s-lg);
+    animation: fadeUp 0.4s ease-out both;
+}
+
+.ao-error-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--negative);
+    margin-bottom: var(--s-sm);
+}
+
+.ao-error-msg {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--s-sm);
+}
+
+.ao-error-hint {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    line-height: 1.55;
+}
+
+.ao-error-hint code {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.ao-empty {
+    font-size: 0.8rem;
+    color: var(--warning);
+    padding: var(--s-lg);
+    text-align: center;
+}
+
+.ao-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-md);
+    font-size: 0.7rem;
+    color: var(--text-quaternary);
+    line-height: 1.5;
+    margin-top: var(--s-md);
+}
+
+@media (max-width: 900px) {
+    .ao-summary { grid-template-columns: 1fr 1fr; }
+    .ao-detail  { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 560px) {
+    .ao-summary { grid-template-columns: 1fr; }
+    .ao-table   { min-width: 760px; }
+    .ao-k       { flex: 0 0 92px; }
+    .ao-legend  { flex-direction: column; gap: var(--s-sm); }
+    .card-header h2 { flex: 1 1 auto; }
+
+    /* The detail panel must stay readable without scrolling the 760px table:
+       pin it to the left edge and clamp it to the viewport. */
+    .ao-detail {
+        position: sticky;
+        left: 0;
+        width: calc(100vw - 80px);
+        max-width: calc(100vw - 80px);
+    }
+
+    /* The table scrolls sideways here — say so, rather than letting the
+       right-hand columns look absent. */
+    .ao-scroll::after {
+        content: 'scroll the table sideways for LLM calls, failures and badges →';
+        display: block;
+        margin-top: var(--s-sm);
+        font-size: 0.65rem;
+        color: var(--text-quaternary);
+        position: sticky;
+        left: 0;
+    }
+}
+
+/* The roles table is the one thing allowed to scroll sideways; the page
+   itself must never. `.page` is overflow:hidden, so an overflowing child is
+   clipped rather than scrolled — it has to carry its own scroller. */
+.ao-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+
+/* Eight tabs no longer fit on a phone. Let the strip scroll on its own
+   instead of stretching the page and clipping every other section. */
+@media (max-width: 820px) {
+    .dashboard-tabs {
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .dashboard-tabs::-webkit-scrollbar { display: none; }
+    .tab { white-space: nowrap; flex: 0 0 auto; }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .ambient-orb { animation: none; }
+    .live-dot { animation: none; }
+    .card, .metric-card, .ao-detail, .ao-error { animation: none !important; }
+    .ao-caret { transition: none; }
+    .model-bar-fill, .h-bar, .w-bar { transition: none; }
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+    }
+}

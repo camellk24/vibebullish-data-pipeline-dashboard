@@ -1,64 +1,10 @@
 {
-  "version": 2,
-  "name": "vibebullish-dashboard",
-  "builds": [
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "styles/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "js/*",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/dashboard/styles/(.*)",
-      "dest": "/styles/$1"
-    },
-    {
-      "src": "/dashboard/js/(.*)",
-      "dest": "/js/$1"
-    },
-    {
-      "src": "/dashboard",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/dashboard/",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/data-pipeline-dashboard/styles/(.*)",
-      "dest": "/styles/$1"
-    },
-    {
-      "src": "/data-pipeline-dashboard/js/(.*)",
-      "dest": "/js/$1"
-    },
-    {
-      "src": "/data-pipeline-dashboard",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/data-pipeline-dashboard/",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/styles/(.*)",
-      "dest": "/styles/$1"
-    },
-    {
-      "src": "/js/(.*)",
-      "dest": "/js/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/dashboard/:path*", "destination": "/:path*" },
+    { "source": "/data-pipeline-dashboard", "destination": "/index.html" },
+    { "source": "/data-pipeline-dashboard/:path*", "destination": "/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
