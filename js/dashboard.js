@@ -334,39 +334,6 @@ function renderWeekly(days) {
     }).join('');
 }
 
-// ── Scanner Report ────────────────────────────────────────────────────────
-
-const IMPACT_COLORS = { high: 'var(--negative)', moderate: 'var(--warning)', low: 'var(--text-tertiary)' };
-const SENTIMENT_ICONS = { bullish: '+', bearish: '-', mixed: '~' };
-
-function renderCatalysts(data) {
-    const container = document.getElementById('catalyst-list');
-    const badge = document.getElementById('catalyst-count');
-    const catalysts = data.catalysts || [];
-
-    badge.textContent = `${catalysts.length} detected`;
-
-    if (!catalysts.length) {
-        container.textContent = 'No catalysts detected.';
-        return;
-    }
-
-    // Trusted backend data
-    container.innerHTML = `<div class="catalyst-entries">${catalysts.map(c => {
-        const impactColor = IMPACT_COLORS[c.impact] || 'var(--text-tertiary)';
-        const sentIcon = SENTIMENT_ICONS[c.sentiment] || '?';
-        return `<div class="catalyst-entry">
-            <div class="catalyst-meta">
-                <span class="catalyst-time">${esc(c.detected_at)}</span>
-                <span class="catalyst-impact" style="color:${impactColor}">${esc(c.impact)}</span>
-                <span class="catalyst-category">${esc(c.category)}</span>
-                <span class="catalyst-sentiment">${esc(sentIcon)} ${esc(c.sentiment)}</span>
-            </div>
-            <div class="catalyst-text">${esc(c.catalyst)}</div>
-        </div>`;
-    }).join('')}</div>`;
-}
-
 // ── Web Search Catalyst Stats ──────────────────────────────────────────────
 
 function renderWebSearchStats(data) {
@@ -420,7 +387,7 @@ function renderLoadError(err) {
         if (el) el.textContent = '—';
     });
     ['model-breakdown', 'hourly-chart', 'service-breakdown', 'endpoint-breakdown',
-     'ticker-grid', 'weekly-chart', 'catalyst-list', 'web-search-stats',
+     'ticker-grid', 'weekly-chart', 'web-search-stats',
      'cost-current', 'cost-whatif'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -446,7 +413,6 @@ async function refresh() {
         renderTickers(today);
         renderCost(today);
         renderWeekly(week);
-        renderCatalysts(scanner);
         renderWebSearchStats(scanner);
 
         const now = new Date();
