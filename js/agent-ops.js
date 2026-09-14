@@ -207,6 +207,15 @@
 
     function lastOutputCell(r) {
         const rel = relTime(r.last_output_at);
+        // Memory-only roles judged on their LLM calls have no output row;
+        // show the latest call instead of a misleading "never".
+        if (!rel && r.status_basis === 'llm_calls') {
+            const callRel = relTime(r.last_llm_call_at);
+            const late = r.status === 'stale' ? ' ao-late' : '';
+            return callRel
+                ? `<td class="r ao-rel${late}" title="Latest tagged LLM call ${esc(r.last_llm_call_at)} — output is in memory, not counted"><span class="ao-dimnote">call</span> ${esc(callRel)}</td>`
+                : `<td class="r ao-never" title="No tagged LLM call in the last 14 days."><span>no call</span></td>`;
+        }
         if (!rel) {
             return `<td class="r ao-never" title="No output has ever been recorded for this role."><span>never</span></td>`;
         }
@@ -236,6 +245,15 @@
                 ? (cadenceLabel ? `<strong>${cadenceLabel}</strong> ` : '') + (r.cadence_note ? `<span class="ao-dimnote">${esc(r.cadence_note)}</span>` : '')
                 : '<span class="ao-unknown-val">not declared</span>')
         );
+
+        if (r.status_basis === 'llm_calls') {
+            row(
+                'Status basis',
+                '<strong>LLM calls</strong> <span class="ao-dimnote">output lives in memory, so status is judged on the latest tagged call' +
+                    (r.last_llm_call_at ? ` (${esc(relTime(r.last_llm_call_at))})` : ' (none in 14 days)') +
+                    ' — proof the role ran, not that its output was good</span>'
+            );
+        }
 
         const thresh = shortDur(r.staleness_threshold_seconds);
         row(
@@ -383,7 +401,7 @@
                             <span class="ao-owner ao-owner-${esc(r.owner === 'pipeline' ? 'pipeline' : 'backend')}">${esc(r.owner || 'unknown')}</span>
                             ${r.kind ? `<span class="ao-kind">${esc(r.kind)}</span>` : ''}
                         </td>
-                        <td>${statusPill(r.status)}</td>
+                        <td>${statusPill(r.status)}${r.status_basis === 'llm_calls' ? '<div class="ao-dimnote" title="Judged on the latest tagged LLM call — the output itself is in memory">via LLM calls</div>' : ''}</td>
                         ${lastOutputCell(r)}
                         ${countCell(r.outputs_today)}
                         ${countCell(r.llm_calls_today)}
