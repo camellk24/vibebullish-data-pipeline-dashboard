@@ -121,22 +121,15 @@
             <div id="ticker-grid"></div>
         </section>
 
-        <!-- Scanner Report -->
-        <section class="grid-2">
-            <div class="card">
-                <div class="card-header">
-                    <h2>Catalyst Scanner</h2>
-                    <span class="card-badge" id="catalyst-count"></span>
-                </div>
-                <div id="catalyst-list"></div>
+        <!-- Scanner Report. The Catalyst Scanner card (market_catalysts) was
+             removed 2026-09-13: its producer, the pipeline's market-news macro
+             classifier, was deleted in pipeline PR #71. -->
+        <section class="card">
+            <div class="card-header">
+                <h2>Web Search Catalyst</h2>
+                <span class="card-badge" id="web-search-count"></span>
             </div>
-            <div class="card">
-                <div class="card-header">
-                    <h2>Web Search Catalyst</h2>
-                    <span class="card-badge" id="web-search-count"></span>
-                </div>
-                <div id="web-search-stats"></div>
-            </div>
+            <div id="web-search-stats"></div>
         </section>
 
         <!-- Cost Estimation -->
