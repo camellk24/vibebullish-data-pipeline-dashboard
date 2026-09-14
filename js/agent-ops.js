@@ -85,8 +85,28 @@
         return `<span class="ao-pill ao-pill-${key}"${title ? ` title="${esc(title)}"` : ''}>${esc(STATUS_LABEL[key])}</span>`;
     }
 
+    // Field names below are the backend's (GET /api/internal/agent-ops,
+    // vibebullish-backend internal/api/handlers/agent_ops_handler.go). The
+    // first version of this tab was written against a fixture with its own
+    // names (cadence, writes_to, provenance:true, grading, name) and rendered
+    // every live role as "not declared" / "NONE". js/agent-ops-fixture.js now
+    // mirrors the real payload; keep the two in lockstep.
+
     function isUngraded(r) {
-        return r.graded !== true || r.grading === 'not_graded';
+        return r.graded !== true || (r.quality && r.quality.state === 'not_graded');
+    }
+
+    // provenance is {model_persisted, prompt_version_persisted,
+    // timestamp_persisted, note}. Full = all three; none = zero.
+    function provenanceLevel(r) {
+        const p = r.provenance;
+        if (!p || typeof p !== 'object') return 'none';
+        const n = [p.model_persisted, p.prompt_version_persisted, p.timestamp_persisted].filter((v) => v === true).length;
+        return n === 3 ? 'full' : n === 0 ? 'none' : 'partial';
+    }
+
+    function roleName(r) {
+        return r.display_name || r.id;
     }
 
     // ── sorting: unhealthy and trade-gating first, dormant dimmed at the end ──
@@ -111,7 +131,7 @@
             const sa = SEVERITY[a.status] != null ? SEVERITY[a.status] : 9;
             const sb = SEVERITY[b.status] != null ? SEVERITY[b.status] : 9;
             if (sa !== sb) return sa - sb;
-            return String(a.name || a.id).localeCompare(String(b.name || b.id));
+            return String(roleName(a)).localeCompare(String(roleName(b)));
         });
     }
 
@@ -121,14 +141,16 @@
         const el = document.getElementById('ao-summary');
         if (!el) return;
         const s = summary || {};
-        const gating = s.gating_trades_ungraded;
+        const gating = s.gating_trades_but_ungraded;
         const gatingBad = isNum(gating) && gating > 0;
 
         const cards = [
-            { label: 'Roles declared', value: s.roles, cls: '' },
+            { label: 'Live roles', value: s.live, sub: isNum(s.roles_total) ? `of ${num(s.roles_total)} declared` : '', cls: '' },
             { label: 'Healthy now', value: s.healthy, cls: 'ao-val-good' },
             { label: 'Stale', value: s.stale, cls: isNum(s.stale) && s.stale > 0 ? 'ao-val-bad' : '' },
-            { label: 'Ungraded', value: s.ungraded, cls: isNum(s.ungraded) && s.ungraded > 0 ? 'ao-val-warn' : '' },
+            // ungraded_gaps excludes roles ungraded by design and dormant ones —
+            // the backend's honest ungraded number (summary.ungraded counts both).
+            { label: 'Ungraded gaps', value: s.ungraded_gaps, cls: isNum(s.ungraded_gaps) && s.ungraded_gaps > 0 ? 'ao-val-warn' : '' },
         ];
 
         const html = cards
@@ -137,6 +159,7 @@
             <div class="metric-card">
                 <div class="metric-label">${esc(c.label)}</div>
                 <div class="metric-value ${c.cls}">${isNum(c.value) ? esc(num(c.value)) : '<span class="ao-unknown-val">unknown</span>'}</div>
+                ${c.sub ? `<div class="metric-sub">${esc(c.sub)}</div>` : ''}
             </div>`
             )
             .join('');
@@ -174,9 +197,9 @@
                 '<span class="ao-badge ao-badge-ungraded" title="Nothing scores this role’s output against reality.">UNGRADED</span>'
             );
         }
-        if (r.provenance !== true) {
+        if (provenanceLevel(r) === 'none') {
             out.push(
-                '<span class="ao-badge ao-badge-noprov" title="Outputs carry no prompt version or model stamp — they cannot be traced to what produced them.">NO PROVENANCE</span>'
+                '<span class="ao-badge ao-badge-noprov" title="Outputs carry no model, prompt version or timestamp — they cannot be traced to what produced them.">NO PROVENANCE</span>'
             );
         }
         return out.join('');
@@ -206,30 +229,47 @@
         row('Trigger', r.trigger ? `<code>${esc(r.trigger)}</code>` : '<span class="ao-unknown-val">not declared</span>');
 
         const expected = shortDur(r.expected_cadence_seconds);
+        const cadenceLabel = r.event_driven ? 'event-driven' : expected ? `every ${esc(expected)}` : '';
         row(
             'Cadence',
-            (r.cadence ? esc(r.cadence) : '<span class="ao-unknown-val">not declared</span>') +
-                (expected ? ` <span class="ao-dimnote">(expected every ${esc(expected)})</span>` : '')
+            (cadenceLabel || r.cadence_note
+                ? (cadenceLabel ? `<strong>${cadenceLabel}</strong> ` : '') + (r.cadence_note ? `<span class="ao-dimnote">${esc(r.cadence_note)}</span>` : '')
+                : '<span class="ao-unknown-val">not declared</span>')
         );
 
         const thresh = shortDur(r.staleness_threshold_seconds);
         row(
             'Stale after',
-            thresh ? esc(thresh) + ' without output' : '<span class="ao-unknown-val">no threshold declared</span>'
+            thresh
+                ? esc(thresh) + (r.market_days_only ? ' of market-day time' : '') + ' without output' +
+                      (r.market_days_only ? ' <span class="ao-dimnote">(weekends + NYSE holidays do not count)</span>' : '')
+                : '<span class="ao-unknown-val">no threshold declared</span>'
         );
 
-        row('Writes to', r.writes_to ? `<code>${esc(r.writes_to)}</code>` : '<span class="ao-unknown-val">not declared</span>');
+        const tables = Array.isArray(r.output_tables) ? r.output_tables : [];
+        row(
+            'Writes to',
+            tables.length
+                ? tables.map((t) => `<code>${esc(t)}</code>`).join(' ')
+                : '<span class="ao-unknown-val">nothing persisted</span>' +
+                      (r.observability_note ? ` <span class="ao-dimnote">${esc(r.observability_note)}</span>` : '')
+        );
 
         // Grading — the honest bit.
         if (isUngraded(r)) {
+            const reason = r.quality && r.quality.reason;
             row(
                 'Verifier',
                 '<span class="ao-notgraded">NOT GRADED</span>' +
-                    (r.grading_reason ? ` <span class="ao-dimnote">${esc(r.grading_reason)}</span>` : ''),
+                    (reason ? ` <span class="ao-dimnote">${esc(reason)}</span>` : r.grading_note ? ` <span class="ao-dimnote">${esc(r.grading_note)}</span>` : ''),
                 'ao-v-warn'
             );
         } else {
-            row('Verifier', esc(r.grading));
+            row(
+                'Verifier',
+                (r.verifier ? esc(r.verifier) : '<span class="ao-unknown-val">not declared</span>') +
+                    (r.grading_note ? ` <span class="ao-dimnote">${esc(r.grading_note)}</span>` : '')
+            );
         }
 
         row(
@@ -244,38 +284,58 @@
                               ? 'on failure the dependent step is blocked'
                               : 'failures are not surfaced anywhere'
                       ) +
-                      '</span>'
+                      '</span>' +
+                      (r.failure_note ? `<div class="ao-dimnote">${esc(r.failure_note)}</div>` : '')
                 : '<span class="ao-unknown-val">not declared</span>'
         );
 
+        const prov = r.provenance && typeof r.provenance === 'object' ? r.provenance : {};
+        const level = provenanceLevel(r);
+        const mark = (ok, label) => `${ok === true ? '✓' : '✗'} ${label}`;
+        const parts = [mark(prov.model_persisted, 'model'), mark(prov.prompt_version_persisted, 'prompt version'), mark(prov.timestamp_persisted, 'timestamp')].join(' · ');
         row(
             'Provenance',
-            r.provenance === true
-                ? 'outputs carry model + prompt version'
-                : '<span class="ao-notgraded">NONE</span> <span class="ao-dimnote">outputs cannot be traced to what produced them</span>'
+            (level === 'full'
+                ? '<strong>FULL</strong>'
+                : level === 'partial'
+                ? '<strong>PARTIAL</strong>'
+                : '<span class="ao-notgraded">NONE</span>') +
+                ` <span class="ao-dimnote">${esc(parts)}</span>` +
+                (prov.note ? `<div class="ao-dimnote">${esc(prov.note)}</div>` : '')
         );
 
+        if (r.lifecycle && r.lifecycle !== 'live') {
+            row('Lifecycle', `<strong>${esc(r.lifecycle)}</strong>` + (r.lifecycle_note ? ` <span class="ao-dimnote">${esc(r.lifecycle_note)}</span>` : ''));
+        }
+
         // Latest quality result, if one exists at all.
+        // quality = {state: graded|not_graded|unknown, kind, source,
+        // metric_name, metric_value, as_of, reason}. A not_graded role may
+        // still report a completeness metric (risk flagger: coverage) — show
+        // it, labelled as what it is, never as a grade.
+        const q = r.quality && typeof r.quality === 'object' ? r.quality : {};
+        const qItem = (val, lbl) => `<div class="ao-q-item"><div class="ao-q-val">${val}</div><div class="ao-q-lbl">${esc(lbl)}</div></div>`;
+        const metricItems = () =>
+            [
+                isNum(q.metric_value) ? qItem(esc(q.metric_value.toLocaleString('en-US')), (q.metric_name || 'metric').replace(/_/g, ' ')) : '',
+                q.as_of ? qItem(esc(relTime(q.as_of) || q.as_of), 'as of') : '',
+                q.kind ? qItem(esc(q.kind), 'kind') : '',
+            ].join('');
         let quality;
-        if (isUngraded(r)) {
-            quality = `<div class="ao-quality ao-quality-none">No quality result exists — this role has never been graded. That is different from scoring zero.</div>`;
-        } else if (r.quality && typeof r.quality === 'object' && Object.keys(r.quality).length) {
-            const items = Object.keys(r.quality)
-                .map((k) => {
-                    const v = r.quality[k];
-                    const label = k.replace(/_/g, ' ');
-                    let val;
-                    if (k === 'last_scored_at') {
-                        val = relTime(v) || esc(String(v));
-                    } else if (isNum(v)) {
-                        val = esc(v.toLocaleString('en-US'));
-                    } else {
-                        val = esc(String(v));
-                    }
-                    return `<div class="ao-q-item"><div class="ao-q-val">${val}</div><div class="ao-q-lbl">${esc(label)}</div></div>`;
-                })
-                .join('');
-            quality = `<div class="ao-quality"><div class="ao-q-title">Latest quality result</div><div class="ao-q-grid">${items}</div></div>`;
+        if (q.state === 'unknown') {
+            quality = `<div class="ao-quality ao-quality-none">Quality could not be read${q.reason ? ` — ${esc(q.reason)}` : ''}. Unknown is not a pass.</div>`;
+        } else if (isUngraded(r)) {
+            quality =
+                `<div class="ao-quality ao-quality-none">No quality result exists — this role has never been graded. That is different from scoring zero.</div>` +
+                (isNum(q.metric_value)
+                    ? `<div class="ao-quality"><div class="ao-q-title">Completeness only — not a grade</div><div class="ao-q-grid">${metricItems()}</div>${
+                          q.source ? `<div class="ao-dimnote">${esc(q.source)}</div>` : ''
+                      }</div>`
+                    : '');
+        } else if (isNum(q.metric_value) || q.as_of) {
+            quality = `<div class="ao-quality"><div class="ao-q-title">Latest quality result</div><div class="ao-q-grid">${metricItems()}</div>${
+                q.source ? `<div class="ao-dimnote">${esc(q.source)}</div>` : ''
+            }</div>`;
         } else {
             quality = `<div class="ao-quality ao-quality-none">Graded, but no scored result has landed yet.</div>`;
         }
@@ -319,7 +379,7 @@
                     `<tr class="ao-row${dim}${open ? ' ao-row-open' : ''}" data-role="${esc(r.id)}" tabindex="0" role="button" aria-expanded="${open}">
                         <td class="ao-role-cell">
                             <span class="ao-caret" aria-hidden="true">›</span>
-                            <span class="ao-role-name">${esc(r.name || r.id)}</span>
+                            <span class="ao-role-name" title="${esc(r.id)}">${esc(roleName(r))}</span>
                             <span class="ao-owner ao-owner-${esc(r.owner === 'pipeline' ? 'pipeline' : 'backend')}">${esc(r.owner || 'unknown')}</span>
                             ${r.kind ? `<span class="ao-kind">${esc(r.kind)}</span>` : ''}
                         </td>
