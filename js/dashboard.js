@@ -516,7 +516,21 @@ function initTabs() {
 
 // ── Action Engine backtest tab ────────────────────────────────────────────
 
+const AE_LOADING = '<div style="color:#999;padding:1rem">Loading…</div>';
+
+// Stats and trend load in parallel: the trend no longer waits on the (slower,
+// cached server-side) stats rollup. Calibration and the V2 stance / confidence
+// band cards were removed 2026-09-15 — no decision has carried a v2_stance
+// since 2026-05-26, so they could never show data.
 async function fetchActionEngineBacktest() {
+    for (const id of ['ae-by-horizon', 'ae-by-trigger', 'ae-by-action-predicate', 'ae-trend', 'ae-recent']) {
+        const el = document.getElementById(id);
+        if (el && !el.innerHTML.trim()) el.innerHTML = AE_LOADING;
+    }
+    await Promise.all([fetchActionEngineStats(), fetchActionEngineTrend()]);
+}
+
+async function fetchActionEngineStats() {
     try {
         const resp = await fetch('https://api.vibebullish.com/api/action-engine/backtest/stats?days=30');
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -525,8 +539,6 @@ async function fetchActionEngineBacktest() {
     } catch (e) {
         document.getElementById('ae-hero').innerHTML = `<div class="card"><div class="card-body" style="color:#f87171">Failed to load: ${esc(e.message)}</div></div>`;
     }
-    fetchActionEngineCalibration();
-    fetchActionEngineTrend();
 }
 
 async function fetchActionEngineTrend() {
@@ -605,69 +617,13 @@ function renderActionEngineTrend(d) {
     `;
 }
 
-async function fetchActionEngineCalibration() {
-    try {
-        const resp = await fetch('https://api.vibebullish.com/api/action-engine/backtest/calibration?horizon=60d&days=60');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const d = await resp.json();
-        renderActionEngineCalibration(d);
-    } catch (e) {
-        document.getElementById('ae-calibration').innerHTML = `<div style="color:#f87171;padding:1rem">Calibration unavailable: ${esc(e.message)}</div>`;
-    }
-}
-
-function renderActionEngineCalibration(d) {
-    const buckets = d.buckets || [];
-    const healthEl = document.getElementById('ae-calibration-health');
-    if (healthEl) {
-        if (d.monotonic_healthy) {
-            healthEl.textContent = '✓ monotonic (mean realized rises with confidence band)';
-            healthEl.style.color = '#4ade80';
-        } else {
-            healthEl.textContent = '✗ non-monotonic — LLM confidence scale may need tuning';
-            healthEl.style.color = '#fbbf24';
-        }
-    }
-    if (buckets.length === 0) {
-        document.getElementById('ae-calibration').innerHTML = '<div style="color:#999;padding:1rem">No resolved APPROVE decisions yet</div>';
-        return;
-    }
-    const rows = buckets.map(b => {
-        const hitColor = b.n_resolved >= 5
-            ? (b.hit_rate >= 0.55 ? '#4ade80' : b.hit_rate >= 0.45 ? '#fbbf24' : '#f87171')
-            : '#666';
-        const realizedColor = b.mean_realized > 0 ? '#4ade80' : b.mean_realized < 0 ? '#f87171' : '#999';
-        const errorPp = (b.mean_realized - b.mean_y_pred);
-        const errColor = Math.abs(errorPp) < 2 ? '#4ade80' : Math.abs(errorPp) < 5 ? '#fbbf24' : '#f87171';
-        return `
-            <tr>
-                <td style="font-weight:600">${esc(b.band)}</td>
-                <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
-                <td style="text-align:right">${b.mean_y_pred >= 0 ? '+' : ''}${b.mean_y_pred.toFixed(2)}%</td>
-                <td style="text-align:right;color:${realizedColor};font-weight:600">${b.mean_realized >= 0 ? '+' : ''}${b.mean_realized.toFixed(2)}%</td>
-                <td style="text-align:right;color:${errColor}">${errorPp >= 0 ? '+' : ''}${errorPp.toFixed(2)}pp</td>
-                <td style="text-align:right;color:#666;font-size:0.85rem">${b.p10.toFixed(1)} / ${b.p50.toFixed(1)} / ${b.p90.toFixed(1)}</td>
-                <td style="text-align:right;color:${hitColor};font-weight:600">${(b.hit_rate * 100).toFixed(1)}%</td>
-            </tr>
-        `;
-    }).join('');
-    document.getElementById('ae-calibration').innerHTML = `
-        <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
-                <th style="text-align:left;padding:0.5rem">Confidence Band</th>
-                <th style="text-align:right;padding:0.5rem">Resolved</th>
-                <th style="text-align:right;padding:0.5rem">Mean Predicted</th>
-                <th style="text-align:right;padding:0.5rem">Mean Realized</th>
-                <th style="text-align:right;padding:0.5rem">Error</th>
-                <th style="text-align:right;padding:0.5rem;font-size:0.75rem">p10 / p50 / p90 realized</th>
-                <th style="text-align:right;padding:0.5rem">Hit Rate</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-        </table>
-    `;
-}
-
 function renderActionEngineBacktest(d) {
+    const freshness = document.getElementById('ae-freshness');
+    if (freshness) {
+        freshness.textContent = d.computed_at
+            ? `Computed ${new Date(d.computed_at).toLocaleString()} · refreshed at most every 10 min · grades land hourly`
+            : '';
+    }
     const hero = document.getElementById('ae-hero');
     hero.innerHTML = `
         <div class="metric-card hero">
@@ -724,11 +680,9 @@ function renderActionEngineBacktest(d) {
         `;
     };
 
-    renderBuckets('ae-by-v2-stance', d.by_v2_stance, 'Stance');
     renderBuckets('ae-by-horizon', d.by_horizon, 'Horizon');
     renderBuckets('ae-by-trigger', d.by_trigger, 'Trigger');
     renderBuckets('ae-by-action-predicate', d.by_action_predicate, 'Predicate');
-    renderBuckets('ae-by-confidence-band', d.by_confidence_band, 'Confidence Band');
 
     const recent = d.recent_resolutions || [];
     if (recent.length === 0) {
@@ -737,19 +691,12 @@ function renderActionEngineBacktest(d) {
         const rows = recent.map(r => {
             const retColor = r.realized_return_pct > 0 ? '#4ade80' : r.realized_return_pct < 0 ? '#f87171' : '#999';
             const hitBadge = r.hit ? '<span style="color:#4ade80">✓</span>' : '<span style="color:#f87171">✗</span>';
-            const stanceColor = r.v2_stance === 'APPROVE' ? '#4ade80'
-                : r.v2_stance === 'VETO' ? '#f87171'
-                : r.v2_stance === 'NEUTRAL' ? '#fbbf24' : '#666';
-            const stanceStr = r.v2_stance
-                ? `<span style="color:${stanceColor}">${esc(r.v2_stance)}</span>${r.v2_confidence != null ? ` <span style="color:#888;font-size:0.85rem">${esc(r.v2_confidence)}</span>` : ''}`
-                : '<span style="color:#666">—</span>';
             const predStr = r.predicted_pct != null
                 ? `<span style="color:${r.predicted_pct >= 0 ? '#4ade80' : '#f87171'}">${r.predicted_pct >= 0 ? '+' : ''}${r.predicted_pct.toFixed(2)}%</span>`
                 : '<span style="color:#666">—</span>';
             return `
                 <tr>
                     <td style="padding:0.4rem 0.5rem;font-weight:600">${esc(r.ticker)}</td>
-                    <td style="padding:0.4rem 0.5rem">${stanceStr}</td>
                     <td style="padding:0.4rem 0.5rem">${predStr}</td>
                     <td style="padding:0.4rem 0.5rem">${esc(r.horizon)}</td>
                     <td style="padding:0.4rem 0.5rem;font-size:0.85rem;color:#888">${esc(r.trigger_type)}</td>
@@ -763,7 +710,6 @@ function renderActionEngineBacktest(d) {
             <table style="width:100%;border-collapse:collapse">
                 <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
                     <th style="text-align:left;padding:0.5rem">Ticker</th>
-                    <th style="text-align:left;padding:0.5rem">Stance / Conf</th>
                     <th style="text-align:left;padding:0.5rem" title="adjusted_pt_pct — per-horizon LGBM prediction the hit is computed against">Predicted</th>
                     <th style="text-align:left;padding:0.5rem">Horizon</th>
                     <th style="text-align:left;padding:0.5rem">Trigger</th>

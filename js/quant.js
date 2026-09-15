@@ -31,9 +31,9 @@ async function refreshQuantHealth() {
 async function refreshQuantLive() {
     try {
         // Stats: one call to /api/action-engine/backtest/stats which returns
-        // top-line + by_horizon / by_trigger / by_v2_stance / by_confidence_band /
-        // by_action_predicate rollups computed against action_decisions +
-        // action_resolutions.
+        // top-line + by_horizon / by_trigger / by_action_predicate rollups
+        // computed against action_decisions + action_resolutions (served from
+        // a 10-min server-side cache).
         var statsPromise = fetch(QUANT_LIVE_STATS_API + '&t=' + Date.now())
             .then(function(r) { return r.ok ? r.json() : null; })
             .catch(function() { return null; });
