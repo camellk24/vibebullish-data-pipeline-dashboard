@@ -298,26 +298,76 @@ function renderQuantRuns(runs) {
         return;
     }
 
+    var mono = 'font-family:\'JetBrains Mono\',monospace;';
     var t = document.createElement('table');
     t.className = 'data-table';
     t.innerHTML = '<thead><tr>' +
         '<th>Time</th>' +
-        '<th class="r">Tickers</th>' +
-        '<th class="r">Rows</th>' +
-        '<th class="r">1d R²</th>' +
-        '<th class="r">5d R²</th>' +
-        '<th class="r">20d R²</th>' +
-        '<th class="r">60d R²</th>' +
+        '<th>Run</th>' +
+        '<th class="r">Tickers · rows</th>' +
+        '<th class="r" title="Mean per-date Spearman rank-IC of 20d predictions vs realized returns on the held-out window">20d IC</th>' +
+        '<th class="r" title="60d top-decile mean return minus universe mean, pp — the promote gate">60d top10%</th>' +
+        '<th class="r" title="R² on the training target (excess return when label=excess), pooled — magnitude fit, expected ≈0 or negative">R² 1d→60d</th>' +
         '<th class="r">Duration</th>' +
         '<th>Git</th>' +
-        '<th>Seed</th>' +
         '</tr></thead><tbody></tbody>';
+    t.querySelectorAll('th').forEach(function(th) { th.style.whiteSpace = 'nowrap'; });
     var tbody = t.querySelector('tbody');
 
-    function r2Cell(v) {
+    function hz(m, h) {
+        // metrics are keyed "60d" (current) or "60d/long" (legacy)
+        if (m[h]) return m[h];
+        for (var k in m) {
+            if (k.indexOf(h + '/') === 0 && m[k] && typeof m[k] === 'object') return m[k];
+        }
+        return {};
+    }
+
+    function num(v, digits, signed) {
+        var s = v.toFixed(digits);
+        return signed && v > 0 ? '+' + s : s;
+    }
+
+    function signCell(v, digits, goodAbove, suffix, hint) {
         if (v == null) return '<td class="r">—</td>';
-        var color = v > 0.1 ? '#00E5A0' : v > 0 ? '#FBBF24' : '#FF4560';
-        return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + v.toFixed(4) + '</td>';
+        var color = v > goodAbove ? '#00E5A0' : v > 0 ? '#FBBF24' : '#FF4560';
+        return '<td class="r" title="' + qEsc(hint || '') + '" style="' + mono + 'color:' + color + '">' +
+            num(v, digits, true) + (suffix || '') + '</td>';
+    }
+
+    function r2Cell(m) {
+        var parts = ['1d', '5d', '20d', '60d'].map(function(h) {
+            var v = hz(m, h).r2;
+            if (v == null) return '—';
+            var f = v.toFixed(2);
+            return f === '-0.00' ? '0.00' : f;
+        });
+        if (parts.every(function(p) { return p === '—'; })) return '<td class="r">—</td>';
+        return '<td class="r" style="' + mono + 'font-size:0.75rem;color:#8a8a9e;white-space:nowrap">' +
+            parts.join(' ') + '</td>';
+    }
+
+    // Classify the run so a dry run or a killed run isn't read as a model
+    // regression. status/promoted/cohort come from the backend; notes carry
+    // the research-harness tag ("v3-c0-dryrun … not a result").
+    function runKind(run) {
+        var status = (run.status || '').toLowerCase();
+        var notes = (run.notes || '').toLowerCase();
+        if (status === 'killed' || status === 'failed') return { label: status.toUpperCase(), color: '#FF4560', dead: true };
+        if (status === 'running') return { label: 'RUNNING', color: '#FBBF24' };
+        if (run.promoted) return { label: 'PROMOTED', color: '#00E5A0' };
+        if (notes.indexOf('dryrun') !== -1 || notes.indexOf('dry-run') !== -1 || notes.indexOf('not a result') !== -1) {
+            return { label: 'DRY RUN', color: '#8a8a9e' };
+        }
+        if (!run.n_rows) return { label: 'NO DATA', color: '#FF4560', dead: true };
+        return { label: 'RESEARCH', color: '#8a8a9e' };
+    }
+
+    function compactRows(n) {
+        if (!n) return '0';
+        if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+        if (n >= 1e3) return Math.round(n / 1e3) + 'k';
+        return String(n);
     }
 
     function timeAgo(iso) {
@@ -332,35 +382,60 @@ function renderQuantRuns(runs) {
 
     runs.forEach(function(run) {
         var m = run.metrics || {};
-        var r1d = m['1d'] && m['1d'].r2;
-        var r5d = m['5d'] && m['5d'].r2;
-        var r20d = m['20d'] && m['20d'].r2;
-        var r60d = m['60d'] && m['60d'].r2;
-        var dur = run.duration_s ? run.duration_s.toFixed(0) + 's' : '—';
+        var kind = runKind(run);
+        var m20 = hz(m, '20d');
+        var m60 = hz(m, '60d');
+        var dur = !run.duration_s ? '—'
+            : run.duration_s < 3600 ? Math.round(run.duration_s / 60) + 'm'
+            : (run.duration_s / 3600).toFixed(1) + 'h';
         // Use the n_tickers column (truth — actual count trained on) rather
         // than tickers.length (the persisted JSONB array, which historically
         // stored the hardcoded universe constant rather than the dynamic
         // post-quality-filter list). Hover hint still shows ticker names.
+        // A run that never produced rows only carries the requested universe
+        // size, so show nothing rather than a misleading count.
         var tickerCount = run.n_tickers != null ? run.n_tickers : (run.tickers || []).length;
+        if (kind.dead && !run.n_rows) tickerCount = '—';
         var tickerHint = (run.tickers || []).slice(0, 5).join(', ') +
             ((run.tickers || []).length > 5 ? (', +' + ((run.tickers || []).length - 5) + ' more') : '');
         var sha = (run.git_sha || '').substring(0, 7) || 'unknown';
+        var labelMode = run.label_mode || m.label_mode || '';
+        var contextParts = [run.cohort_id, run.feature_set || m.feature_set, labelMode]
+            .filter(function(x) { return x && x !== 'default' && x !== 'unknown'; });
+        // "tradeable_" prefixes every cohort; the full name is in the hover.
+        var context = contextParts.map(function(x) { return x.replace(/^tradeable_/, ''); }).join(' · ');
+        var runHint = [run.run_id, contextParts.join(' · '), run.error, run.notes].filter(Boolean).join('\n');
 
         var tr = document.createElement('tr');
+        if (kind.dead) tr.style.opacity = '0.55';
         tr.innerHTML =
             '<td title="' + qEsc(run.started_at || '') + '">' + timeAgo(run.started_at) + '</td>' +
-            '<td class="r" title="' + qEsc(tickerHint) + '" style="cursor:help">' + tickerCount + '</td>' +
-            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + (run.n_rows || 0).toLocaleString() + '</td>' +
-            r2Cell(r1d) +
-            r2Cell(r5d) +
-            r2Cell(r20d) +
-            r2Cell(r60d) +
-            '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + dur + '</td>' +
-            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:#8a8a9e">' + qEsc(sha) + '</td>' +
-            '<td style="font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;color:#8a8a9e">' + (run.random_seed != null ? run.random_seed : '—') + '</td>';
+            '<td title="' + qEsc(runHint) + '" style="cursor:help;white-space:nowrap">' +
+                '<span style="' + mono + 'font-size:0.65rem;letter-spacing:0.05em;padding:1px 6px;border-radius:4px;' +
+                'border:1px solid ' + kind.color + ';color:' + kind.color + '">' + kind.label + '</span>' +
+                (context ? '<div style="margin-top:3px;font-size:0.7rem;color:#8a8a9e">' + qEsc(context) + '</div>' : '') +
+            '</td>' +
+            '<td class="r" title="' + qEsc(tickerHint + (run.n_rows ? '\n' + run.n_rows.toLocaleString() + ' rows' : '')) + '" style="cursor:help;white-space:nowrap">' +
+                tickerCount + ' <span style="color:#8a8a9e">· ' + compactRows(run.n_rows) + '</span></td>' +
+            signCell(m20.rank_ic_mean, 3, 0.03, '', m20.n_test_dates ? (m20.n_test_dates + ' test dates') : '') +
+            signCell(m60.top_decile_excess, 1, 1, 'pp', m60.n_test_dates ? (m60.n_test_dates + ' test dates — short windows are noisy') : '') +
+            r2Cell(m) +
+            '<td class="r" title="' + qEsc(run.duration_s ? run.duration_s.toFixed(0) + 's' : '') + '" style="' + mono + '">' + dur + '</td>' +
+            '<td title="seed ' + (run.random_seed != null ? run.random_seed : '—') + '" style="' + mono + 'font-size:0.75rem;color:#8a8a9e">' + qEsc(sha) + '</td>';
         tbody.appendChild(tr);
     });
-    c.appendChild(t);
+    // Nine columns at the default 16px side padding overflow the card.
+    t.querySelectorAll('th, td').forEach(function(cell) { cell.style.padding = '10px 10px'; });
+    var wrap = document.createElement('div');
+    wrap.style.overflowX = 'auto';
+    wrap.appendChild(t);
+    c.appendChild(wrap);
+    var note = document.createElement('p');
+    note.style.cssText = 'color:#5c6b7d;font-size:11px;margin-top:10px';
+    note.textContent = 'Judge models by rank: 20d IC (>0 = ranking lines up with realized returns) and 60d top-decile excess (the promote gate). ' +
+        'R² is scored on the excess-return target, where magnitude is mostly unforecastable — ≈0 or negative is normal, including for promoted models. ' +
+        'Only PROMOTED runs serve live predictions.';
+    c.appendChild(note);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
