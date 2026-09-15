@@ -14,7 +14,6 @@ index.html                  Main SPA (navigation, layout)
 js/dashboard.js             LLM usage + cost estimation
 js/quant.js                 LightGBM backtests, live predictions/stats, training runs
 js/data-collector.js        Data-collector health
-js/llm-analysis-logs.js     LLM analysis logs
 js/catalyst-accuracy.js     Catalyst accuracy
 js/scanner-metrics.js       Scanner metrics (System Health tab)
 js/agent-ops.js             Agents tab (agent-role health + accountability)
@@ -28,7 +27,7 @@ vercel.json                 Vercel deployment config
 Backend base URL is `https://api.vibebullish.com`, set per-script (e.g. `API_BASE` in
 `js/dashboard.js`). Tabs poll endpoints such as:
 
-- `GET /api/llm-usage`, `/api/llm-analysis-log`, `/api/llm-catalyst-accuracy`
+- `GET /api/llm-usage`, `/api/llm-catalyst-accuracy`
 - `GET /api/quant/{backtests,live-predictions,live-stats,training-runs,health}`
 - `GET /api/action-engine/backtest/{stats,trend,calibration}`
 - `GET /api/scanner/metrics`, `/api/data-collector/health`, `/api/internal/ws-status`

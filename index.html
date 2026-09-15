@@ -34,7 +34,6 @@
             <button class="tab" data-tab="action-engine">Action Engine</button>
             <button class="tab" data-tab="quant-quality">Quant Quality</button>
             <button class="tab" data-tab="data-collector">Data Collector</button>
-            <button class="tab" data-tab="llm-analysis-logs">LLM Analysis Logs</button>
             <button class="tab" data-tab="catalyst-accuracy">Catalyst Accuracy</button>
             <button class="tab" data-tab="agent-ops">Agents</button>
         </nav>
@@ -384,65 +383,6 @@
             </section>
         </div><!-- /tab-data-collector -->
 
-        <!-- Tab: LLM Analysis Logs -->
-        <div id="tab-llm-analysis-logs" style="display:none">
-            <section class="hero-metrics">
-                <div class="metric-card hero">
-                    <div class="metric-label">Recent v2 Calls</div>
-                    <div class="metric-value" id="lal-total">—</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Success Rate</div>
-                    <div class="metric-value" id="lal-success-rate">—</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Avg Latency</div>
-                    <div class="metric-value" id="lal-latency">—</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Buyable / Bearish</div>
-                    <div class="metric-value" id="lal-buy-ratio">—</div>
-                </div>
-            </section>
-
-            <section class="card">
-                <div class="card-header">
-                    <h2>Filters</h2>
-                </div>
-                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:8px 0;">
-                    <label class="dim" style="font-size:12px;">Ticker:
-                        <input type="text" id="lal-filter-ticker" placeholder="(any)" maxlength="10"
-                               style="margin-left:6px;background:#161616;color:inherit;border:1px solid #333;border-radius:4px;padding:4px 8px;width:100px;text-transform:uppercase;">
-                    </label>
-                    <label class="dim" style="font-size:12px;">Model:
-                        <select id="lal-filter-model" style="margin-left:6px;background:#161616;color:inherit;border:1px solid #333;border-radius:4px;padding:4px 8px;">
-                            <option value="">(any)</option>
-                            <option value="deepseek-chat">deepseek-chat</option>
-                            <option value="claude-opus-4-7">claude-opus-4-7</option>
-                            <option value="claude-opus-4-6">claude-opus-4-6</option>
-                        </select>
-                    </label>
-                    <label class="dim" style="font-size:12px;">Limit:
-                        <select id="lal-filter-limit" style="margin-left:6px;background:#161616;color:inherit;border:1px solid #333;border-radius:4px;padding:4px 8px;">
-                            <option value="50">50</option>
-                            <option value="100" selected>100</option>
-                            <option value="200">200</option>
-                            <option value="500">500</option>
-                        </select>
-                    </label>
-                    <button class="date-nav-btn" id="lal-refresh">Refresh</button>
-                </div>
-            </section>
-
-            <section class="card">
-                <div class="card-header">
-                    <h2>Recent v2 Catalyst Calls</h2>
-                    <span class="card-badge" id="lal-row-count"></span>
-                </div>
-                <div id="lal-table" style="overflow-x:auto;"></div>
-            </section>
-        </div><!-- /tab-llm-analysis-logs -->
-
         <!-- Tab: Catalyst Accuracy -->
         <div id="tab-catalyst-accuracy" style="display:none">
             <section class="card">
@@ -535,7 +475,6 @@
     <script src="js/dashboard.js"></script>
     <script src="js/quant.js"></script>
     <script src="js/data-collector.js"></script>
-    <script src="js/llm-analysis-logs.js"></script>
     <script src="js/catalyst-accuracy.js"></script>
     <script src="js/scanner-metrics.js"></script>
     <script src="js/agent-ops.js"></script>
