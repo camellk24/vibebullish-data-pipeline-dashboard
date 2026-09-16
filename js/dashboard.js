@@ -648,7 +648,7 @@ function renderActionEngineBacktest(d) {
             <div class="metric-label">Hit % vs baseline</div>
             <div class="metric-value" style="color:${(d.graded_decisions || 0) > 0 ? ((d.overall_hit_pct - d.overall_baseline_pct) > 0 ? '#4ade80' : '#f87171') : '#999'}">${(d.graded_decisions || 0) > 0 ? d.overall_hit_pct.toFixed(1) + '%' : '—'}</div>
             <div class="metric-sub">${(d.graded_decisions || 0) > 0
-                ? `baseline ${d.overall_baseline_pct.toFixed(1)}% (always guessing the same way) · ${(d.overall_hit_pct - d.overall_baseline_pct >= 0 ? '+' : '')}${(d.overall_hit_pct - d.overall_baseline_pct).toFixed(1)}pp · ${(d.graded_decisions || 0).toLocaleString()} graded`
+                ? `baseline ${d.overall_baseline_pct.toFixed(1)}% (always guessing the same way) · ${(d.overall_hit_pct - d.overall_baseline_pct >= 0 ? '+' : '')}${(d.overall_hit_pct - d.overall_baseline_pct).toFixed(1)}pp · ${(d.graded_decisions || 0).toLocaleString()} graded over ${(d.graded_days || 0)} decision day${(d.graded_days || 0) === 1 ? '' : 's'}`
                 : 'nothing graded yet'}</div>
         </div>
         <div class="metric-card">
@@ -665,18 +665,19 @@ function renderActionEngineBacktest(d) {
         }
         const rows = buckets.map(b => {
             const graded = b.n_graded || 0;
+            const gradedDays = b.n_graded_days || 0;
             const edge = (b.edge_pp == null) ? null : b.edge_pp;
             const edgeColor = graded < 5 ? '#666' : (edge > 0 ? '#4ade80' : '#f87171');
-            const hitColor = graded >= 5
-                ? (b.hit_pct >= 55 ? '#4ade80' : b.hit_pct >= 45 ? '#fbbf24' : '#f87171')
-                : '#666';
+            // Colour by EDGE, never by the raw rate: a 57.7% hit against a
+            // 72.0% baseline is 14.2pp WORSE than guessing, and used to render green.
+            const hitColor = graded >= 5 ? edgeColor : '#666';
             const retColor = b.avg_return_pct > 0 ? '#4ade80' : b.avg_return_pct < 0 ? '#f87171' : '#999';
             return `
                 <tr>
                     <td style="font-weight:600">${esc(b.key)}</td>
                     <td style="text-align:right">${b.n_decisions.toLocaleString()}</td>
                     <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
-                    <td style="text-align:right">${graded.toLocaleString()}</td>
+                    <td style="text-align:right">${graded.toLocaleString()}${gradedDays > 0 ? `<span style="color:${gradedDays === 1 ? '#fbbf24' : '#888'};font-size:0.8rem"> / ${gradedDays}d</span>` : ''}</td>
                     <td style="text-align:right;color:${hitColor};font-weight:600">${graded > 0 ? b.hit_pct.toFixed(1) + '%' : '—'}</td>
                     <td style="text-align:right;color:#888">${graded > 0 ? b.baseline_pct.toFixed(1) + '%' : '—'}</td>
                     <td style="text-align:right;color:${edgeColor};font-weight:600">${graded > 0 && edge != null ? (edge >= 0 ? '+' : '') + edge.toFixed(1) + 'pp' : '—'}</td>
@@ -690,7 +691,7 @@ function renderActionEngineBacktest(d) {
                     <th style="text-align:left;padding:0.5rem">${label}</th>
                     <th style="text-align:right;padding:0.5rem">Decisions</th>
                     <th style="text-align:right;padding:0.5rem">Resolved</th>
-                    <th style="text-align:right;padding:0.5rem" title="Resolved rows whose prediction points somewhere — graded on sign, at any magnitude">Graded</th>
+                    <th style="text-align:right;padding:0.5rem" title="Graded rows / the number of distinct decision days they come from. Thousands of rows from one day is one cross-section, not thousands of independent tests.">Graded / days</th>
                     <th style="text-align:right;padding:0.5rem" title="Share of graded predictions whose sign matched the realized move">Hit %</th>
                     <th style="text-align:right;padding:0.5rem" title="Score of always guessing the majority direction for these same rows">Baseline</th>
                     <th style="text-align:right;padding:0.5rem" title="Hit % minus baseline. Zero or below = no directional skill.">Edge</th>
