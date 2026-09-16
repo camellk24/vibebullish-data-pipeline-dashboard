@@ -289,6 +289,110 @@ function renderQuantBacktests(rows) {
     c.appendChild(t);
 }
 
+// ── Training report card ────────────────────────────────────────────────
+// Everything below already rides in lgbm_training_runs.metrics; the backend
+// passes the JSONB through whole, so this is a render, not a new pipeline.
+// Collapsed by default — a row expands on click, nothing auto-expands.
+function buildRunReportCard(run) {
+    var m = run.metrics || {};
+    var mono = 'font-family:\'JetBrains Mono\',monospace;';
+    var HZ = ['1d', '5d', '20d', '60d'];
+
+    function blk(h) {
+        if (m[h]) return m[h];
+        for (var k in m) { if (k.indexOf(h + '/') === 0 && m[k]) return m[k]; }
+        return {};
+    }
+    function num(v, d, suffix, signed) {
+        if (v == null || isNaN(v)) return '<span style="color:#5c6b7d">—</span>';
+        var col = v > 0 ? '#00E5A0' : v < 0 ? '#FF4560' : '#8a8a9e';
+        return '<span style="color:' + col + '">' + (signed && v > 0 ? '+' : '') + Number(v).toFixed(d) + (suffix || '') + '</span>';
+    }
+    function plain(v, d) {
+        if (v == null || isNaN(v)) return '<span style="color:#5c6b7d">—</span>';
+        return Number(v).toFixed(d == null ? 0 : d).toLocaleString();
+    }
+
+    var html = '<div style="padding:12px 10px 4px;font-size:0.8rem">';
+
+    // Identity — what config actually ran, not what was requested.
+    var ident = [
+        ['run', run.run_id],
+        ['cohort', run.cohort_id],
+        ['features', (run.feature_set || m.feature_set || '—') + (m.feature_count ? ' (' + m.feature_count + ')' : '')],
+        ['labels', run.label_mode || m.label_mode || '—'],
+        ['lookback', m.lookback_days ? m.lookback_days + 'd' : '—'],
+        ['seed', run.random_seed],
+        ['git', (run.git_sha || '').substring(0, 7) || '—'],
+        ['feature sha', (m.feature_names_sha || '').substring(0, 8) || '—']
+    ];
+    html += '<div style="' + mono + 'font-size:0.7rem;color:#8a8a9e;margin-bottom:10px;line-height:1.7">';
+    ident.forEach(function(kv) {
+        if (kv[1] == null || kv[1] === '') return;
+        html += '<span style="margin-right:14px">' + qEsc(kv[0]) + ' <span style="color:#cfd6e4">' + qEsc(String(kv[1])) + '</span></span>';
+    });
+    html += '</div>';
+
+    // Pre-training gate (present once pipeline #101 is deployed).
+    var gate = m.pretrain_checks;
+    if (gate) {
+        var gcol = gate.status === 'FAIL' ? '#FF4560' : gate.status === 'WARN' ? '#FBBF24' : '#00E5A0';
+        html += '<div style="margin-bottom:10px">' +
+            '<span style="' + mono + 'font-size:0.65rem;letter-spacing:0.05em;padding:1px 6px;border-radius:4px;border:1px solid ' +
+            gcol + ';color:' + gcol + '">PRE-TRAIN GATE ' + qEsc(gate.status) + '</span>' +
+            (gate.blocking ? '<span style="margin-left:8px;color:#8a8a9e;font-size:0.7rem">blocking (promote)</span>' : '') +
+            '</div>';
+        (gate.checks || []).forEach(function(c) {
+            if (c.status === 'PASS') return;   // only the exceptions earn a line
+            var col = c.status === 'FAIL' ? '#FF4560' : '#FBBF24';
+            html += '<div style="margin:2px 0 2px 4px;font-size:0.75rem">' +
+                '<span style="' + mono + 'color:' + col + '">' + qEsc(c.status) + '</span> ' +
+                '<span style="color:#cfd6e4">' + qEsc(c.name) + '</span> ' +
+                '<span style="color:#8a8a9e">' + qEsc(c.detail || '') + '</span></div>';
+        });
+    } else {
+        html += '<div style="color:#5c6b7d;font-size:0.72rem;margin-bottom:10px">no pre-training gate recorded for this run</div>';
+    }
+
+    // Per-horizon scoreboard. Rank metrics first: R2 is scored on the excess
+    // target, where magnitude is mostly unforecastable.
+    html += '<div style="overflow-x:auto"><table class="data-table" style="margin-top:6px">' +
+        '<thead><tr>' +
+        '<th>horizon</th><th class="r">rank IC</th><th class="r">top-dec xs</th><th class="r">top-half IC</th>' +
+        '<th class="r">D10 vs mid</th><th class="r">dir acc</th><th class="r">AUC</th><th class="r">R²</th>' +
+        '<th class="r">distinct</th><th class="r">train/test density</th><th>early stop</th><th class="r">test dates</th>' +
+        '</tr></thead><tbody>';
+    HZ.forEach(function(h) {
+        var b = blk(h);
+        if (!Object.keys(b).length) return;
+        var nEff = (b.n_test_dates && h !== '1d') ? (b.n_test_dates / parseInt(h, 10)) : null;
+        html += '<tr>' +
+            '<td style="' + mono + '">' + h + '</td>' +
+            '<td class="r">' + num(b.rank_ic_mean, 3, '', true) + '</td>' +
+            '<td class="r">' + num(b.top_decile_excess, 1, 'pp', true) + '</td>' +
+            '<td class="r">' + num(b.top_half_rank_ic, 3, '', true) + '</td>' +
+            '<td class="r">' + num(b.d10_vs_middle_gap_pp, 1, 'pp', true) + '</td>' +
+            '<td class="r">' + plain(b.direction_acc != null ? b.direction_acc * 100 : null, 1) + '%</td>' +
+            '<td class="r">' + plain(b.auc, 3) + '</td>' +
+            '<td class="r" style="color:#8a8a9e">' + plain(b.r2, 3) + '</td>' +
+            '<td class="r">' + plain(b.n_distinct_preds) + '</td>' +
+            '<td class="r">' + plain(b.train_test_density_ratio, 2) + '</td>' +
+            '<td style="' + mono + 'font-size:0.7rem;color:#8a8a9e">' + qEsc(b.early_stop || '—') + '</td>' +
+            '<td class="r" title="' + (nEff ? nEff.toFixed(1) + ' non-overlapping windows' : '') + '">' +
+                plain(b.n_test_dates) + (nEff && nEff < 8 ? ' <span style="color:#FBBF24">*</span>' : '') + '</td>' +
+            '</tr>';
+    });
+    html += '</tbody></table></div>';
+    // The inner table inherits the 16px cell padding and would overflow the
+    // card; it is tightened after insertion (same reason as the outer table).
+    html += '<div style="color:#5c6b7d;font-size:11px;margin-top:8px">' +
+        'Judge by rank IC and top-decile excess; R² is scored on the excess target where magnitude is mostly unforecastable. ' +
+        '<span style="color:#FBBF24">*</span> fewer than 8 non-overlapping label windows — a single-window reading, not a steady-state estimate. ' +
+        'distinct = distinct held-out predictions; under ~100 the model has collapsed to a handful of leaves.' +
+        '</div></div>';
+    return html;
+}
+
 function renderQuantRuns(runs) {
     var c = document.getElementById('quant-runs-table');
     if (!c) return;
@@ -425,6 +529,26 @@ function renderQuantRuns(runs) {
             '<td class="r" title="' + qEsc(run.duration_s ? run.duration_s.toFixed(0) + 's' : '') + '" style="' + mono + '">' + dur + '</td>' +
             '<td title="seed ' + (run.random_seed != null ? run.random_seed : '—') + '" style="' + mono + 'font-size:0.75rem;color:#8a8a9e">' + qEsc(sha) + '</td>';
         tbody.appendChild(tr);
+
+        // Expandable report card. Collapsed by default (density convention);
+        // built on first open so 10 rows don't render 10 cards up front.
+        var detail = document.createElement('tr');
+        detail.style.display = 'none';
+        var cell = document.createElement('td');
+        cell.colSpan = 9;
+        cell.style.background = 'rgba(255,255,255,0.02)';
+        detail.appendChild(cell);
+        tbody.appendChild(detail);
+        tr.style.cursor = 'pointer';
+        tr.title = (tr.title ? tr.title + '\n' : '') + 'click for the full report card';
+        tr.addEventListener('click', function() {
+            var open = detail.style.display !== 'none';
+            if (!open && !cell.innerHTML) {
+                cell.innerHTML = buildRunReportCard(run);
+                cell.querySelectorAll('th, td').forEach(function(c) { c.style.padding = '6px 8px'; });
+            }
+            detail.style.display = open ? 'none' : 'table-row';
+        });
     });
     // Nine columns at the default 16px side padding overflow the card.
     t.querySelectorAll('th, td').forEach(function(cell) { cell.style.padding = '10px 10px'; });
