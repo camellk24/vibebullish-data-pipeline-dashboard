@@ -561,17 +561,23 @@ function renderActionEngineTrend(d) {
         return;
     }
     // Header summary: total resolved + cumulative hit_pct over window
-    let totalDirectional = 0;
+    let totalGraded = 0;
     let totalHits = 0;
+    let totalBaseline = 0;
     for (const p of points) {
-        const dir = p.n_directional || 0;
-        totalDirectional += dir;
-        totalHits += dir * (p.hit_pct / 100);
+        const g = p.n_graded || 0;
+        totalGraded += g;
+        totalHits += g * (p.hit_pct / 100);
+        totalBaseline += g * ((p.baseline_pct || 0) / 100);
     }
-    const cumHitPct = totalDirectional > 0 ? (totalHits / totalDirectional) * 100 : 0;
+    const cumHitPct = totalGraded > 0 ? (totalHits / totalGraded) * 100 : 0;
+    const cumBaseline = totalGraded > 0 ? (totalBaseline / totalGraded) * 100 : 0;
     if (summaryEl) {
-        summaryEl.textContent = `cumulative ${cumHitPct.toFixed(1)}% over ${totalDirectional} directional calls`;
-        summaryEl.style.color = cumHitPct >= 55 ? '#4ade80' : cumHitPct >= 45 ? '#fbbf24' : '#f87171';
+        const edge = cumHitPct - cumBaseline;
+        summaryEl.textContent = totalGraded > 0
+            ? `${cumHitPct.toFixed(1)}% vs ${cumBaseline.toFixed(1)}% baseline (${edge >= 0 ? '+' : ''}${edge.toFixed(1)}pp) over ${totalGraded} graded`
+            : 'nothing graded in window';
+        summaryEl.style.color = totalGraded === 0 ? '#888' : (edge > 0 ? '#4ade80' : '#f87171');
     }
 
     // Find max n_decisions for bar scaling
@@ -583,12 +589,13 @@ function renderActionEngineTrend(d) {
     // Render as a horizontal bar chart per day: date | bar | hit_pct | avg_ret
     const rows = points.map(p => {
         const barPct = (p.n_decisions / maxN) * 100;
-        const dir = p.n_directional || 0;
+        const dir = p.n_graded || 0;
+        const dayEdge = p.hit_pct - (p.baseline_pct || 0);
         const hitColor = dir >= 3
-            ? (p.hit_pct >= 55 ? '#4ade80' : p.hit_pct >= 45 ? '#fbbf24' : '#f87171')
+            ? (dayEdge > 0 ? '#4ade80' : '#f87171')
             : '#666';
         const retColor = p.avg_return_pct > 0 ? '#4ade80' : p.avg_return_pct < 0 ? '#f87171' : '#999';
-        const hitText = dir > 0 ? `${p.hit_pct.toFixed(1)}%` : '—';
+        const hitText = dir > 0 ? `${p.hit_pct.toFixed(1)}% / ${(p.baseline_pct || 0).toFixed(1)}%` : '—';
         const retText = p.n_resolved > 0
             ? `${p.avg_return_pct >= 0 ? '+' : ''}${p.avg_return_pct.toFixed(2)}%`
             : '—';
@@ -598,7 +605,7 @@ function renderActionEngineTrend(d) {
                 <td style="padding:0.4rem 0.5rem;width:50%">
                     <div style="background:#1f2937;border-radius:3px;overflow:hidden;height:18px;position:relative">
                         <div style="background:#3b82f6;width:${barPct}%;height:100%"></div>
-                        <span style="position:absolute;top:0;left:6px;font-size:0.8rem;line-height:18px;color:#fff">${p.n_decisions} dec · ${p.n_resolved} res · ${dir} dir</span>
+                        <span style="position:absolute;top:0;left:6px;font-size:0.8rem;line-height:18px;color:#fff">${p.n_decisions} dec · ${p.n_resolved} res · ${dir} graded</span>
                     </div>
                 </td>
                 <td style="padding:0.4rem 0.5rem;text-align:right;color:${hitColor};font-weight:600">${hitText}</td>
@@ -610,8 +617,8 @@ function renderActionEngineTrend(d) {
         <table style="width:100%;border-collapse:collapse">
             <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
                 <th style="text-align:left;padding:0.5rem">Date (UTC)</th>
-                <th style="text-align:left;padding:0.5rem">Decisions / Resolved / Directional</th>
-                <th style="text-align:right;padding:0.5rem" title="Share of directional calls (|prediction| > 0.5%) whose sign matched">Hit %</th>
+                <th style="text-align:left;padding:0.5rem">Decisions / Resolved / Graded</th>
+                <th style="text-align:right;padding:0.5rem" title="Sign-match rate / always-same-way baseline for that day">Hit % / baseline</th>
                 <th style="text-align:right;padding:0.5rem">Avg Return</th>
             </tr></thead>
             <tbody>${rows}</tbody>
@@ -638,9 +645,11 @@ function renderActionEngineBacktest(d) {
             <div class="metric-sub">${d.resolution_coverage_pct.toFixed(1)}% coverage</div>
         </div>
         <div class="metric-card">
-            <div class="metric-label">Hit % (directional)</div>
-            <div class="metric-value">${(d.directional_decisions || 0) > 0 ? d.overall_hit_pct.toFixed(1) + '%' : '—'}</div>
-            <div class="metric-sub">${(d.directional_decisions || 0).toLocaleString()} of ${d.resolved_decisions.toLocaleString()} graded made a directional call</div>
+            <div class="metric-label">Hit % vs baseline</div>
+            <div class="metric-value" style="color:${(d.graded_decisions || 0) > 0 ? ((d.overall_hit_pct - d.overall_baseline_pct) > 0 ? '#4ade80' : '#f87171') : '#999'}">${(d.graded_decisions || 0) > 0 ? d.overall_hit_pct.toFixed(1) + '%' : '—'}</div>
+            <div class="metric-sub">${(d.graded_decisions || 0) > 0
+                ? `baseline ${d.overall_baseline_pct.toFixed(1)}% (always guessing the same way) · ${(d.overall_hit_pct - d.overall_baseline_pct >= 0 ? '+' : '')}${(d.overall_hit_pct - d.overall_baseline_pct).toFixed(1)}pp · ${(d.graded_decisions || 0).toLocaleString()} graded`
+                : 'nothing graded yet'}</div>
         </div>
         <div class="metric-card">
             <div class="metric-label">Avg Return</div>
@@ -655,7 +664,10 @@ function renderActionEngineBacktest(d) {
             return;
         }
         const rows = buckets.map(b => {
-            const hitColor = (b.n_directional || 0) >= 5
+            const graded = b.n_graded || 0;
+            const edge = (b.edge_pp == null) ? null : b.edge_pp;
+            const edgeColor = graded < 5 ? '#666' : (edge > 0 ? '#4ade80' : '#f87171');
+            const hitColor = graded >= 5
                 ? (b.hit_pct >= 55 ? '#4ade80' : b.hit_pct >= 45 ? '#fbbf24' : '#f87171')
                 : '#666';
             const retColor = b.avg_return_pct > 0 ? '#4ade80' : b.avg_return_pct < 0 ? '#f87171' : '#999';
@@ -664,8 +676,10 @@ function renderActionEngineBacktest(d) {
                     <td style="font-weight:600">${esc(b.key)}</td>
                     <td style="text-align:right">${b.n_decisions.toLocaleString()}</td>
                     <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
-                    <td style="text-align:right">${(b.n_directional || 0).toLocaleString()}</td>
-                    <td style="text-align:right;color:${hitColor};font-weight:600">${(b.n_directional || 0) > 0 ? b.hit_pct.toFixed(1) + '%' : '—'}</td>
+                    <td style="text-align:right">${graded.toLocaleString()}</td>
+                    <td style="text-align:right;color:${hitColor};font-weight:600">${graded > 0 ? b.hit_pct.toFixed(1) + '%' : '—'}</td>
+                    <td style="text-align:right;color:#888">${graded > 0 ? b.baseline_pct.toFixed(1) + '%' : '—'}</td>
+                    <td style="text-align:right;color:${edgeColor};font-weight:600">${graded > 0 && edge != null ? (edge >= 0 ? '+' : '') + edge.toFixed(1) + 'pp' : '—'}</td>
                     <td style="text-align:right;color:${retColor};font-weight:600">${b.avg_return_pct >= 0 ? '+' : ''}${b.avg_return_pct.toFixed(2)}%</td>
                 </tr>
             `;
@@ -676,8 +690,10 @@ function renderActionEngineBacktest(d) {
                     <th style="text-align:left;padding:0.5rem">${label}</th>
                     <th style="text-align:right;padding:0.5rem">Decisions</th>
                     <th style="text-align:right;padding:0.5rem">Resolved</th>
-                    <th style="text-align:right;padding:0.5rem" title="Resolved rows whose own prediction exceeded ±0.5% — the only ones a hit rate can grade">Directional</th>
-                    <th style="text-align:right;padding:0.5rem" title="Share of directional calls whose sign matched the realized move">Hit %</th>
+                    <th style="text-align:right;padding:0.5rem" title="Resolved rows whose prediction points somewhere — graded on sign, at any magnitude">Graded</th>
+                    <th style="text-align:right;padding:0.5rem" title="Share of graded predictions whose sign matched the realized move">Hit %</th>
+                    <th style="text-align:right;padding:0.5rem" title="Score of always guessing the majority direction for these same rows">Baseline</th>
+                    <th style="text-align:right;padding:0.5rem" title="Hit % minus baseline. Zero or below = no directional skill.">Edge</th>
                     <th style="text-align:right;padding:0.5rem">Avg Ret</th>
                 </tr></thead>
                 <tbody>${rows}</tbody>

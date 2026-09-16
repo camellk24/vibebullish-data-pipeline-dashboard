@@ -88,11 +88,11 @@ function renderQuantLiveStats(stats) {
     // Top-line summary
     var html = '<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">' +
         '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
-        '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase" title="Directional calls only (|prediction| > 0.5%)">Hit % (dir)</div>' +
+        '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase" title="Sign-match rate over graded predictions, against the always-same-way baseline">Hit % vs base</div>' +
         '<div style="font-size:1.3rem;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:' +
         (stats.overall_hit_pct >= 60 ? '#00E5A0' : stats.overall_hit_pct >= 50 ? '#FBBF24' : '#FF4560') + '">' +
-        ((stats.directional_decisions || 0) > 0 ? num(stats.overall_hit_pct, 1) : '—') + '</div>' +
-        '<div style="font-size:0.6rem;color:#8a8a9e">' + (stats.directional_decisions || 0).toLocaleString() + ' directional</div></div>' +
+        ((stats.graded_decisions || 0) > 0 ? num(stats.overall_hit_pct, 1) : '—') + '</div>' +
+        '<div style="font-size:0.6rem;color:#8a8a9e">base ' + num(stats.overall_baseline_pct, 1) + ' · ' + (stats.graded_decisions || 0).toLocaleString() + ' graded</div></div>' +
         '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
         '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase">Avg Return %</div>' +
         '<div style="font-size:1.3rem;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:' +
@@ -114,21 +114,23 @@ function renderQuantLiveStats(stats) {
         '<th>Horizon</th>' +
         '<th class="r">Decisions</th>' +
         '<th class="r">Resolved</th>' +
-        '<th class="r" title="Resolved rows whose own prediction exceeded ±0.5%">Directional</th>' +
-        '<th class="r" title="Share of directional calls whose sign matched the realized move">Hit %</th>' +
+        '<th class="r" title="Resolved rows whose prediction points somewhere">Graded</th>' +
+        '<th class="r" title="Sign-match rate over graded predictions">Hit %</th>' +
+        '<th class="r" title="Always guessing the majority direction for these same rows">Baseline</th>' +
         '<th class="r">Avg Return %</th>' +
         '<th class="r">Avg PT Error</th>' +
         '</tr></thead><tbody>';
     if (!horizons.length) {
-        html += '<tr><td colspan="7" style="color:#8a8a9e;font-size:0.8rem">no resolved decisions in window yet</td></tr>';
+        html += '<tr><td colspan="8" style="color:#8a8a9e;font-size:0.8rem">no resolved decisions in window yet</td></tr>';
     } else {
         horizons.forEach(function(b) {
             html += '<tr>' +
                 '<td style="font-family:\'JetBrains Mono\',monospace">' + qEsc(b.key) + '</td>' +
                 '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + b.n_decisions + '</td>' +
                 '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + b.n_resolved + '</td>' +
-                '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + (b.n_directional || 0) + '</td>' +
-                hitCell((b.n_directional || 0) > 0 ? b.hit_pct : null) +
+                '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + (b.n_graded || 0) + '</td>' +
+                hitCell((b.n_graded || 0) > 0 ? b.hit_pct : null) +
+                '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + ((b.n_graded || 0) > 0 ? num(b.baseline_pct, 1) : '—') + '</td>' +
                 returnCell(b.avg_return_pct) +
                 '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + num(b.avg_abs_error_pt, 2) + '</td>' +
                 '</tr>';
