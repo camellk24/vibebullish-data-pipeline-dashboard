@@ -79,9 +79,10 @@ function renderQuantLiveStats(stats) {
         var color = v > 0 ? '#00E5A0' : (v < 0 ? '#FF4560' : '#8a8a9e');
         return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 2) + '</td>';
     }
-    function hitCell(v) {
+    // Colour by edge over the baseline, not by the raw rate.
+    function hitCell(v, edge) {
         if (v == null) return '<td class="r">—</td>';
-        var color = v >= 60 ? '#00E5A0' : (v >= 50 ? '#FBBF24' : '#FF4560');
+        var color = edge == null ? '#8a8a9e' : (edge > 0 ? '#00E5A0' : '#FF4560');
         return '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:' + color + '">' + num(v, 1) + '</td>';
     }
 
@@ -90,7 +91,7 @@ function renderQuantLiveStats(stats) {
         '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
         '<div style="font-size:0.65rem;color:#8a8a9e;letter-spacing:0.08em;text-transform:uppercase" title="Sign-match rate over graded predictions, against the always-same-way baseline">Hit % vs base</div>' +
         '<div style="font-size:1.3rem;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:' +
-        (stats.overall_hit_pct >= 60 ? '#00E5A0' : stats.overall_hit_pct >= 50 ? '#FBBF24' : '#FF4560') + '">' +
+        ((stats.graded_decisions || 0) === 0 ? '#8a8a9e' : (stats.overall_hit_pct - stats.overall_baseline_pct) > 0 ? '#00E5A0' : '#FF4560') + '">' +
         ((stats.graded_decisions || 0) > 0 ? num(stats.overall_hit_pct, 1) : '—') + '</div>' +
         '<div style="font-size:0.6rem;color:#8a8a9e">base ' + num(stats.overall_baseline_pct, 1) + ' · ' + (stats.graded_decisions || 0).toLocaleString() + ' graded</div></div>' +
         '<div style="flex:1;min-width:120px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px;text-align:center">' +
@@ -114,7 +115,7 @@ function renderQuantLiveStats(stats) {
         '<th>Horizon</th>' +
         '<th class="r">Decisions</th>' +
         '<th class="r">Resolved</th>' +
-        '<th class="r" title="Resolved rows whose prediction points somewhere">Graded</th>' +
+        '<th class="r" title="Graded rows / distinct decision days behind them">Graded / days</th>' +
         '<th class="r" title="Sign-match rate over graded predictions">Hit %</th>' +
         '<th class="r" title="Always guessing the majority direction for these same rows">Baseline</th>' +
         '<th class="r">Avg Return %</th>' +
@@ -128,8 +129,9 @@ function renderQuantLiveStats(stats) {
                 '<td style="font-family:\'JetBrains Mono\',monospace">' + qEsc(b.key) + '</td>' +
                 '<td class="r" style="font-family:\'JetBrains Mono\',monospace">' + b.n_decisions + '</td>' +
                 '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + b.n_resolved + '</td>' +
-                '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + (b.n_graded || 0) + '</td>' +
-                hitCell((b.n_graded || 0) > 0 ? b.hit_pct : null) +
+                '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + (b.n_graded || 0) +
+                    ((b.n_graded_days || 0) > 0 ? ' / ' + b.n_graded_days + 'd' : '') + '</td>' +
+                hitCell((b.n_graded || 0) > 0 ? b.hit_pct : null, b.edge_pp) +
                 '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + ((b.n_graded || 0) > 0 ? num(b.baseline_pct, 1) : '—') + '</td>' +
                 returnCell(b.avg_return_pct) +
                 '<td class="r" style="font-family:\'JetBrains Mono\',monospace;color:#8a8a9e">' + num(b.avg_abs_error_pt, 2) + '</td>' +
