@@ -51,15 +51,21 @@ function setState(next, patch) {
 
 // ── header UI ────────────────────────────────────────────────────────────────
 
+// Attribute-safe: these strings land inside quoted HTML attributes (title="…"),
+// so quotes MUST be escaped too — a textContent/innerHTML round-trip does not
+// escape them and would let `" onmouseover=` break out of the attribute.
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function renderHeader() {
     const el = document.getElementById('auth-slot');
     if (!el) return;
-
-    const esc = s => {
-        const d = document.createElement('div');
-        d.textContent = String(s == null ? '' : s);
-        return d.innerHTML;
-    };
 
     switch (state.state) {
         case 'loading':
@@ -84,6 +90,14 @@ function renderHeader() {
                 `<span class="auth-note auth-note-warn">not an admin${state.email ? ' · ' + esc(state.email) : ''}</span>` +
                 '<button class="auth-btn auth-btn-ghost" id="auth-signout">Sign out</button>';
             break;
+        case 'verify_failed':
+            // NOT the same as "not an admin": the check itself did not complete,
+            // so claiming the account lacks access would be a guess.
+            el.innerHTML =
+                `<span class="auth-note auth-note-warn" title="${esc(state.message)}">could not verify sign-in</span>` +
+                '<button class="auth-btn" id="auth-recheck">Retry</button>' +
+                '<button class="auth-btn auth-btn-ghost" id="auth-signout">Sign out</button>';
+            break;
         default:
             el.innerHTML =
                 `<span class="auth-note auth-note-warn" title="${esc(state.message)}">sign-in unavailable</span>` +
@@ -96,6 +110,8 @@ function renderHeader() {
     if (signOut) signOut.addEventListener('click', () => window.VBAuth.signOut());
     const retry = document.getElementById('auth-retry');
     if (retry) retry.addEventListener('click', () => boot());
+    const recheck = document.getElementById('auth-recheck');
+    if (recheck) recheck.addEventListener('click', () => checkAdmin());
 }
 
 // ── public surface ───────────────────────────────────────────────────────────
@@ -154,7 +170,8 @@ async function checkAdmin() {
     try {
         resp = await window.VBAuth.fetch('/api/ops/whoami');
     } catch (err) {
-        setState('error', { message: 'Could not reach /api/ops/whoami.' });
+        // The network never answered — an outage, not a verdict on this account.
+        setState('verify_failed', { message: 'Could not reach /api/ops/whoami.' });
         return;
     }
 
@@ -179,7 +196,24 @@ async function checkAdmin() {
         });
         return;
     }
-    setState('not_admin', { message: (body && body.message) || 'Not an admin.' });
+
+    // A 403 means EITHER "this account is not an admin" OR "we could not ask" —
+    // the verified proxy fails closed, so an unreachable whoami also lands here.
+    // Only the first is a statement about the user; conflating them tells an
+    // admin they have been demoted during a backend blip.
+    const msg = String((body && body.message) || '');
+    const outage =
+        resp.status >= 500 ||
+        resp.status === 0 ||
+        /unreachable|time(?:d)? ?out|could not verify|temporar/i.test(msg);
+    if (outage) {
+        setState('verify_failed', {
+            message: msg || `Access check failed (HTTP ${resp.status}).`,
+        });
+        return;
+    }
+
+    setState('not_admin', { message: msg || 'Not an admin.' });
 }
 
 async function boot() {

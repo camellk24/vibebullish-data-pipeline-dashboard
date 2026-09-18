@@ -24,10 +24,16 @@
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
+    // Attribute-safe: these strings land inside quoted HTML attributes (title=,
+    // data-target=), so quotes MUST be escaped too — a textContent/innerHTML
+    // round-trip does not escape them and would let `" onmouseover=` break out.
     function esc(s) {
-        const d = document.createElement('div');
-        d.textContent = String(s == null ? '' : s);
-        return d.innerHTML;
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function isNum(v) {

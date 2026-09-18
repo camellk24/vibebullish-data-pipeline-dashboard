@@ -9,7 +9,10 @@
 const { verifiedProxy, send } = require('../_verified_proxy.js');
 
 // view → { path, params } where params are the query keys this view forwards.
-const VIEWS = {
+// Object.create(null): a plain literal would make `__proto__`, `constructor` and
+// `toString` resolve to inherited values, so a crafted ?view= would sail past a
+// bare truthiness check. The hasOwnProperty guard below is the second belt.
+const VIEWS = Object.assign(Object.create(null), {
     status: { path: '/api/internal/shadow/status', params: ['book_id'] },
     evidence: { path: '/api/internal/shadow/evidence', params: ['book_id', 'sessions'] },
     diffs: { path: '/api/internal/shadow/diffs', params: ['book_id', 'sessions'] },
@@ -18,7 +21,7 @@ const VIEWS = {
         params: ['book_id', 'valuation_date'],
     },
     alerts: { path: '/api/internal/ops/alerts', params: ['limit'] },
-};
+});
 
 const INT_PARAMS = new Set(['book_id', 'sessions', 'limit']);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -44,7 +47,7 @@ module.exports = async function handler(req, res) {
 
     const q = queryOf(req);
     const view = String(first(q.view) || '').trim();
-    const spec = VIEWS[view];
+    const spec = Object.prototype.hasOwnProperty.call(VIEWS, view) ? VIEWS[view] : null;
     if (!spec) {
         return send(res, 400, {
             error: 'bad_request',
