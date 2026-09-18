@@ -1220,3 +1220,275 @@ body {
         scroll-behavior: auto !important;
     }
 }
+
+/* ── Ops console (admin-gated): sign-in, Shadow book, Heartbeats ──────────── */
+
+.auth-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-sm);
+    margin-left: var(--s-sm);
+    padding-left: var(--s-sm);
+    border-left: 1px solid var(--border);
+}
+
+.auth-btn {
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--bg-tint);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.auth-btn:hover {
+    border-color: rgba(168, 85, 247, 0.4);
+    background: var(--bg-elevated);
+}
+
+.auth-btn-ghost {
+    background: transparent;
+    color: var(--text-tertiary);
+}
+
+.auth-note {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.auth-note-ok   { color: var(--positive); }
+.auth-note-warn { color: var(--warning); }
+
+.ops-access-note {
+    font-size: 0.78rem;
+    color: var(--text-tertiary);
+    margin: calc(var(--s-lg) * -1 + var(--s-xs)) 0 var(--s-lg);
+    min-height: 0;
+}
+.ops-access-note:empty { display: none; }
+
+.ops-loading { color: var(--text-tertiary); padding: var(--s-md); font-size: 0.85rem; }
+.ops-dim     { color: var(--text-quaternary); font-size: 0.78rem; }
+.ops-good    { color: var(--positive); }
+.ops-bad     { color: var(--negative); font-weight: 600; }
+.ops-empty-line { padding: var(--s-sm) 0; }
+
+/* "unknown" is its own rendered state — never a blank cell, never a zero. */
+.ops-unknown {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    border: 1px dashed var(--text-faint);
+    border-radius: 10px;
+    padding: 0 8px;
+}
+
+.ops-never { color: var(--text-quaternary); font-style: italic; }
+
+.ops-unavailable {
+    border: 1px dashed var(--border);
+    border-radius: var(--r-md);
+    padding: var(--s-lg);
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.ops-unavailable-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--warning);
+    margin-bottom: var(--s-xs);
+}
+
+.ops-unavailable-msg {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--s-xs);
+}
+
+.ops-unavailable-hint { font-size: 0.78rem; color: var(--text-tertiary); line-height: 1.5; }
+.ops-unavailable-hint code { font-family: var(--font-mono); color: var(--text-secondary); }
+
+/* Status / totals strips */
+.ops-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--s-md);
+}
+.ops-strip-3 { grid-template-columns: repeat(3, 1fr); }
+
+.ops-strip-val { font-size: 1.35rem; }
+
+.ops-strip-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-md);
+    margin-top: var(--s-md);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+.ops-strip-meta code { color: var(--text-secondary); }
+
+@media (max-width: 880px) {
+    .ops-strip, .ops-strip-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Tables */
+.ops-table { table-layout: auto; width: 100%; }
+.ops-table th { white-space: nowrap; }
+.ops-table td { vertical-align: top; }
+.ops-table .r {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+.ops-table tr.ops-row-late td { background: rgba(255, 181, 181, 0.07); }
+.ops-table tr.ops-row-disabled { opacity: 0.45; }
+
+/* Chips */
+.ops-chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg-tint);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.ops-chip-ok      { color: var(--positive); background: rgba(182, 255, 206, 0.10); border-color: rgba(182, 255, 206, 0.22); }
+.ops-chip-warn    { color: var(--warning);  background: rgba(251, 191, 36, 0.10);  border-color: rgba(251, 191, 36, 0.25); }
+.ops-chip-bad     { color: var(--negative); background: rgba(255, 181, 181, 0.10); border-color: rgba(255, 181, 181, 0.30); }
+.ops-chip-unknown { color: var(--text-tertiary); background: transparent; border-style: dashed; border-color: var(--text-faint); }
+
+/* Diff classification chips — one colour per cause, stable across sessions. */
+.ops-chip-rule_mismatch { color: var(--negative); background: rgba(255, 181, 181, 0.10); border-color: rgba(255, 181, 181, 0.28); }
+.ops-chip-data_version  { color: var(--warning);  background: rgba(251, 191, 36, 0.10);  border-color: rgba(251, 191, 36, 0.25); }
+.ops-chip-timing        { color: var(--neutral);  background: rgba(181, 199, 247, 0.10); border-color: rgba(181, 199, 247, 0.22); }
+.ops-chip-quarantine    { color: var(--accent);   background: rgba(168, 85, 247, 0.12);  border-color: rgba(168, 85, 247, 0.28); }
+.ops-chip-cost          { color: var(--positive); background: rgba(182, 255, 206, 0.08); border-color: rgba(182, 255, 206, 0.20); }
+.ops-chip-unclassified  { color: var(--text-tertiary); background: transparent; border-style: dashed; border-color: var(--text-faint); }
+
+.ops-badge-bad { color: var(--negative); }
+
+/* Diffs: one block per session, rows expand to the raw evidence */
+.ops-diff-session { margin-bottom: var(--s-lg); }
+.ops-diff-session:last-child { margin-bottom: 0; }
+
+.ops-diff-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    margin-bottom: var(--s-sm);
+    font-size: 0.85rem;
+}
+
+.ops-diff-row { cursor: pointer; transition: background 0.2s; }
+.ops-diff-row:hover { background: rgba(255, 255, 255, 0.03); }
+.ops-diff-row:focus-visible { outline: 1px solid rgba(168, 85, 247, 0.5); outline-offset: -1px; }
+.ops-diff-row.ops-row-open { background: rgba(168, 85, 247, 0.06); }
+
+.ops-diff-detail { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+
+.ops-caret {
+    display: inline-block;
+    color: var(--text-quaternary);
+    transition: transform 0.2s;
+}
+.ops-row-open .ops-caret { transform: rotate(90deg); }
+
+.ops-pre {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: var(--s-md);
+    margin: var(--s-sm) 0;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+/* Alert events */
+.ops-alert {
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: var(--s-md);
+    margin-bottom: var(--s-sm);
+    background: rgba(255, 255, 255, 0.015);
+}
+.ops-alert:last-child { margin-bottom: 0; }
+
+.ops-alert-top {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    flex-wrap: wrap;
+    margin-bottom: var(--s-xs);
+}
+.ops-alert-top code { font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-primary); }
+
+.ops-alert-msg { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: var(--s-xs); line-height: 1.5; }
+
+/* Diff-kind chips (entry / exit / entry_size / exit_size) + the kind filter */
+.ops-chip-kind { font-size: 0.66rem; }
+.ops-chip-kind-entry      { color: var(--positive); background: rgba(182, 255, 206, 0.08); border-color: rgba(182, 255, 206, 0.20); }
+.ops-chip-kind-exit       { color: var(--neutral);  background: rgba(181, 199, 247, 0.08); border-color: rgba(181, 199, 247, 0.20); }
+.ops-chip-kind-entry_size { color: var(--warning);  background: rgba(251, 191, 36, 0.08);  border-color: rgba(251, 191, 36, 0.20); }
+.ops-chip-kind-exit_size  { color: var(--accent);   background: rgba(168, 85, 247, 0.10);  border-color: rgba(168, 85, 247, 0.22); }
+/* A kind the console has never heard of renders as itself, flagged — never
+   silently folded into one of the four it does know. */
+.ops-chip-kind-other,
+.ops-chip-unknown-kind {
+    color: var(--text-tertiary);
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--text-faint);
+}
+
+.ops-chip-quiet { color: var(--text-tertiary); background: var(--bg-tint); }
+
+.ops-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-xs);
+    margin-bottom: var(--s-md);
+}
+
+.ops-filter-btn {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 10px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.ops-filter-btn:hover { color: var(--text-secondary); border-color: rgba(255, 255, 255, 0.14); }
+.ops-filter-btn.ops-filter-on {
+    color: var(--text-primary);
+    background: rgba(168, 85, 247, 0.12);
+    border-color: rgba(168, 85, 247, 0.32);
+}
+
+/* Attribution completeness: unpriced lots make the total read LOW, so the row
+   says so instead of letting the number pass as whole. */
+.ops-warn { color: var(--warning); }
+.ops-table tr.ops-row-warn td { background: rgba(251, 191, 36, 0.06); }

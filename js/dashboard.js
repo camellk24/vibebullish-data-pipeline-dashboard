@@ -497,19 +497,25 @@ function stopAutoRefresh() {
 
 function initTabs() {
     const tabs = document.querySelectorAll('.tab');
-    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops'];
+    // The two ops-* tabs are admin-only: their BUTTONS are hidden until
+    // /api/ops/whoami confirms an admin (js/ops-console.js), but their sections
+    // must still be listed here so the router can hide them like any other.
+    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-ops-shadow', 'tab-ops-heartbeats'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             const tabId = btn.getAttribute('data-tab');
             tabIds.forEach(id => {
-                document.getElementById(id).style.display = id === 'tab-' + tabId ? '' : 'none';
+                const el = document.getElementById(id);
+                if (el) el.style.display = id === 'tab-' + tabId ? '' : 'none';
             });
             if (tabId === 'system-health') fetchWSStatus();
             if (tabId === 'action-engine') fetchActionEngineBacktest();
             if (tabId === 'quant-quality') refreshQuantHealth();
             if (tabId === 'data-collector') refreshDataCollectorHealth();
+            if (tabId === 'ops-shadow' && window.OpsConsole) window.OpsConsole.loadShadow();
+            if (tabId === 'ops-heartbeats' && window.OpsConsole) window.OpsConsole.loadHeartbeats();
         });
     });
 }

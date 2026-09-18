@@ -430,12 +430,16 @@
         const title =
             kind === 'not_configured'
                 ? 'Agents view is not configured'
+                : kind === 'unauthenticated' || kind === 'forbidden'
+                ? 'Admin sign-in required'
                 : kind === 'upstream_error'
                 ? 'Backend rejected the request'
                 : 'Backend unreachable';
         const hint =
             kind === 'not_configured'
                 ? 'The serverless proxy at <code>/api/agent-ops</code> has no <code>INTERNAL_API_TOKEN</code>. Set it on the Vercel project (Production + Preview) and redeploy.'
+                : kind === 'unauthenticated' || kind === 'forbidden'
+                ? 'This view reads a token-gated backend route. Sign in with an admin Google account using the button in the header.'
                 : 'Nothing below is being shown, because showing the last-known numbers here would read as current health.';
 
         // Never leave stale numbers on screen pretending to be current.
@@ -497,7 +501,11 @@
                 status = f.__status;
                 body = f.body;
             } else {
-                const res = await fetch(ENDPOINT, { headers: { Accept: 'application/json' } });
+                // Phase D: /api/agent-ops is now admin-verified server-side, so the
+                // request must carry the signed-in user's Firebase ID token.
+                const res = window.VBAuth
+                    ? await window.VBAuth.fetch(ENDPOINT)
+                    : await fetch(ENDPOINT, { headers: { Accept: 'application/json' } });
                 status = res.status;
                 try {
                     body = await res.json();
@@ -539,6 +547,13 @@
     }
 
     function init() {
+        // Phase D: the proxy is admin-verified, so a load that raced sign-in
+        // shows "Admin sign-in required". Retry once access changes.
+        window.addEventListener('vb-auth-change', () => {
+            const active = document.querySelector('.tab.active');
+            if (active && active.dataset.tab === 'agent-ops') load();
+        });
+
         const tabs = document.querySelector('.dashboard-tabs');
         if (tabs) {
             tabs.addEventListener('click', (e) => {

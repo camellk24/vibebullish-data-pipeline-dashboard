@@ -24,6 +24,8 @@
             <div class="header-right">
                 <span class="live-dot" id="live-dot"></span>
                 <span class="header-meta" id="last-updated">Loading...</span>
+                <!-- Admin sign-in for the ops tabs. Public tabs never need it. -->
+                <span class="auth-slot" id="auth-slot"></span>
             </div>
         </header>
 
@@ -36,7 +38,10 @@
             <button class="tab" data-tab="data-collector">Data Collector</button>
             <button class="tab" data-tab="catalyst-accuracy">Catalyst Accuracy</button>
             <button class="tab" data-tab="agent-ops">Agents</button>
+            <button class="tab" data-tab="ops-shadow" data-ops-tab style="display:none">Shadow book</button>
+            <button class="tab" data-tab="ops-heartbeats" data-ops-tab style="display:none">Heartbeats</button>
         </nav>
+        <div class="ops-access-note" id="ops-access-note"></div>
 
         <!-- Tab: LLM Usage -->
         <div id="tab-llm-usage">
@@ -404,6 +409,75 @@
             </section>
         </div><!-- /tab-agent-ops -->
 
+        <!-- Tab: Shadow book (admin only) -->
+        <div id="tab-ops-shadow" style="display:none">
+            <div class="ao-head">
+                <p class="ao-intro">
+                    The Phase&nbsp;C shadow book, as evidenced in the database &mdash; what it decided,
+                    what it filled, what it earned, and where it disagreed with the measured legacy
+                    book. Every panel degrades on its own: an endpoint that is not deployed yet reads
+                    <strong>unavailable</strong>, never a stale number.
+                </p>
+            </div>
+
+            <section class="card">
+                <div class="card-header"><h2>Status</h2></div>
+                <div id="ops-shadow-status"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Session evidence</h2>
+                    <span class="card-badge">last 30 sessions</span>
+                </div>
+                <div class="ao-scroll" id="ops-shadow-evidence"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Attribution</h2>
+                    <span class="card-badge">per allocation run</span>
+                </div>
+                <div class="ao-scroll" id="ops-shadow-attribution"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Shadow vs legacy diffs</h2>
+                    <span class="card-badge">last 20 sessions &middot; click a row</span>
+                </div>
+                <div class="ao-scroll" id="ops-shadow-diffs"></div>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Pages</h2>
+                    <span class="card-badge">alert events &amp; delivery</span>
+                </div>
+                <div id="ops-shadow-alerts"></div>
+            </section>
+        </div><!-- /tab-ops-shadow -->
+
+        <!-- Tab: Heartbeats (admin only) -->
+        <div id="tab-ops-heartbeats" style="display:none">
+            <div class="ao-head">
+                <p class="ao-intro">
+                    The routine registry and its dead-man clock. A routine is <strong>late</strong>
+                    only inside its own window &mdash; a session routine is never late overnight, a
+                    daily routine is never late on a holiday &mdash; so a quiet row here means quiet,
+                    not unchecked.
+                </p>
+            </div>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Routines</h2>
+                    <span class="card-badge" id="ops-hb-summary"></span>
+                </div>
+                <div class="ao-scroll" id="ops-hb-table"></div>
+            </section>
+        </div><!-- /tab-ops-heartbeats -->
+
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
             <span class="dim">Auto-refreshes every 60s</span>
@@ -416,5 +490,7 @@
     <script src="js/catalyst-accuracy.js"></script>
     <script src="js/scanner-metrics.js"></script>
     <script src="js/agent-ops.js"></script>
+    <script src="js/ops-console.js"></script>
+    <script type="module" src="js/auth.js"></script>
 </body>
 </html>
