@@ -275,6 +275,32 @@
         return (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(2);
     }
 
+    // An unpriced lot is a lot whose valuation could not be struck — its
+    // unrealized P&L is MISSING from the number beside it, so the number reads
+    // low without saying so. Surface the count rather than let the total look
+    // complete. Zero is rendered as nothing; unknown stays unknown.
+    function unpricedChip(v, opts) {
+        if (!isNum(v)) {
+            return (opts && opts.silentUnknown)
+                ? ''
+                : unknownSpan('The backend did not report unpriced_lots.');
+        }
+        if (v === 0) return '';
+        return `<span class="ops-chip ops-chip-warn" title="${esc(
+            v + ' lot' + (v === 1 ? '' : 's') + ' could not be priced at the valuation date — their unrealized P&L is not included above.'
+        )}">${esc(v + ' unpriced')}</span>`;
+    }
+
+    // How stale the priciest input is. Present only when the backend reports it.
+    function barAgeNote(v) {
+        if (v === null || v === undefined) return '';
+        if (!isNum(v)) return '';
+        const cls = v > 5 ? 'ops-chip-warn' : 'ops-chip-quiet';
+        return `<span class="ops-chip ${cls}" title="${esc(
+            'Oldest daily bar used for this valuation is ' + v + ' day(s) old.'
+        )}">bar age ${esc(String(v))}d</span>`;
+    }
+
     function signedClass(v) {
         const n = typeof v === 'number' ? v : parseFloat(String(v));
         if (!isFinite(n) || n === 0) return '';
@@ -296,6 +322,10 @@
         const unrealized = pick(totals, 'unrealizedPnL', 'unrealized_pnl', 'UnrealizedPnL');
         const costs = pick(totals, 'costsUSD', 'costs_usd', 'CostsUSD');
         const valuation = pick(totals, 'valuationDate', 'valuation_date');
+        const totalUnpriced = pick(totals, 'unpricedLots', 'unpriced_lots');
+        const totalBarAgeDays = pick(totals, 'oldestBarAgeDays', 'oldest_bar_age_days');
+        const totalUnpricedChip = unpricedChip(totalUnpriced, { silentUnknown: true });
+        const totalBarAge = barAgeNote(totalBarAgeDays);
 
         const totalsHtml = `
             <div class="ops-strip ops-strip-3">
@@ -307,7 +337,11 @@
                 <div class="metric-card">
                     <div class="metric-label">Unrealized P&amp;L</div>
                     <div class="metric-value ops-strip-val ${signedClass(unrealized)}">${money(unrealized) != null ? esc(money(unrealized)) : unknownSpan()}</div>
-                    <div class="metric-sub">open lots at the valuation close</div>
+                    <div class="metric-sub">${
+                        isNum(totalUnpriced) && totalUnpriced > 0
+                            ? `<span class="ops-warn">incomplete — ${esc(String(totalUnpriced))} lot${totalUnpriced === 1 ? '' : 's'} unpriced</span>`
+                            : 'open lots at the valuation close'
+                    }</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Execution costs</div>
@@ -315,7 +349,11 @@
                     <div class="metric-sub">informational — already inside P&amp;L</div>
                 </div>
             </div>
-            <div class="ops-strip-meta"><span>valuation date ${valuation ? esc(String(valuation)) : unknownSpan()}</span></div>`;
+            <div class="ops-strip-meta">
+                <span>valuation date ${valuation ? esc(String(valuation)) : unknownSpan()}</span>
+                ${totalUnpricedChip ? `<span>${totalUnpricedChip}</span>` : ''}
+                ${totalBarAge ? `<span>${totalBarAge}</span>` : ''}
+            </div>`;
 
         let table;
         if (!byRun.length) {
@@ -326,7 +364,9 @@
                     const runId = String(pick(row, 'allocationRunID', 'allocation_run_id', 'AllocationRunID') || '');
                     const rz = pick(row, 'realizedPnL', 'realized_pnl', 'RealizedPnL');
                     const uz = pick(row, 'unrealizedPnL', 'unrealized_pnl', 'UnrealizedPnL');
-                    return `<tr>
+                    const rowUnpriced = pick(row, 'unpricedLots', 'unpriced_lots');
+                    const rowBarAge = pick(row, 'oldestBarAgeDays', 'oldest_bar_age_days');
+                    return `<tr class="${isNum(rowUnpriced) && rowUnpriced > 0 ? 'ops-row-warn' : ''}">
                         <td class="r" title="${esc(runId)}"><code>${esc(runId.slice(0, 12) || '—')}</code></td>
                         <td class="r">${esc(String(pick(row, 'sessionDate', 'session_date', 'SessionDate') || '—'))}</td>
                         <td class="r">${esc(String(pick(row, 'targetPortfolioID', 'target_portfolio_id', 'TargetPortfolioID') || '—'))}</td>
@@ -336,6 +376,8 @@
                         <td class="r">${esc(String(money(pick(row, 'costsUSD', 'costs_usd', 'CostsUSD')) || '—'))}</td>
                         <td class="r">${esc(String(pick(row, 'fills', 'Fills') ?? '—'))}</td>
                         <td class="r">${esc(String(pick(row, 'openLots', 'open_lots', 'OpenLots') ?? '—'))}/${esc(String(pick(row, 'closedLots', 'closed_lots', 'ClosedLots') ?? '—'))}</td>
+                        <td class="r">${unpricedChip(rowUnpriced) || '<span class="ops-dim">none</span>'}</td>
+                        <td class="r">${barAgeNote(rowBarAge) || '<span class="ops-dim">—</span>'}</td>
                     </tr>`;
                 })
                 .join('');
@@ -343,6 +385,7 @@
                 <thead><tr>
                     <th>run</th><th>session</th><th>portfolio</th><th>kind</th>
                     <th>realized</th><th>unrealized</th><th>costs</th><th>fills</th><th>open/closed</th>
+                    <th>unpriced</th><th>bar age</th>
                 </tr></thead>
                 <tbody>${rows}</tbody></table>`;
         }
@@ -352,9 +395,78 @@
 
     const DIFF_CLASSES = ['rule_mismatch', 'data_version', 'timing', 'quarantine', 'cost', 'unclassified'];
 
+    // Backend contract (2026-09-18): the single `size` kind was split into
+    // `entry_size` / `exit_size`, so a size disagreement names which leg it is.
+    // Anything outside this list still renders — as itself, marked unknown —
+    // rather than being silently folded into a kind it is not.
+    const DIFF_KINDS = ['entry', 'exit', 'entry_size', 'exit_size'];
+
+    let diffKindFilter = 'all'; // 'all' | one of DIFF_KINDS
+
     function classChip(c) {
         const key = DIFF_CLASSES.includes(c) ? c : 'unclassified';
         return `<span class="ops-chip ops-chip-${esc(key)}">${esc(key.replace(/_/g, ' '))}</span>`;
+    }
+
+    function kindChip(k) {
+        const raw = String(k == null ? '' : k);
+        if (!raw) return `<span class="ops-chip ops-chip-unknown-kind">unknown</span>`;
+        const known = DIFF_KINDS.includes(raw);
+        return `<span class="ops-chip ops-chip-kind ops-chip-kind-${esc(known ? raw : 'other')}"${
+            known ? '' : ` title="${esc('Kind not in the declared set: ' + raw)}"`
+        }>${esc(raw.replace(/_/g, ' '))}</span>`;
+    }
+
+    // The unclassified share is the differ's own coverage gauge: a session where
+    // most rows have no explanation is a warning about the CLASSIFIER, not a
+    // clean bill of health for the book. The backend decides when that is true
+    // (warn_unclassified); we only render its verdict, never re-derive it.
+    function unclassifiedNote(run) {
+        const summary = pick(run, 'summary', 'Summary') || {};
+        const share = pick(summary, 'unclassified_share', 'unclassifiedShare');
+        const n = pick(summary, 'n_unclassified', 'nUnclassified');
+        const warn =
+            pick(summary, 'warn_unclassified', 'warnUnclassified') === true ||
+            pick(run, 'warn_unclassified', 'warnUnclassified') === true;
+
+        // Fall back to the run level in case the handler hoists these out.
+        const shareVal = share !== undefined ? share : pick(run, 'unclassified_share', 'unclassifiedShare');
+        const nVal = n !== undefined ? n : pick(run, 'n_unclassified', 'nUnclassified');
+
+        if (shareVal === undefined && nVal === undefined) {
+            return `<span class="ops-dim">unclassified ${unknownSpan('The backend did not report an unclassified share for this run.')}</span>`;
+        }
+
+        // 6dp string from the backend; show it as a percentage without lying
+        // about precision we do not have.
+        let pctText = null;
+        if (shareVal !== undefined && shareVal !== null && String(shareVal) !== '') {
+            const f = typeof shareVal === 'number' ? shareVal : parseFloat(String(shareVal));
+            pctText = isFinite(f) ? (f * 100).toFixed(1) + '%' : String(shareVal);
+        }
+
+        const label =
+            (pctText ? pctText : '—') + (isNum(nVal) ? ` (${nVal})` : '') + ' unclassified';
+        return `<span class="ops-chip ${warn ? 'ops-chip-warn' : 'ops-chip-quiet'}"${
+            warn
+                ? ' title="The backend flagged this session: too large a share of its differences have no explanation."'
+                : ''
+        }>${esc(label)}</span>`;
+    }
+
+    function renderDiffFilter() {
+        const opts = ['all'].concat(DIFF_KINDS);
+        return `<div class="ops-filter" id="ops-diff-filter">
+            <span class="ops-dim">kind:</span>
+            ${opts
+                .map(
+                    k =>
+                        `<button class="ops-filter-btn${k === diffKindFilter ? ' ops-filter-on' : ''}" data-kind="${esc(k)}">${esc(
+                            k === 'all' ? 'all' : k.replace(/_/g, ' ')
+                        )}</button>`
+                )
+                .join('')}
+        </div>`;
     }
 
     async function loadShadowDiffs() {
@@ -380,18 +492,19 @@
                     .map((d, di) => {
                         const id = `ops-diff-${ri}-${di}`;
                         const cls = String(pick(d, 'classification', 'Classification') || 'unclassified');
+                        const kind = String(pick(d, 'kind', 'Kind') || '');
                         const detail = String(pick(d, 'detail', 'Detail') || '');
                         const shadow = pick(d, 'shadow', 'Shadow');
                         const legacy = pick(d, 'legacy', 'Legacy');
                         const detailJson = JSON.stringify({ shadow: shadow ?? null, legacy: legacy ?? null }, null, 2);
                         return `
-                        <tr class="ops-diff-row" data-target="${id}" tabindex="0">
+                        <tr class="ops-diff-row" data-target="${id}" data-kind="${esc(kind)}" tabindex="0">
                             <td><span class="ops-caret">&rsaquo;</span> <strong>${esc(String(pick(d, 'ticker', 'Ticker') || '—'))}</strong></td>
-                            <td class="r">${esc(String(pick(d, 'kind', 'Kind') || '—'))}</td>
+                            <td>${kindChip(kind)}</td>
                             <td>${classChip(cls)}</td>
                             <td class="ops-diff-detail">${esc(detail)}</td>
                         </tr>
-                        <tr class="ops-diff-expand" id="${id}" style="display:none">
+                        <tr class="ops-diff-expand" id="${id}" data-kind="${esc(kind)}" style="display:none">
                             <td colspan="4"><pre class="ops-pre">${esc(detailJson)}</pre></td>
                         </tr>`;
                     })
@@ -403,6 +516,7 @@
                         <strong>${esc(session)}</strong>
                         <span class="card-badge">${esc(stage)}</span>
                         <span class="ops-dim">${isNum(n) ? esc(n + ' diff' + (n === 1 ? '' : 's')) : diffs.length + ' diffs'}</span>
+                        ${unclassifiedNote(run)}
                     </div>
                     ${
                         diffs.length
@@ -413,7 +527,37 @@
             })
             .join('');
 
-        el.innerHTML = sections;
+        el.innerHTML = renderDiffFilter() + sections;
+
+        function applyKindFilter() {
+            // `tr[data-kind]` only: the filter BUTTONS also carry data-kind, and a
+            // bare [data-kind] selector hid the filter bar along with the rows.
+            el.querySelectorAll('tr[data-kind]').forEach(node => {
+                const match = diffKindFilter === 'all' || node.getAttribute('data-kind') === diffKindFilter;
+                if (node.classList.contains('ops-diff-expand')) {
+                    // Never re-open a detail row the filter just revealed.
+                    node.style.display = 'none';
+                    const owner = el.querySelector(`.ops-diff-row[data-target="${node.id}"]`);
+                    if (owner) owner.classList.remove('ops-row-open');
+                    return;
+                }
+                node.style.display = match ? '' : 'none';
+            });
+        }
+
+        const filterBar = el.querySelector('#ops-diff-filter');
+        if (filterBar) {
+            filterBar.addEventListener('click', e => {
+                const btn = e.target.closest('.ops-filter-btn');
+                if (!btn) return;
+                diffKindFilter = btn.getAttribute('data-kind') || 'all';
+                filterBar.querySelectorAll('.ops-filter-btn').forEach(b => {
+                    b.classList.toggle('ops-filter-on', b.getAttribute('data-kind') === diffKindFilter);
+                });
+                applyKindFilter();
+            });
+        }
+        if (diffKindFilter !== 'all') applyKindFilter();
 
         el.querySelectorAll('.ops-diff-row').forEach(row => {
             const toggle = () => {

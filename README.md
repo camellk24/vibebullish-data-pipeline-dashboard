@@ -143,6 +143,14 @@ Run against a deployment (or `vercel dev` — `npx serve .` has no serverless fu
       `admin · <email>`, and both ops tab buttons appear.
 - [ ] Open **Shadow book**: the status strip, evidence, attribution, diffs and pages panels
       each render either data or an explicit "unavailable" box — never a blank card.
+- [ ] Attribution: when a run reports `unpriced_lots > 0` the row is highlighted, an
+      "N unpriced" chip appears, and the Unrealized tile says **incomplete** — the total is
+      missing those lots, so it must not read as whole. `oldest_bar_age_days` shows as a
+      "bar age Nd" chip when the backend reports it.
+- [ ] Diffs: the kind filter (all / entry / exit / entry size / exit size) narrows the rows
+      and leaves the filter bar itself visible; each session shows its unclassified share,
+      highlighted when the backend sets `warn_unclassified`. A `kind` outside the declared
+      four renders as itself with a dashed chip, never folded into a kind it is not.
 - [ ] Open **Heartbeats**: routines table renders; late rows are highlighted; disabled
       routines are dimmed.
 - [ ] Sign in with a **non-admin** Google account: the header reads `not an admin`, the ops

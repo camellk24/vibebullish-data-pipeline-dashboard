@@ -1443,3 +1443,52 @@ body {
 .ops-alert-top code { font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-primary); }
 
 .ops-alert-msg { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: var(--s-xs); line-height: 1.5; }
+
+/* Diff-kind chips (entry / exit / entry_size / exit_size) + the kind filter */
+.ops-chip-kind { font-size: 0.66rem; }
+.ops-chip-kind-entry      { color: var(--positive); background: rgba(182, 255, 206, 0.08); border-color: rgba(182, 255, 206, 0.20); }
+.ops-chip-kind-exit       { color: var(--neutral);  background: rgba(181, 199, 247, 0.08); border-color: rgba(181, 199, 247, 0.20); }
+.ops-chip-kind-entry_size { color: var(--warning);  background: rgba(251, 191, 36, 0.08);  border-color: rgba(251, 191, 36, 0.20); }
+.ops-chip-kind-exit_size  { color: var(--accent);   background: rgba(168, 85, 247, 0.10);  border-color: rgba(168, 85, 247, 0.22); }
+/* A kind the console has never heard of renders as itself, flagged — never
+   silently folded into one of the four it does know. */
+.ops-chip-kind-other,
+.ops-chip-unknown-kind {
+    color: var(--text-tertiary);
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--text-faint);
+}
+
+.ops-chip-quiet { color: var(--text-tertiary); background: var(--bg-tint); }
+
+.ops-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-xs);
+    margin-bottom: var(--s-md);
+}
+
+.ops-filter-btn {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 10px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.ops-filter-btn:hover { color: var(--text-secondary); border-color: rgba(255, 255, 255, 0.14); }
+.ops-filter-btn.ops-filter-on {
+    color: var(--text-primary);
+    background: rgba(168, 85, 247, 0.12);
+    border-color: rgba(168, 85, 247, 0.32);
+}
+
+/* Attribution completeness: unpriced lots make the total read LOW, so the row
+   says so instead of letting the number pass as whole. */
+.ops-warn { color: var(--warning); }
+.ops-table tr.ops-row-warn td { background: rgba(251, 191, 36, 0.06); }
