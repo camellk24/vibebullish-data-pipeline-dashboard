@@ -161,6 +161,29 @@
         return parts.length ? '&' + parts.join('&') : '';
     }
 
+    // The release badge. The backend's field is `name` (e.g. "baseline_v2");
+    // `strategy` is the older spelling and stays as a fallback so an older
+    // backend still renders something real instead of "unknown".
+    function releaseLabelOf(release) {
+        if (release === null || release === undefined) return null;
+        if (typeof release !== 'object') return String(release);
+        const name = pick(release, 'name', 'strategy');
+        const version = pick(release, 'version');
+        const joined = [name, version].filter(v => v !== undefined && v !== null && v !== '').join('@');
+        return joined || pick(release, 'id') || null;
+    }
+
+    // When the shadow run "last ran" is the moment the allocation was FORMED —
+    // `formed_at` is the run's own clock. `ran_at` / `created_at` are the
+    // wrapper's, and `session_date` is a date, not a timestamp, so it is the
+    // last resort rather than the first match.
+    function lastRunTsOf(lastRun) {
+        if (lastRun === null || lastRun === undefined) return null;
+        if (typeof lastRun !== 'object') return lastRun;
+        const v = pick(lastRun, 'formedAt', 'ranAt', 'createdAt', 'sessionDate');
+        return v === undefined ? null : v;
+    }
+
     async function loadShadowStatus() {
         const el = document.getElementById('ops-shadow-status');
         if (!el) return;
@@ -180,18 +203,10 @@
             (typeof book === 'object' ? pick(book, 'id', 'bookId') : book) != null
                 ? '#' + esc(typeof book === 'object' ? pick(book, 'id', 'bookId') : book)
                 : unknownSpan();
-        const releaseLabel =
-            typeof release === 'object'
-                ? [pick(release, 'strategy'), pick(release, 'version')].filter(Boolean).join('@') ||
-                  pick(release, 'id') ||
-                  'unknown'
-                : String(release);
+        const releaseLabel = releaseLabelOf(release) || 'unknown';
         const releaseState = typeof release === 'object' ? pick(release, 'state') : null;
 
-        const lastRunTs =
-            typeof lastRun === 'object' && lastRun
-                ? pick(lastRun, 'ranAt', 'ran_at', 'createdAt', 'created_at', 'sessionDate', 'session_date')
-                : lastRun;
+        const lastRunTs = lastRunTsOf(lastRun);
         const lastRunRel = relTime(lastRunTs);
 
         const frozenKnown = typeof frozen === 'boolean';
