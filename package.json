@@ -7,6 +7,7 @@
     "start": "npx serve .",
     "dev": "npx serve . -l 3000",
     "build": "echo 'Static site - no build required'",
+    "test": "node --test api/*.test.js",
     "deploy": "vercel --prod"
   },
   "keywords": [
