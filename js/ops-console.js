@@ -32,6 +32,15 @@
     let sleeveModeUnavailable = false;
     let counterpartBookId = null;
 
+    // Bumped every time bookId or counterpartBookId changes. Book-scoped
+    // loaders snapshot this before their await and discard the response if
+    // it has moved on — otherwise a slow response for a PREVIOUS selection
+    // can land after a fast response for the CURRENT one and overwrite it
+    // (repro: pick book 62, its response lands, then a delayed book-61
+    // response arrives and clobbers the panel while the selector still
+    // shows 62).
+    let generation = 0;
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     // Attribute-safe: these strings land inside quoted HTML attributes (title=,
@@ -208,10 +217,12 @@
         const s = currentSleeve();
         if (!s || !s.comparisons.length) {
             counterpartBookId = null;
+            generation++;
             return;
         }
         const legacy = s.comparisons.find(c => c.kind === 'legacy');
         counterpartBookId = (legacy || s.comparisons[0]).counterpartBookId;
+        generation++;
     }
 
     function renderSleeveSelect() {
@@ -238,6 +249,7 @@
         if (sel) {
             sel.addEventListener('change', e => {
                 bookId = e.target.value;
+                generation++;
                 setCounterpartDefault();
                 renderComparisonSelect();
                 loadShadowStatus();
@@ -271,6 +283,7 @@
         if (sel) {
             sel.addEventListener('change', e => {
                 counterpartBookId = e.target.value;
+                generation++;
                 loadShadowDiffs();
             });
         }
@@ -309,6 +322,7 @@
         // known sleeve (e.g. set externally via OpsConsole.setBookId).
         if (sleeves.length && (bookId == null || !sleeves.some(s => String(s.bookId) === String(bookId)))) {
             bookId = sleeves[0].bookId;
+            generation++;
         }
         setCounterpartDefault();
         renderSleeveSelect();
@@ -341,8 +355,10 @@
     async function loadShadowStatus() {
         const el = document.getElementById('ops-shadow-status');
         if (!el) return;
+        const gen = generation;
         el.innerHTML = LOADING;
         const r = await opsGet('/api/ops/shadow?view=status' + q());
+        if (gen !== generation) return; // stale: bookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         const d = r.body || {};
@@ -406,8 +422,10 @@
     async function loadShadowEvidence() {
         const el = document.getElementById('ops-shadow-evidence');
         if (!el) return;
+        const gen = generation;
         el.innerHTML = LOADING;
         const r = await opsGet('/api/ops/shadow?view=evidence' + q('sessions=30'));
+        if (gen !== generation) return; // stale: bookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         const rows = asArray(r.body, 'rows', 'evidence');
@@ -479,8 +497,10 @@
     async function loadShadowAttribution() {
         const el = document.getElementById('ops-shadow-attribution');
         if (!el) return;
+        const gen = generation;
         el.innerHTML = LOADING;
         const r = await opsGet('/api/ops/shadow?view=attribution' + q());
+        if (gen !== generation) return; // stale: bookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         const d = r.body || {};
@@ -641,11 +661,13 @@
     async function loadShadowDiffs() {
         const el = document.getElementById('ops-shadow-diffs');
         if (!el) return;
+        const gen = generation;
         el.innerHTML = LOADING;
         const diffExtra =
             'sessions=20' +
             (counterpartBookId != null ? '&counterpart_book_id=' + encodeURIComponent(counterpartBookId) : '');
         const r = await opsGet('/api/ops/shadow?view=diffs' + q(diffExtra));
+        if (gen !== generation) return; // stale: bookId/counterpartBookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         // Response header line: the pair this run actually compared, echoed
@@ -944,6 +966,7 @@
         loadHeartbeats,
         setBookId(id) {
             bookId = id;
+            generation++;
         },
     };
 
