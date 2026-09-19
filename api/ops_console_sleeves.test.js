@@ -197,6 +197,57 @@ test('graceful degrade: /shadow/sleeves 404 (old backend) → no selectors, sing
     assert.ok(!diffsCall.includes('counterpart_book_id='));
 });
 
+test('comparison selector: a sleeve name with HTML-special characters is escaped exactly once', async () => {
+    const fixture = {
+        sleeves: [
+            {
+                name: 'a&b<c"',
+                version: 1,
+                book_id: 61,
+                release_id: 'a_b_c@1',
+                legacy_book_id: 53,
+                routines: {},
+                comparisons: [{ counterpart_book_id: 53, kind: 'legacy' }],
+            },
+            {
+                name: 'trailing_v2',
+                version: 1,
+                book_id: 62,
+                release_id: 'trailing_v2@1',
+                legacy_book_id: 56,
+                routines: {},
+                comparisons: [
+                    { counterpart_book_id: 56, kind: 'legacy' },
+                    { counterpart_book_id: 61, kind: 'sleeve' },
+                ],
+            },
+        ],
+    };
+    const { win, doc } = loadConsole(routesFor(fixture));
+    win.OpsConsole.setBookId(62);
+    await win.OpsConsole.loadShadow();
+
+    const cmpWrap = doc.getElementById('ops-diffs-comparison-wrap');
+    // Escaped exactly once: &amp;lt; (double-escaped) must NOT appear, and the
+    // correctly single-escaped form must.
+    assert.ok(!cmpWrap.innerHTML.includes('&amp;amp;'), 'ampersand must not be double-escaped');
+    assert.ok(!cmpWrap.innerHTML.includes('&amp;lt;'), 'the escaped "&lt;" must not itself be re-escaped');
+    assert.match(cmpWrap.innerHTML, /sleeve a&amp;b&lt;c&quot; \(book 61\)/);
+});
+
+test('unavailable(): a bad_request response renders the "Invalid request" title', async () => {
+    const routes = routesFor(TWO_SLEEVES_FIXTURE);
+    // Simulate the backend refusing an undeclared counterpart_book_id.
+    routes['/api/ops/shadow?view=diffs'] = () =>
+        jsonResponse(400, { error: 'bad_request', message: 'counterpart_book_id is not declared for this sleeve.' });
+    const { win, doc } = loadConsole(routes);
+    await win.OpsConsole.loadShadow();
+
+    const diffsEl = doc.getElementById('ops-shadow-diffs');
+    assert.match(diffsEl.innerHTML, /Invalid request/);
+    assert.match(diffsEl.innerHTML, /counterpart_book_id is not declared/);
+});
+
 test('sleeve selector: a single declared sleeve also hides the selector', async () => {
     const oneSleeve = { sleeves: [TWO_SLEEVES_FIXTURE.sleeves[0]] };
     const { win, doc } = loadConsole(routesFor(oneSleeve));

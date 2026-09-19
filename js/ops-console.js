@@ -120,6 +120,8 @@
                 ? 'Admin sign-in required'
                 : kind === 'empty'
                 ? 'Nothing recorded yet'
+                : kind === 'bad_request'
+                ? 'Invalid request'
                 : 'Backend unavailable';
         const hint =
             kind === 'not_found'
@@ -188,13 +190,16 @@
     // counterpart is named by looking up the OTHER declared sleeve sharing
     // that book id; if the sleeve list doesn't know it (shouldn't happen, but
     // never assert a name we don't have), fall back to the book id alone.
+    // Returns RAW text — callers are responsible for escaping exactly once at
+    // their render site (this used to also esc() internally, which double-
+    // encoded entities for a sleeve name containing `&`/`<`/`"`).
     function comparisonLabel(comp) {
         const cbid = comp.counterpartBookId;
         if (comp.kind === 'sleeve') {
             const other = sleeves.find(s => String(s.bookId) === String(cbid));
-            return other ? `vs sleeve ${esc(other.name || 'sleeve')} (book ${esc(String(cbid))})` : `vs sleeve (book ${esc(String(cbid))})`;
+            return other ? `vs sleeve ${other.name || 'sleeve'} (book ${cbid})` : `vs sleeve (book ${cbid})`;
         }
-        return `vs legacy book ${esc(String(cbid))}`;
+        return `vs legacy book ${cbid}`;
     }
 
     // Default comparison = the sleeve's declared legacy counterpart, falling
