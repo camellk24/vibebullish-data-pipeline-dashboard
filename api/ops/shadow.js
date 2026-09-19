@@ -1,6 +1,7 @@
-// GET /api/ops/shadow?view=status|evidence|diffs|attribution|alerts
+// GET /api/ops/shadow?view=status|evidence|diffs|attribution|alerts|sleeves
 //
-// One function for the Shadow-book tab's five reads (Phase D task 5 endpoints).
+// One function for the Shadow-book tab's reads (Phase D task 5 endpoints,
+// plus the sleeve 2 `sleeves` view added in task 7).
 // Admin-verified through _verified_proxy; the internal token stays server-side.
 //
 // Only an explicit allow-list of query parameters is forwarded, and each is
@@ -15,15 +16,21 @@ const { verifiedProxy, send } = require('../_verified_proxy.js');
 const VIEWS = Object.assign(Object.create(null), {
     status: { path: '/api/internal/shadow/status', params: ['book_id'] },
     evidence: { path: '/api/internal/shadow/evidence', params: ['book_id', 'sessions'] },
-    diffs: { path: '/api/internal/shadow/diffs', params: ['book_id', 'sessions'] },
+    diffs: {
+        path: '/api/internal/shadow/diffs',
+        params: ['book_id', 'counterpart_book_id', 'sessions'],
+    },
     attribution: {
         path: '/api/internal/shadow/attribution',
         params: ['book_id', 'valuation_date'],
     },
     alerts: { path: '/api/internal/ops/alerts', params: ['limit'] },
+    // No forwarded params — the sleeve list is fixed-path, same shape for
+    // every caller, so nothing from the query string can reshape it.
+    sleeves: { path: '/api/internal/shadow/sleeves', params: [] },
 });
 
-const INT_PARAMS = new Set(['book_id', 'sessions', 'limit']);
+const INT_PARAMS = new Set(['book_id', 'counterpart_book_id', 'sessions', 'limit']);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function queryOf(req) {

@@ -224,3 +224,77 @@ for (const evil of ['__proto__', 'constructor', 'toString', 'hasOwnProperty']) {
         });
     });
 }
+
+// ── sleeve 2 (task 7): view=sleeves, counterpart_book_id ────────────────────
+
+test('shadow: view=diffs, counterpart_book_id=../x → 400 before any upstream call', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({ '/api/admin/whoami': adminOK });
+        const res = fakeRes();
+        await shadow(
+            fakeReq({
+                query: { view: 'diffs', book_id: '61', counterpart_book_id: '../x' },
+                headers: { authorization: 'Bearer t' },
+            }),
+            res
+        );
+        assert.strictEqual(res.statusCode, 400);
+        assert.strictEqual(JSON.parse(res.body).error, 'bad_request');
+        assert.match(JSON.parse(res.body).message, /counterpart_book_id/);
+        assert.strictEqual(calls.length, 0, 'validation fails before whoami/upstream is ever reached');
+    });
+});
+
+test('shadow: view=diffs forwards a valid counterpart_book_id alongside book_id', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/shadow/diffs': () =>
+                upstreamResponse(200, { book_id: 62, counterpart_book_id: 56, kind: 'legacy', runs: [] }),
+        });
+        const res = fakeRes();
+        await shadow(
+            fakeReq({
+                query: { view: 'diffs', book_id: '62', counterpart_book_id: '56', sessions: '20' },
+                headers: { authorization: 'Bearer t' },
+            }),
+            res
+        );
+        assert.strictEqual(res.statusCode, 200);
+        const fwd = calls.find(c => c.url.includes('/api/internal/'));
+        assert.ok(fwd.url.includes('book_id=62'));
+        assert.ok(fwd.url.includes('counterpart_book_id=56'));
+        assert.ok(fwd.url.includes('sessions=20'));
+    });
+});
+
+test('shadow: view=sleeves forwards to the fixed path with NO query, ignoring anything the caller sent', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/shadow/sleeves': () => upstreamResponse(200, { sleeves: [] }),
+        });
+        const res = fakeRes();
+        await shadow(
+            fakeReq({
+                query: { view: 'sleeves', book_id: '999', counterpart_book_id: '../evil', sessions: '9999' },
+                headers: { authorization: 'Bearer t' },
+            }),
+            res
+        );
+        assert.strictEqual(res.statusCode, 200);
+        const fwd = calls.find(c => c.url.includes('/api/internal/'));
+        assert.strictEqual(fwd.url, 'https://backend.test/api/internal/shadow/sleeves');
+        assert.ok(!fwd.url.includes('?'), 'no query string is appended');
+    });
+});
+
+test('shadow: view=sleeves, non-admin → 403 and the upstream is never contacted', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({ '/api/admin/whoami': () => upstreamResponse(403, { error: 'not_admin' }) });
+        const res = fakeRes();
+        await shadow(fakeReq({ query: { view: 'sleeves' }, headers: { authorization: 'Bearer t' } }), res);
+        assert.strictEqual(res.statusCode, 403);
+        assert.strictEqual(calls.length, 1);
+    });
+});

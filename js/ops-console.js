@@ -22,6 +22,16 @@
 
     let bookId = null; // null = let the backend default to the shadow book
 
+    // Sleeve 2 (2026-09-18): the shadow book is no longer singular. `sleeves`
+    // is the normalized list from /api/ops/shadow?view=sleeves; `sleeveModeUnavailable`
+    // is true when that view 404s (older backend) or otherwise fails, in which
+    // case the console falls back to single-sleeve mode exactly as before —
+    // no selector, no counterpart param, `bookId` stays whatever the backend
+    // defaults to. `counterpartBookId` is the diffs panel's comparison choice.
+    let sleeves = [];
+    let sleeveModeUnavailable = false;
+    let counterpartBookId = null;
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     // Attribute-safe: these strings land inside quoted HTML attributes (title=,
@@ -159,6 +169,145 @@
         if (bookId != null) parts.push('book_id=' + encodeURIComponent(bookId));
         if (extra) parts.push(extra);
         return parts.length ? '&' + parts.join('&') : '';
+    }
+
+    // ── Sleeve + comparison selectors ────────────────────────────────────────
+
+    function currentSleeve() {
+        if (bookId == null) return sleeves[0] || null;
+        return sleeves.find(s => String(s.bookId) === String(bookId)) || null;
+    }
+
+    function sleeveLabel(s) {
+        const name = s.name || 'sleeve';
+        const version = s.version !== undefined && s.version !== null && s.version !== '' ? '@' + s.version : '';
+        return `${name}${version} (book ${s.bookId})`;
+    }
+
+    // "vs legacy book 56" / "vs sleeve baseline_v2 (book 61)" — a sleeve-kind
+    // counterpart is named by looking up the OTHER declared sleeve sharing
+    // that book id; if the sleeve list doesn't know it (shouldn't happen, but
+    // never assert a name we don't have), fall back to the book id alone.
+    function comparisonLabel(comp) {
+        const cbid = comp.counterpartBookId;
+        if (comp.kind === 'sleeve') {
+            const other = sleeves.find(s => String(s.bookId) === String(cbid));
+            return other ? `vs sleeve ${esc(other.name || 'sleeve')} (book ${esc(String(cbid))})` : `vs sleeve (book ${esc(String(cbid))})`;
+        }
+        return `vs legacy book ${esc(String(cbid))}`;
+    }
+
+    // Default comparison = the sleeve's declared legacy counterpart, falling
+    // back to its first declared comparison when none is tagged "legacy".
+    function setCounterpartDefault() {
+        const s = currentSleeve();
+        if (!s || !s.comparisons.length) {
+            counterpartBookId = null;
+            return;
+        }
+        const legacy = s.comparisons.find(c => c.kind === 'legacy');
+        counterpartBookId = (legacy || s.comparisons[0]).counterpartBookId;
+    }
+
+    function renderSleeveSelect() {
+        const wrap = document.getElementById('ops-sleeve-select-wrap');
+        if (!wrap) return;
+        // Nothing to pick between: 404/error (old backend) or a single
+        // declared sleeve both render as "no selector", same as today.
+        if (sleeveModeUnavailable || sleeves.length < 2) {
+            wrap.style.display = 'none';
+            wrap.innerHTML = '';
+            return;
+        }
+        wrap.style.display = '';
+        const opts = sleeves
+            .map(
+                s =>
+                    `<option value="${esc(String(s.bookId))}"${
+                        String(s.bookId) === String(bookId) ? ' selected' : ''
+                    }>${esc(sleeveLabel(s))}</option>`
+            )
+            .join('');
+        wrap.innerHTML = `<label class="ops-select-label">Sleeve <select id="ops-sleeve-select">${opts}</select></label>`;
+        const sel = document.getElementById('ops-sleeve-select');
+        if (sel) {
+            sel.addEventListener('change', e => {
+                bookId = e.target.value;
+                setCounterpartDefault();
+                renderComparisonSelect();
+                loadShadowStatus();
+                loadShadowEvidence();
+                loadShadowAttribution();
+                loadShadowDiffs();
+            });
+        }
+    }
+
+    function renderComparisonSelect() {
+        const wrap = document.getElementById('ops-diffs-comparison-wrap');
+        if (!wrap) return;
+        const s = currentSleeve();
+        if (!s || !s.comparisons.length) {
+            wrap.style.display = 'none';
+            wrap.innerHTML = '';
+            return;
+        }
+        wrap.style.display = '';
+        const opts = s.comparisons
+            .map(
+                c =>
+                    `<option value="${esc(String(c.counterpartBookId))}"${
+                        String(c.counterpartBookId) === String(counterpartBookId) ? ' selected' : ''
+                    }>${esc(comparisonLabel(c).replace(/^vs\s+/, ''))}</option>`
+            )
+            .join('');
+        wrap.innerHTML = `<label class="ops-select-label">Compare <select id="ops-diffs-comparison-select">${opts}</select></label>`;
+        const sel = document.getElementById('ops-diffs-comparison-select');
+        if (sel) {
+            sel.addEventListener('change', e => {
+                counterpartBookId = e.target.value;
+                loadShadowDiffs();
+            });
+        }
+    }
+
+    async function loadSleeves() {
+        const r = await opsGet('/api/ops/shadow?view=sleeves');
+        if (!r.ok) {
+            // Graceful degrade: old backend (404) or any other failure →
+            // single-sleeve mode exactly as today. Leave bookId/counterpartBookId
+            // untouched so the existing panels behave unchanged.
+            sleeves = [];
+            sleeveModeUnavailable = true;
+            renderSleeveSelect();
+            renderComparisonSelect();
+            return;
+        }
+
+        const rawList = asArray(r.body, 'sleeves');
+        sleeves = rawList.map(s => ({
+            name: pick(s, 'name'),
+            version: pick(s, 'version'),
+            bookId: pick(s, 'bookId', 'book_id'),
+            releaseId: pick(s, 'releaseId', 'release_id'),
+            legacyBookId: pick(s, 'legacyBookId', 'legacy_book_id'),
+            routines: pick(s, 'routines') || {},
+            comparisons: asArray(pick(s, 'comparisons') || [], 'comparisons').map(c => ({
+                counterpartBookId: pick(c, 'counterpartBookId', 'counterpart_book_id'),
+                kind: pick(c, 'kind'),
+            })),
+        }));
+        sleeveModeUnavailable = false;
+
+        // Default = the first declared sleeve (the baseline, by backend
+        // ordering convention) unless the current bookId already names a
+        // known sleeve (e.g. set externally via OpsConsole.setBookId).
+        if (sleeves.length && (bookId == null || !sleeves.some(s => String(s.bookId) === String(bookId)))) {
+            bookId = sleeves[0].bookId;
+        }
+        setCounterpartDefault();
+        renderSleeveSelect();
+        renderComparisonSelect();
     }
 
     // The release badge. The backend's field is `name` (e.g. "baseline_v2");
@@ -488,8 +637,23 @@
         const el = document.getElementById('ops-shadow-diffs');
         if (!el) return;
         el.innerHTML = LOADING;
-        const r = await opsGet('/api/ops/shadow?view=diffs' + q('sessions=20'));
+        const diffExtra =
+            'sessions=20' +
+            (counterpartBookId != null ? '&counterpart_book_id=' + encodeURIComponent(counterpartBookId) : '');
+        const r = await opsGet('/api/ops/shadow?view=diffs' + q(diffExtra));
         if (!r.ok) return unavailable(el, r.kind, r.message);
+
+        // Response header line: the pair this run actually compared, echoed
+        // by the backend rather than re-derived from the selector state.
+        const respBookId = pick(r.body, 'bookId', 'book_id');
+        const respCounterpart = pick(r.body, 'counterpartBookId', 'counterpart_book_id');
+        const respKind = pick(r.body, 'kind');
+        const pairLine =
+            respBookId != null && respCounterpart != null
+                ? `<div class="ops-dim ops-diff-pair">book ${esc(String(respBookId))} ${esc(
+                      respKind === 'sleeve' ? 'vs sleeve' : 'vs legacy'
+                  )} book ${esc(String(respCounterpart))}</div>`
+                : '';
 
         const runs = asArray(r.body, 'runs', 'diff_runs', 'diffRuns');
         if (!runs.length) {
@@ -542,7 +706,7 @@
             })
             .join('');
 
-        el.innerHTML = renderDiffFilter() + sections;
+        el.innerHTML = pairLine + renderDiffFilter() + sections;
 
         function applyKindFilter() {
             // `tr[data-kind]` only: the filter BUTTONS also carry data-kind, and a
@@ -635,6 +799,10 @@
 
     async function loadShadow() {
         if (!window.VBAuth || !window.VBAuth.isAdmin) return;
+        // Resolve the sleeve list (and default book_id/counterpart_book_id)
+        // BEFORE the panels fetch, so every panel's first load already
+        // carries the right book_id — never a load-then-reload flash.
+        await loadSleeves();
         await Promise.all([
             loadShadowStatus(),
             loadShadowEvidence(),
@@ -739,7 +907,8 @@
             }
             OPS_TABS.forEach(id => {
                 ['ops-shadow-status', 'ops-shadow-evidence', 'ops-shadow-attribution',
-                 'ops-shadow-diffs', 'ops-shadow-alerts', 'ops-hb-table'].forEach(pid => {
+                 'ops-shadow-diffs', 'ops-shadow-alerts', 'ops-hb-table',
+                 'ops-sleeve-select-wrap', 'ops-diffs-comparison-wrap'].forEach(pid => {
                     const el = document.getElementById(pid);
                     if (el) el.innerHTML = '';
                 });
