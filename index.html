@@ -418,6 +418,10 @@
                     book. Every panel degrades on its own: an endpoint that is not deployed yet reads
                     <strong>unavailable</strong>, never a stale number.
                 </p>
+                <!-- Sleeve 2 (task 7): populated from /api/ops/shadow?view=sleeves and
+                     hidden entirely in single-sleeve mode (old backend, or only one
+                     declared sleeve) — see js/ops-console.js renderSleeveSelect(). -->
+                <div id="ops-sleeve-select-wrap" class="ops-select-wrap" style="display:none"></div>
             </div>
 
             <section class="card">
@@ -445,6 +449,9 @@
                 <div class="card-header">
                     <h2>Shadow vs legacy diffs</h2>
                     <span class="card-badge">last 20 sessions &middot; click a row</span>
+                    <!-- Sleeve 2 (task 7): the selected sleeve's declared comparisons
+                         from /shadow/sleeves; hidden when the sleeve has none. -->
+                    <div id="ops-diffs-comparison-wrap" class="ops-select-wrap" style="display:none"></div>
                 </div>
                 <div class="ao-scroll" id="ops-shadow-diffs"></div>
             </section>

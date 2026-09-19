@@ -1488,6 +1488,34 @@ body {
     border-color: rgba(168, 85, 247, 0.32);
 }
 
+/* Sleeve 2 (task 7): sleeve + comparison selectors on the Shadow tab. */
+.ops-select-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--s-sm);
+    margin-top: var(--s-sm);
+}
+.ops-select-label {
+    display: flex;
+    align-items: center;
+    gap: var(--s-xs);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+}
+.ops-select-label select {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    background: var(--bg-tint);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 3px 8px;
+}
+.ops-diff-pair {
+    margin-bottom: var(--s-sm);
+}
+
 /* Attribution completeness: unpriced lots make the total read LOW, so the row
    says so instead of letting the number pass as whole. */
 .ops-warn { color: var(--warning); }
