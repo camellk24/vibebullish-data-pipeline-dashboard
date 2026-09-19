@@ -32,14 +32,24 @@
     let sleeveModeUnavailable = false;
     let counterpartBookId = null;
 
-    // Bumped every time bookId or counterpartBookId changes. Book-scoped
-    // loaders snapshot this before their await and discard the response if
-    // it has moved on — otherwise a slow response for a PREVIOUS selection
-    // can land after a fast response for the CURRENT one and overwrite it
-    // (repro: pick book 62, its response lands, then a delayed book-61
-    // response arrives and clobbers the panel while the selector still
-    // shows 62).
-    let generation = 0;
+    // Split in two so a comparison-only change doesn't strand the book-scoped
+    // panels: bookGeneration is bumped every time bookId changes,
+    // comparisonGeneration every time counterpartBookId changes. A loader
+    // snapshots the generation(s) it depends on before its await and discards
+    // the response if any of them have moved on by the time it resolves —
+    // otherwise a slow response for a PREVIOUS selection can land after a
+    // fast response for the CURRENT one and overwrite it (repro: pick book
+    // 62, its response lands, then a delayed book-61 response arrives and
+    // clobbers the panel while the selector still shows 62).
+    //
+    // loadShadowStatus/Evidence/Attribution only read bookId, so they gate on
+    // bookGeneration alone — gating them on comparisonGeneration too would
+    // strand them at LOADING forever when the user only changes the
+    // comparison select (that bump doesn't imply a new response is coming
+    // for THEM). loadShadowDiffs reads both bookId and counterpartBookId, so
+    // it gates on both.
+    let bookGeneration = 0;
+    let comparisonGeneration = 0;
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -217,12 +227,12 @@
         const s = currentSleeve();
         if (!s || !s.comparisons.length) {
             counterpartBookId = null;
-            generation++;
+            comparisonGeneration++;
             return;
         }
         const legacy = s.comparisons.find(c => c.kind === 'legacy');
         counterpartBookId = (legacy || s.comparisons[0]).counterpartBookId;
-        generation++;
+        comparisonGeneration++;
     }
 
     function renderSleeveSelect() {
@@ -249,7 +259,7 @@
         if (sel) {
             sel.addEventListener('change', e => {
                 bookId = e.target.value;
-                generation++;
+                bookGeneration++;
                 setCounterpartDefault();
                 renderComparisonSelect();
                 loadShadowStatus();
@@ -283,7 +293,7 @@
         if (sel) {
             sel.addEventListener('change', e => {
                 counterpartBookId = e.target.value;
-                generation++;
+                comparisonGeneration++;
                 loadShadowDiffs();
             });
         }
@@ -322,7 +332,7 @@
         // known sleeve (e.g. set externally via OpsConsole.setBookId).
         if (sleeves.length && (bookId == null || !sleeves.some(s => String(s.bookId) === String(bookId)))) {
             bookId = sleeves[0].bookId;
-            generation++;
+            bookGeneration++;
         }
         setCounterpartDefault();
         renderSleeveSelect();
@@ -355,10 +365,10 @@
     async function loadShadowStatus() {
         const el = document.getElementById('ops-shadow-status');
         if (!el) return;
-        const gen = generation;
+        const gen = bookGeneration;
         el.innerHTML = LOADING;
         const r = await opsGet('/api/ops/shadow?view=status' + q());
-        if (gen !== generation) return; // stale: bookId moved on while this was in flight
+        if (gen !== bookGeneration) return; // stale: bookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         const d = r.body || {};
@@ -422,10 +432,10 @@
     async function loadShadowEvidence() {
         const el = document.getElementById('ops-shadow-evidence');
         if (!el) return;
-        const gen = generation;
+        const gen = bookGeneration;
         el.innerHTML = LOADING;
         const r = await opsGet('/api/ops/shadow?view=evidence' + q('sessions=30'));
-        if (gen !== generation) return; // stale: bookId moved on while this was in flight
+        if (gen !== bookGeneration) return; // stale: bookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         const rows = asArray(r.body, 'rows', 'evidence');
@@ -497,10 +507,10 @@
     async function loadShadowAttribution() {
         const el = document.getElementById('ops-shadow-attribution');
         if (!el) return;
-        const gen = generation;
+        const gen = bookGeneration;
         el.innerHTML = LOADING;
         const r = await opsGet('/api/ops/shadow?view=attribution' + q());
-        if (gen !== generation) return; // stale: bookId moved on while this was in flight
+        if (gen !== bookGeneration) return; // stale: bookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         const d = r.body || {};
@@ -661,13 +671,14 @@
     async function loadShadowDiffs() {
         const el = document.getElementById('ops-shadow-diffs');
         if (!el) return;
-        const gen = generation;
+        const gen = bookGeneration;
+        const cmpGen = comparisonGeneration;
         el.innerHTML = LOADING;
         const diffExtra =
             'sessions=20' +
             (counterpartBookId != null ? '&counterpart_book_id=' + encodeURIComponent(counterpartBookId) : '');
         const r = await opsGet('/api/ops/shadow?view=diffs' + q(diffExtra));
-        if (gen !== generation) return; // stale: bookId/counterpartBookId moved on while this was in flight
+        if (gen !== bookGeneration || cmpGen !== comparisonGeneration) return; // stale: bookId or counterpartBookId moved on while this was in flight
         if (!r.ok) return unavailable(el, r.kind, r.message);
 
         // Response header line: the pair this run actually compared, echoed
@@ -966,7 +977,7 @@
         loadHeartbeats,
         setBookId(id) {
             bookId = id;
-            generation++;
+            bookGeneration++;
         },
     };
 

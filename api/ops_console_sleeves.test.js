@@ -393,3 +393,43 @@ test('out-of-order responses: a delayed diffs response for the previous comparis
     assert.match(diffsEl.innerHTML, /vs sleeve book 61/, 'stale legacy-56 diffs must not overwrite sleeve-61');
     assert.doesNotMatch(diffsEl.innerHTML, /vs legacy book 56/);
 });
+
+test('comparison-only change does not strand an in-flight status load on LOADING', async () => {
+    // Regression for review finding on daba5de: a single shared generation
+    // counter meant bumping it on a COMPARISON change (which has nothing to
+    // do with loadShadowStatus/Evidence/Attribution — they don't even read
+    // counterpartBookId) discarded an in-flight status response for the
+    // CURRENT, unchanged book. The panel was then stuck on LOADING forever,
+    // because nothing else was going to re-fetch it.
+    let releaseStatus;
+    const pendingStatus = new Promise(resolve => {
+        releaseStatus = resolve;
+    });
+
+    const routes = routesFor(TWO_SLEEVES_FIXTURE);
+    routes['/api/ops/shadow?view=status'] = () =>
+        pendingStatus.then(() => jsonResponse(200, { book: { id: 61 }, mode: 'book61-mode' }));
+
+    const { win, doc } = loadConsole(routes);
+
+    // Kick off the initial load (book 61, its only comparison is legacy 53)
+    // without awaiting — the status call is pinned on pendingStatus.
+    win.OpsConsole.loadShadow();
+    await flushAsync();
+
+    const statusEl = doc.getElementById('ops-shadow-status');
+    assert.match(statusEl.innerHTML, /ops-loading/, 'status still loading, as expected before we touch anything');
+
+    // User re-picks the (only) comparison option while status is in flight —
+    // this only bumps comparisonGeneration, not bookGeneration.
+    const cmpSel = doc.getElementById('ops-diffs-comparison-select');
+    cmpSel._fire('change', { target: { value: '53' } });
+    await flushAsync();
+
+    // Now the status response finally lands.
+    releaseStatus();
+    await flushAsync();
+
+    assert.match(statusEl.innerHTML, /book61-mode/, 'status must render once its response arrives, not stay stuck on LOADING');
+    assert.doesNotMatch(statusEl.innerHTML, /ops-loading/);
+});
