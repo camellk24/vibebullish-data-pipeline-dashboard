@@ -17,6 +17,7 @@ const {
 } = require('./_test_helpers.js');
 
 const heartbeats = require('./ops/heartbeats.js');
+const dqReadiness = require('./ops/dq-readiness.js');
 const whoami = require('./ops/whoami.js');
 const config = require('./config.js');
 const shadow = require('./ops/shadow.js');
@@ -73,6 +74,39 @@ test('heartbeats: non-admin → 403 and the upstream is never contacted', async 
         });
         const res = fakeRes();
         await heartbeats(fakeReq({ headers: { authorization: 'Bearer t' } }), res);
+        assert.strictEqual(res.statusCode, 403);
+        assert.strictEqual(calls.length, 1);
+    });
+});
+
+// ── api/ops/dq-readiness.js ──────────────────────────────────────────────────
+
+test('dq-readiness: admin → forwards to /api/internal/dq-readiness with the internal token', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/dq-readiness': () =>
+                upstreamResponse(200, { current_session: { as_of: '2026-09-22', state: 'ready' }, unresolved_episodes: [], recent_episodes: [] }),
+        });
+        const res = fakeRes();
+        await dqReadiness(fakeReq({ headers: { authorization: 'Bearer id-token' } }), res);
+
+        assert.strictEqual(res.statusCode, 200);
+        assert.strictEqual(JSON.parse(res.body).current_session.state, 'ready');
+        const fwd = calls.find(c => c.url.includes('/api/internal/'));
+        assert.strictEqual(fwd.url, 'https://backend.test/api/internal/dq-readiness');
+        assert.strictEqual(fwd.opts.headers['X-Internal-Token'], TOKEN);
+        assert.ok(!responseSurface(res).includes(TOKEN));
+    });
+});
+
+test('dq-readiness: non-admin → 403 and the upstream is never contacted', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': () => upstreamResponse(403, { error: 'not_admin' }),
+        });
+        const res = fakeRes();
+        await dqReadiness(fakeReq({ headers: { authorization: 'Bearer t' } }), res);
         assert.strictEqual(res.statusCode, 403);
         assert.strictEqual(calls.length, 1);
     });
