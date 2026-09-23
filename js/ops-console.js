@@ -867,6 +867,13 @@
 
     async function loadHeartbeats() {
         if (!window.VBAuth || !window.VBAuth.isAdmin) return;
+
+        // Fire-and-forget, started first: the DQ panel must load independently
+        // of the routines fetch below — an early return from the routines
+        // fetch (failed / empty) must never leave the DQ panel stuck on
+        // "Loading…".
+        loadDQReadiness();
+
         const el = document.getElementById('ops-hb-table');
         const sum = document.getElementById('ops-hb-summary');
         if (!el) return;
@@ -931,10 +938,6 @@
             sum.textContent = `${routines.length} registered · ${enabled} enabled · ${late} late`;
             sum.className = 'card-badge' + (late > 0 ? ' ops-badge-bad' : '');
         }
-
-        // Fire-and-forget: a DQ readiness failure must never blank the
-        // routines table that just rendered above.
-        loadDQReadiness();
     }
 
     // ── DQ readiness panel (#382 phase 3) ───────────────────────────────────
