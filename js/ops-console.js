@@ -985,9 +985,9 @@
         if (ep) {
             const checks = asArray(pick(ep, 'failedChecks', 'failed_checks') || []);
             const detail = checks.length ? checks.join(', ') : 'execution';
-            return `readiness: ${dqSevChip(pick(ep, 'currentSeverity', 'current_severity'))} episode #${esc(
+            return `readiness: ${dqSevChip(pick(ep, 'currentSeverity', 'current_severity'))} <span class="ops-dq-line-text">episode #${esc(
                 String(pick(ep, 'id') ?? '—')
-            )} (${esc(String(pick(ep, 'currentSeverity', 'current_severity') || 'unknown'))}, ${esc(detail)})`;
+            )} (${esc(String(pick(ep, 'currentSeverity', 'current_severity') || 'unknown'))}, ${esc(detail)})</span>`;
         }
         return `readiness: <span class="ops-chip ops-chip-unknown">${esc(String(state || 'unknown').toUpperCase())}</span>`;
     }
@@ -1047,9 +1047,9 @@
         const recent = asArray(pick(v, 'recentEpisodes', 'recent_episodes') || []);
 
         const unresolvedTable = unresolved.length
-            ? `<table class="data-table ops-table">
+            ? `<div class="ao-scroll"><table class="data-table ops-table">
                 <thead><tr><th>#</th><th>session</th><th>severity</th><th>checks</th><th>age</th><th>batch</th></tr></thead>
-                <tbody>${unresolved.map(dqEpisodeRow).join('')}</tbody></table>`
+                <tbody>${unresolved.map(dqEpisodeRow).join('')}</tbody></table></div>`
             : '<div class="ops-dim">none</div>';
 
         const recentList = recent.length
