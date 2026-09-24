@@ -1,0 +1,85 @@
+{
+  "current_session": {
+    "as_of": "2026-09-23",
+    "state": "failed",
+    "ready_for_batch": false,
+    "last_status": "FAIL",
+    "last_result": {
+      "id": 63,
+      "request_id": "dq_daily:2026-09-23:s2",
+      "trigger": "scheduled_batch",
+      "ran_at": "2026-09-23T13:00:00Z"
+    },
+    "open_episode": {
+      "id": 7,
+      "as_of": "2026-09-23",
+      "current_severity": "blocking",
+      "failed_checks": ["session_bars_complete", "quote_coverage"],
+      "incomplete_required": [],
+      "execution_error": null,
+      "opening_severity": "blocking",
+      "opened_by": {
+        "kind": "scheduled_batch",
+        "ref": "dq_daily:2026-09-23:s2"
+      },
+      "opened_at": "2026-09-23T13:00:00Z",
+      "records": ["result:63"],
+      "batch_state": "unpublished",
+      "age_sessions": 0
+    },
+    "execution": {
+      "request_id": "dq_daily:2026-09-23:s2",
+      "state": "failed",
+      "attempts": 1,
+      "retryable": true,
+      "error": "connection refused (redacted)"
+    },
+    "pending_reconciliation": true,
+    "pending_results": [
+      {
+        "id": 64,
+        "request_id": "dq_daily:2026-09-23:c2",
+        "trigger": "manual_revalidate",
+        "ran_at": "2026-09-23T22:40:00Z",
+        "status": "PASS"
+      }
+    ]
+  },
+  "unresolved_episodes": [
+    {
+      "id": 7,
+      "as_of": "2026-09-23",
+      "current_severity": "blocking",
+      "failed_checks": ["session_bars_complete", "quote_coverage"],
+      "incomplete_required": [],
+      "execution_error": null,
+      "opening_severity": "blocking",
+      "opened_by": {
+        "kind": "scheduled_batch",
+        "ref": "dq_daily:2026-09-23:s2"
+      },
+      "opened_at": "2026-09-23T13:00:00Z",
+      "records": ["result:63"],
+      "batch_state": "unpublished",
+      "age_sessions": 0
+    },
+    {
+      "id": 5,
+      "as_of": "2026-09-19",
+      "current_severity": "quarantining",
+      "failed_checks": ["quote_coverage"],
+      "incomplete_required": [],
+      "execution_error": null,
+      "opening_severity": "quarantining",
+      "opened_by": {
+        "kind": "scheduled_batch",
+        "ref": "dq_daily:2026-09-19:s1"
+      },
+      "opened_at": "2026-09-19T13:00:00Z",
+      "records": ["result:59"],
+      "batch_state": "published",
+      "age_sessions": 4
+    }
+  ],
+  "recent_episodes": []
+}

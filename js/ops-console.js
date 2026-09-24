@@ -180,6 +180,7 @@
             ok: false,
             kind: (body && body.error) || (res.status === 404 ? 'not_found' : 'unreachable'),
             message: (body && body.message) || `HTTP ${res.status}`,
+            upstreamStatus: body && body.upstream_status,
         };
     }
 
@@ -816,7 +817,13 @@
                     const ms = Date.parse(attemptedAt) - Date.parse(created);
                     if (isFinite(ms)) latency = Math.max(0, Math.round(ms / 1000)) + 's to deliver';
                 }
-                const state = okDelivery
+                // A recorded-only event carries a terminal ok:false,
+                // error:recorded_only delivery row ON PURPOSE (paging was
+                // intentionally skipped, not attempted and failed) — it must
+                // read as "recorded", never as an undelivered page.
+                const state = pick(ev, 'deliver') === false
+                    ? `<span class="ops-chip ops-chip-unknown">recorded</span>`
+                    : okDelivery
                     ? `<span class="ops-chip ops-chip-ok">delivered</span>`
                     : deliveries.length
                     ? `<span class="ops-chip ops-chip-bad">undelivered · ${deliveries.length} attempt${deliveries.length === 1 ? '' : 's'}</span>`
@@ -860,6 +867,13 @@
 
     async function loadHeartbeats() {
         if (!window.VBAuth || !window.VBAuth.isAdmin) return;
+
+        // Fire-and-forget, started first: the DQ panel must load independently
+        // of the routines fetch below — an early return from the routines
+        // fetch (failed / empty) must never leave the DQ panel stuck on
+        // "Loading…".
+        loadDQReadiness();
+
         const el = document.getElementById('ops-hb-table');
         const sum = document.getElementById('ops-hb-summary');
         if (!el) return;
@@ -916,13 +930,167 @@
         el.innerHTML = `<table class="data-table ops-table">
             <thead><tr>
                 <th>routine</th><th>schedule</th><th>cadence / due by</th><th>last run</th>
-                <th>status</th><th>lateness</th><th>enabled</th><th>channel</th>
+                <th>last beat</th><th>lateness</th><th>enabled</th><th>channel</th>
             </tr></thead>
             <tbody>${rows}</tbody></table>`;
 
         if (sum) {
             sum.textContent = `${routines.length} registered · ${enabled} enabled · ${late} late`;
             sum.className = 'card-badge' + (late > 0 ? ' ops-badge-bad' : '');
+        }
+    }
+
+    // ── DQ readiness panel (#382 phase 3) ───────────────────────────────────
+
+    // `trigger`/`request_id` on legacy rows may literally be the string
+    // "unknown" — show that as "trigger unknown" rather than inferring
+    // anything from it.
+    // Delegates to the pure formatter in js/dq-readiness-format.js (loaded
+    // before this file) so the readiness line, the unresolved table, and
+    // this file's own render call all share ONE implementation.
+    function fmtRef(x) {
+        return window.DQReadinessFormat.refLabel(x, esc);
+    }
+
+    function dqSevChip(sev) {
+        const key = sev === 'blocking' ? 'bad' : sev === 'quarantining' ? 'warn' : sev === 'ready' ? 'ok' : 'unknown';
+        return `<span class="ops-chip ops-chip-${key}">${esc(String(sev || 'unknown').toUpperCase())}</span>`;
+    }
+
+    // Delegates to js/dq-readiness-format.js's pure executionLine() (see the
+    // ── DQ readiness panel section below for why: a fixed backend
+    // pipeline_jobs row can be in any state, `attempts` is a raw counter
+    // that can exceed 3, and `retryable` only means something on a failed
+    // attempt).
+    function dqExecutionLine(execution) {
+        const text = window.DQReadinessFormat.executionLine(execution, esc);
+        return text ? `<div class="ops-dim">${text}</div>` : '';
+    }
+
+    function dqReadinessLine(cs) {
+        const state = pick(cs, 'state');
+        if (state === 'ready') {
+            const since = pick(cs, 'lastResult', 'last_result');
+            return `readiness: <span class="ops-chip ops-chip-ok">READY</span>${since ? ` since ${fmtRef(since)}` : ''}`;
+        }
+        if (state === 'no_result') {
+            return `readiness: <span class="ops-chip ops-chip-unknown">no result yet</span>`;
+        }
+        const ep = pick(cs, 'openEpisode', 'open_episode');
+        if (ep) {
+            // episodeDetail() already escapes every piece it emits — do NOT
+            // esc() its output again here, that would double-encode entities.
+            const detail = window.DQReadinessFormat.episodeDetail(ep, esc);
+            return `readiness: ${dqSevChip(pick(ep, 'currentSeverity', 'current_severity'))} <span class="ops-dq-line-text">episode #${esc(
+                String(pick(ep, 'id') ?? '—')
+            )} (${esc(String(pick(ep, 'currentSeverity', 'current_severity') || 'unknown'))}, ${detail})</span>`;
+        }
+        return `readiness: <span class="ops-chip ops-chip-unknown">${esc(String(state || 'unknown').toUpperCase())}</span>`;
+    }
+
+    // Pending reconciliation: the backend says N results have landed since
+    // the open episode/readiness snapshot was computed and haven't been
+    // folded in yet. Rendered only when the backend says so — absent/false
+    // means nothing here, never an inferred "probably fine".
+    function dqPendingReconciliationLine(cs) {
+        if (pick(cs, 'pendingReconciliation', 'pending_reconciliation') !== true) return '';
+        const results = asArray(pick(cs, 'pendingResults', 'pending_results') || []);
+        if (!results.length) {
+            return `<div class="ops-dim">pending reconciliation: newer result(s) not yet folded in</div>`;
+        }
+        const latest = results[results.length - 1];
+        const id = pick(latest, 'id');
+        const status = pick(latest, 'status');
+        const ranAt = pick(latest, 'ranAt', 'ran_at');
+        return `<div class="ops-dim">pending reconciliation: ${esc(String(results.length))} newer result(s) — latest run ${esc(
+            String(id ?? '—')
+        )} (${esc(String(status || 'unknown'))})${ranAt ? ' ' + esc(shortTs(ranAt)) : ''}</div>`;
+    }
+
+    function dqEpisodeRow(e) {
+        // episodeDetail() already escapes every piece it emits.
+        const checksCell = window.DQReadinessFormat.episodeDetail(e, esc);
+        const age = pick(e, 'ageSessions', 'age_sessions');
+        return `<tr>
+            <td>#${esc(String(pick(e, 'id') ?? '—'))}</td>
+            <td class="r">${esc(String(pick(e, 'asOf', 'as_of') || '—'))}</td>
+            <td>${dqSevChip(pick(e, 'currentSeverity', 'current_severity'))}</td>
+            <td>${checksCell === 'no detail' ? '<span class="ops-dim">no detail</span>' : checksCell}</td>
+            <td class="r">${isNum(age) ? esc(age + ' sessions') : unknownSpan()}</td>
+            <td class="r">${esc(String(pick(e, 'batchState', 'batch_state') || '—'))}</td>
+        </tr>`;
+    }
+
+    async function loadDQReadiness() {
+        const el = document.getElementById('ops-dq-readiness');
+        const sum = document.getElementById('ops-dq-summary');
+        if (!el) return;
+        el.innerHTML = LOADING;
+        if (sum) { sum.textContent = ''; sum.className = 'card-badge'; }
+
+        // ?fixture=dq-readiness | dq-readiness-failed — dev only.
+        const FIXTURE = new URLSearchParams(location.search).get('fixture');
+        let r;
+        if (FIXTURE === 'dq-readiness' || FIXTURE === 'dq-readiness-failed') {
+            try {
+                const res = await fetch(`js/fixtures/${FIXTURE}.sample.json`);
+                r = { ok: true, body: await res.json() };
+            } catch (err) {
+                r = { ok: false, kind: 'unreachable', message: String((err && err.message) || err) };
+            }
+        } else {
+            r = await opsGet('/api/ops/dq-readiness');
+        }
+
+        if (!r.ok) {
+            if (r.upstreamStatus === 503) {
+                el.innerHTML = `
+                    <div class="ops-unavailable">
+                        <div class="ops-unavailable-title">Episodes are off</div>
+                        <div class="ops-unavailable-msg">DQ readiness episodes are off (DQ_READINESS_EPISODES).</div>
+                    </div>`;
+            } else {
+                unavailable(el, r.kind, r.message);
+            }
+            return;
+        }
+
+        const v = r.body || {};
+        const cs = pick(v, 'currentSession', 'current_session') || {};
+        const unresolved = asArray(pick(v, 'unresolvedEpisodes', 'unresolved_episodes') || []);
+        const recent = asArray(pick(v, 'recentEpisodes', 'recent_episodes') || []);
+
+        const unresolvedTable = unresolved.length
+            ? `<div class="ao-scroll"><table class="data-table ops-table">
+                <thead><tr><th>#</th><th>session</th><th>severity</th><th>checks</th><th>age</th><th>batch</th></tr></thead>
+                <tbody>${unresolved.map(dqEpisodeRow).join('')}</tbody></table></div>`
+            : '<div class="ops-dim">none</div>';
+
+        const recentList = recent.length
+            ? `<ul class="ops-dq-recent">${recent
+                  .map(e => {
+                      const cb = pick(e, 'closedBy', 'closed_by');
+                      const revalOf = cb ? pick(cb, 'revalidationOf', 'revalidation_of') : undefined;
+                      return `<li>#${esc(String(pick(e, 'id') ?? '—'))} ${esc(String(pick(e, 'asOf', 'as_of') || '—'))} — recovered by ${fmtRef(cb)}${
+                          revalOf != null ? ` (revalidation of ${esc(String(revalOf))})` : ''
+                      }</li>`;
+                  })
+                  .join('')}</ul>`
+            : '<div class="ops-dim">none</div>';
+
+        el.innerHTML = `
+            <div class="ops-dq-line">${dqReadinessLine(cs)}</div>
+            ${dqExecutionLine(pick(cs, 'execution'))}
+            ${dqPendingReconciliationLine(cs)}
+            <h3 class="ops-dq-subhead">Unresolved DQ episodes</h3>
+            ${unresolvedTable}
+            <h3 class="ops-dq-subhead">Recent recoveries</h3>
+            ${recentList}`;
+
+        if (sum) {
+            const blocking = unresolved.some(e => pick(e, 'currentSeverity', 'current_severity') === 'blocking');
+            sum.textContent = `${String(pick(cs, 'state') || 'unknown')} · ${unresolved.length} unresolved`;
+            sum.className = 'card-badge' + (blocking ? ' ops-badge-bad' : '');
         }
     }
 
@@ -946,7 +1114,8 @@
             OPS_TABS.forEach(id => {
                 ['ops-shadow-status', 'ops-shadow-evidence', 'ops-shadow-attribution',
                  'ops-shadow-diffs', 'ops-shadow-alerts', 'ops-hb-table',
-                 'ops-sleeve-select-wrap', 'ops-diffs-comparison-wrap'].forEach(pid => {
+                 'ops-sleeve-select-wrap', 'ops-diffs-comparison-wrap',
+                 'ops-dq-readiness', 'ops-dq-summary'].forEach(pid => {
                     const el = document.getElementById(pid);
                     if (el) el.innerHTML = '';
                 });

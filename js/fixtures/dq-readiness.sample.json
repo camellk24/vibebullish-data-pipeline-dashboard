@@ -1,0 +1,50 @@
+{
+  "current_session": {
+    "as_of": "2026-09-23",
+    "state": "ready",
+    "ready_for_batch": true,
+    "last_status": "PASS",
+    "last_result": {
+      "id": 62,
+      "request_id": "dq_daily:2026-09-23:c1",
+      "trigger": "manual_revalidate",
+      "ran_at": "2026-09-23T13:05:00Z"
+    },
+    "open_episode": null,
+    "execution": null,
+    "pending_reconciliation": false,
+    "pending_results": []
+  },
+  "unresolved_episodes": [
+    {
+      "id": 41,
+      "as_of": "2026-09-22",
+      "current_severity": "blocking",
+      "failed_checks": ["session_bars_complete"],
+      "incomplete_required": [],
+      "execution_error": null,
+      "opening_severity": "blocking",
+      "opened_by": {
+        "kind": "scheduled_batch",
+        "ref": "dq_daily:2026-09-22:s1"
+      },
+      "opened_at": "2026-09-22T13:00:00Z",
+      "records": ["result:60"],
+      "batch_state": "unpublished",
+      "age_sessions": 1
+    }
+  ],
+  "recent_episodes": [
+    {
+      "id": 39,
+      "as_of": "2026-09-21",
+      "closed_by": {
+        "result_id": 11,
+        "request_id": "unknown",
+        "trigger": "unknown",
+        "revalidation_of": 10,
+        "ran_at": "2026-09-21T14:10:00Z"
+      }
+    }
+  ]
+}
