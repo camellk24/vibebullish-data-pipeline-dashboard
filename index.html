@@ -40,6 +40,7 @@
             <button class="tab" data-tab="agent-ops">Agents</button>
             <button class="tab" data-tab="ops-shadow" data-ops-tab style="display:none">Shadow book</button>
             <button class="tab" data-tab="ops-heartbeats" data-ops-tab style="display:none">Heartbeats</button>
+            <button class="tab" data-tab="ops-r4" data-ops-tab style="display:none">Label audit</button>
         </nav>
         <div class="ops-access-note" id="ops-access-note"></div>
 
@@ -493,6 +494,29 @@
             </section>
         </div><!-- /tab-ops-heartbeats -->
 
+        <!-- Tab: Label audit (admin only) — registry R4 rev 3.1 -->
+        <div id="tab-ops-r4" style="display:none">
+            <div class="ao-head">
+                <p class="ao-intro">
+                    Blind rating for the news-label audit (registry R4). You see only the ticker,
+                    date, publisher, title and summary the labeler saw &mdash; never a price, a
+                    stored label, or another article. Answer from the text alone and
+                    <strong>do not look the ticker up</strong>. An answer is never overwritten.
+                </p>
+                <div id="r4-round-wrap" class="ops-select-wrap"></div>
+            </div>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Item</h2>
+                    <span class="card-badge" id="r4-progress"></span>
+                </div>
+                <div id="r4-item"></div>
+                <div id="r4-status" class="r4-status"></div>
+                <div id="r4-open-rounds" class="ops-dim"></div>
+            </section>
+        </div><!-- /tab-ops-r4 -->
+
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
             <span class="dim">Auto-refreshes every 60s</span>
@@ -507,6 +531,7 @@
     <script src="js/agent-ops.js"></script>
     <script src="js/dq-readiness-format.js"></script>
     <script src="js/ops-console.js"></script>
+    <script src="js/r4-audit.js"></script>
     <script type="module" src="js/auth.js"></script>
 </body>
 </html>

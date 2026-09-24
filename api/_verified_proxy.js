@@ -119,8 +119,57 @@ async function verifyAdmin(req) {
     return { ok: true, claims };
 }
 
+// MAX_FORWARD_BODY_BYTES caps a forwarded POST body. The only writer today is
+// the R4 label form (three enum answers + a short note); anything larger is a
+// mistake, not a use case.
+const MAX_FORWARD_BODY_BYTES = 16 * 1024;
+
+// parseJSONBody returns the request's JSON body as a plain object, or null.
+// Vercel parses JSON bodies into req.body; a raw string is parsed here. This
+// is the ONE place a browser body is parsed, so a route validates the same
+// value the proxy would have seen.
+function parseJSONBody(req) {
+    let body = req && req.body;
+    if (typeof body === 'string') {
+        try {
+            body = JSON.parse(body);
+        } catch (_e) {
+            return null;
+        }
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+    return body;
+}
+
+// forwardBody returns the JSON body to forward for a POST, or an error body.
+// A route that has already built an allow-listed payload passes it as
+// opts.body; otherwise the request body is parsed once. Only a plain object
+// is forwarded, re-serialized here so the upstream never sees raw bytes.
+function forwardBody(req, opts) {
+    let body = opts && Object.prototype.hasOwnProperty.call(opts, 'body') ? opts.body : req.body;
+    if (typeof body === 'string') {
+        try {
+            body = JSON.parse(body);
+        } catch (_e) {
+            return { error: { status: 400, body: { error: 'bad_json', message: 'Body must be JSON.' } } };
+        }
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return { error: { status: 400, body: { error: 'bad_json', message: 'Body must be a JSON object.' } } };
+    }
+    const text = JSON.stringify(body);
+    if (Buffer.byteLength(text, 'utf8') > MAX_FORWARD_BODY_BYTES) {
+        return { error: { status: 413, body: { error: 'too_large', message: 'Body too large.' } } };
+    }
+    return { text };
+}
+
 // verifiedProxy: admin-verify, then forward `upstreamPath` (path + query) to the
-// backend with the internal token.
+// backend with the internal token. opts.method: 'GET' (default) or 'POST'; a
+// POST forwards opts.body if given (a route-built, allow-listed object), else
+// the request's JSON body, capped. opts.requireUidEnv names an env var holding
+// the ONE Firebase UID allowed through: the verified admin's uid must equal
+// it, else 403 — and an unset var fails closed with 503, never open.
 async function verifiedProxy(req, res, upstreamPath, opts) {
     const method = ((opts && opts.method) || 'GET').toUpperCase();
 
@@ -141,26 +190,51 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
         });
     }
 
+    const requireUidEnv = opts && opts.requireUidEnv;
+    let requiredUid = '';
+    if (requireUidEnv) {
+        requiredUid = String(process.env[requireUidEnv] || '').trim();
+        if (!requiredUid) {
+            return send(res, 503, {
+                error: 'not_configured',
+                message: `${requireUidEnv} is not set on this Vercel project; this route is closed until it is.`,
+            });
+        }
+    }
+
     const verdict = await verifyAdmin(req);
     if (!verdict.ok) {
         // NOTE: no upstream call has happened at this point, by construction.
         return send(res, verdict.status, verdict.body);
     }
+    if (requiredUid) {
+        const uid = verdict.claims && typeof verdict.claims.uid === 'string' ? verdict.claims.uid : '';
+        if (!uid || uid !== requiredUid) {
+            return send(res, 403, {
+                error: 'forbidden',
+                message: 'This route is restricted to the registered grader.',
+            });
+        }
+    }
+
+    const fetchOpts = {
+        method,
+        headers: {
+            'X-Internal-Token': token,
+            Accept: 'application/json',
+        },
+        redirect: 'manual',
+    };
+    if (method === 'POST') {
+        const fb = forwardBody(req, opts);
+        if (fb.error) return send(res, fb.error.status, fb.error.body);
+        fetchOpts.headers['Content-Type'] = 'application/json';
+        fetchOpts.body = fb.text;
+    }
 
     let upstream;
     try {
-        upstream = await fetchWithTimeout(
-            backendBase() + upstreamPath,
-            {
-                method,
-                headers: {
-                    'X-Internal-Token': token,
-                    Accept: 'application/json',
-                },
-                redirect: 'manual',
-            },
-            UPSTREAM_TIMEOUT_MS
-        );
+        upstream = await fetchWithTimeout(backendBase() + upstreamPath, fetchOpts, UPSTREAM_TIMEOUT_MS);
     } catch (err) {
         const aborted = err && (err.name === 'AbortError' || err.name === 'TimeoutError');
         return send(res, 502, {
@@ -177,6 +251,17 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
         // The upstream body is NOT echoed: a token-gated 4xx body can carry
         // header echoes. We report the status only, typed, so the panel can
         // render an explicit "unavailable" state (e.g. 404 = not deployed yet).
+        // A POST's validation statuses (400/404/409/423) are passed through as
+        // their own typed kinds so the form can say WHY, still body-free.
+        const postKinds = { 400: 'rejected', 404: 'not_found', 409: 'conflict', 423: 'locked' };
+        if (method === 'POST' && postKinds[upstream.status]) {
+            return send(res, upstream.status, {
+                error: postKinds[upstream.status],
+                upstream_status: upstream.status,
+                upstream_path: upstreamPath.split('?')[0],
+                message: `Backend returned HTTP ${upstream.status} for ${upstreamPath.split('?')[0]}.`,
+            });
+        }
         return send(res, upstream.status === 404 ? 404 : 502, {
             error: upstream.status === 404 ? 'not_found' : 'upstream_error',
             upstream_status: upstream.status,
@@ -202,6 +287,9 @@ module.exports = {
     verifiedProxy,
     verifyAdmin,
     send,
+    forwardBody,
+    parseJSONBody,
+    MAX_FORWARD_BODY_BYTES,
     bearerToken,
     DEFAULT_BACKEND,
     WHOAMI_PATH,

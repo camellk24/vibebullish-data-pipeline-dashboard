@@ -500,7 +500,7 @@ function initTabs() {
     // The two ops-* tabs are admin-only: their BUTTONS are hidden until
     // /api/ops/whoami confirms an admin (js/ops-console.js), but their sections
     // must still be listed here so the router can hide them like any other.
-    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-ops-shadow', 'tab-ops-heartbeats'];
+    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-r4'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
@@ -516,6 +516,7 @@ function initTabs() {
             if (tabId === 'data-collector') refreshDataCollectorHealth();
             if (tabId === 'ops-shadow' && window.OpsConsole) window.OpsConsole.loadShadow();
             if (tabId === 'ops-heartbeats' && window.OpsConsole) window.OpsConsole.loadHeartbeats();
+            if (tabId === 'ops-r4' && window.R4Audit) window.R4Audit.load();
         });
     });
 }
