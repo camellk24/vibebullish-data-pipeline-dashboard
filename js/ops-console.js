@@ -945,14 +945,11 @@
     // `trigger`/`request_id` on legacy rows may literally be the string
     // "unknown" — show that as "trigger unknown" rather than inferring
     // anything from it.
+    // Delegates to the pure formatter in js/dq-readiness-format.js (loaded
+    // before this file) so the readiness line, the unresolved table, and
+    // this file's own render call all share ONE implementation.
     function fmtRef(x) {
-        if (!x) return '';
-        const t = pick(x, 'trigger');
-        const trigger = t && t !== 'unknown' ? esc(String(t)) : 'trigger unknown';
-        const reqId = pick(x, 'requestId', 'request_id');
-        const ranAt = pick(x, 'ranAt', 'ran_at');
-        const label = reqId ? esc(String(reqId)) : `run ${esc(String(pick(x, 'resultId', 'result_id', 'id') ?? '—'))}`;
-        return `${label} (${trigger})${ranAt ? ' ' + esc(shortTs(ranAt)) : ''}`;
+        return window.DQReadinessFormat.refLabel(x, esc);
     }
 
     function dqSevChip(sev) {
@@ -960,21 +957,14 @@
         return `<span class="ops-chip ops-chip-${key}">${esc(String(sev || 'unknown').toUpperCase())}</span>`;
     }
 
+    // Delegates to js/dq-readiness-format.js's pure executionLine() (see the
+    // ── DQ readiness panel section below for why: a fixed backend
+    // pipeline_jobs row can be in any state, `attempts` is a raw counter
+    // that can exceed 3, and `retryable` only means something on a failed
+    // attempt).
     function dqExecutionLine(execution) {
-        if (!execution || pick(execution, 'state') === 'succeeded') return '';
-        const state = pick(execution, 'state');
-        const attempts = pick(execution, 'attempts');
-        const retryable = pick(execution, 'retryable');
-        const err = pick(execution, 'error');
-        const attemptsPart = isNum(attempts) ? ` attempt ${esc(String(attempts))}` : '';
-        const retryPart =
-            state === 'failed' && retryable === true
-                ? ', retryable'
-                : state === 'failed' && retryable === false
-                ? ', exhausted'
-                : '';
-        const errPart = err ? ` — ${esc(String(err))}` : '';
-        return `<div class="ops-dim">execution: ${esc(String(state || 'unknown'))}${attemptsPart}${retryPart}${errPart}</div>`;
+        const text = window.DQReadinessFormat.executionLine(execution, esc);
+        return text ? `<div class="ops-dim">${text}</div>` : '';
     }
 
     function dqReadinessLine(cs) {
@@ -988,25 +978,44 @@
         }
         const ep = pick(cs, 'openEpisode', 'open_episode');
         if (ep) {
-            const checks = asArray(pick(ep, 'failedChecks', 'failed_checks') || []);
-            const detail = checks.length ? checks.join(', ') : 'execution';
+            // episodeDetail() already escapes every piece it emits — do NOT
+            // esc() its output again here, that would double-encode entities.
+            const detail = window.DQReadinessFormat.episodeDetail(ep, esc);
             return `readiness: ${dqSevChip(pick(ep, 'currentSeverity', 'current_severity'))} <span class="ops-dq-line-text">episode #${esc(
                 String(pick(ep, 'id') ?? '—')
-            )} (${esc(String(pick(ep, 'currentSeverity', 'current_severity') || 'unknown'))}, ${esc(detail)})</span>`;
+            )} (${esc(String(pick(ep, 'currentSeverity', 'current_severity') || 'unknown'))}, ${detail})</span>`;
         }
         return `readiness: <span class="ops-chip ops-chip-unknown">${esc(String(state || 'unknown').toUpperCase())}</span>`;
     }
 
+    // Pending reconciliation: the backend says N results have landed since
+    // the open episode/readiness snapshot was computed and haven't been
+    // folded in yet. Rendered only when the backend says so — absent/false
+    // means nothing here, never an inferred "probably fine".
+    function dqPendingReconciliationLine(cs) {
+        if (pick(cs, 'pendingReconciliation', 'pending_reconciliation') !== true) return '';
+        const results = asArray(pick(cs, 'pendingResults', 'pending_results') || []);
+        if (!results.length) {
+            return `<div class="ops-dim">pending reconciliation: newer result(s) not yet folded in</div>`;
+        }
+        const latest = results[results.length - 1];
+        const id = pick(latest, 'id');
+        const status = pick(latest, 'status');
+        const ranAt = pick(latest, 'ranAt', 'ran_at');
+        return `<div class="ops-dim">pending reconciliation: ${esc(String(results.length))} newer result(s) — latest run ${esc(
+            String(id ?? '—')
+        )} (${esc(String(status || 'unknown'))})${ranAt ? ' ' + esc(shortTs(ranAt)) : ''}</div>`;
+    }
+
     function dqEpisodeRow(e) {
-        const checks = asArray(pick(e, 'failedChecks', 'failed_checks') || []);
-        const execErr = pick(e, 'executionError', 'execution_error');
-        const checksCell = esc(checks.join(', ')) + (execErr ? ` · exec: ${esc(String(execErr))}` : '');
+        // episodeDetail() already escapes every piece it emits.
+        const checksCell = window.DQReadinessFormat.episodeDetail(e, esc);
         const age = pick(e, 'ageSessions', 'age_sessions');
         return `<tr>
             <td>#${esc(String(pick(e, 'id') ?? '—'))}</td>
             <td class="r">${esc(String(pick(e, 'asOf', 'as_of') || '—'))}</td>
             <td>${dqSevChip(pick(e, 'currentSeverity', 'current_severity'))}</td>
-            <td>${checksCell || '<span class="ops-dim">—</span>'}</td>
+            <td>${checksCell === 'no detail' ? '<span class="ops-dim">no detail</span>' : checksCell}</td>
             <td class="r">${isNum(age) ? esc(age + ' sessions') : unknownSpan()}</td>
             <td class="r">${esc(String(pick(e, 'batchState', 'batch_state') || '—'))}</td>
         </tr>`;
@@ -1072,6 +1081,7 @@
         el.innerHTML = `
             <div class="ops-dq-line">${dqReadinessLine(cs)}</div>
             ${dqExecutionLine(pick(cs, 'execution'))}
+            ${dqPendingReconciliationLine(cs)}
             <h3 class="ops-dq-subhead">Unresolved DQ episodes</h3>
             ${unresolvedTable}
             <h3 class="ops-dq-subhead">Recent recoveries</h3>

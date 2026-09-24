@@ -11,7 +11,9 @@
       "ran_at": "2026-09-23T13:05:00Z"
     },
     "open_episode": null,
-    "execution": null
+    "execution": null,
+    "pending_reconciliation": false,
+    "pending_results": []
   },
   "unresolved_episodes": [
     {
