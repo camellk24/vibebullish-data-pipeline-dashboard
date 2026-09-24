@@ -15,7 +15,7 @@
       "as_of": "2026-09-23",
       "current_severity": "blocking",
       "failed_checks": ["session_bars_complete", "quote_coverage"],
-      "incomplete_required": false,
+      "incomplete_required": [],
       "execution_error": null,
       "opening_severity": "blocking",
       "opened_by": {
@@ -23,7 +23,7 @@
         "ref": "dq_daily:2026-09-23:s2"
       },
       "opened_at": "2026-09-23T13:00:00Z",
-      "records": 2,
+      "records": ["result:63"],
       "batch_state": "unpublished",
       "age_sessions": 0
     },
@@ -39,10 +39,9 @@
     {
       "id": 7,
       "as_of": "2026-09-23",
-      "state": "open",
       "current_severity": "blocking",
       "failed_checks": ["session_bars_complete", "quote_coverage"],
-      "incomplete_required": false,
+      "incomplete_required": [],
       "execution_error": null,
       "opening_severity": "blocking",
       "opened_by": {
@@ -50,17 +49,16 @@
         "ref": "dq_daily:2026-09-23:s2"
       },
       "opened_at": "2026-09-23T13:00:00Z",
-      "records": 2,
+      "records": ["result:63"],
       "batch_state": "unpublished",
       "age_sessions": 0
     },
     {
       "id": 5,
       "as_of": "2026-09-19",
-      "state": "open",
       "current_severity": "quarantining",
       "failed_checks": ["quote_coverage"],
-      "incomplete_required": false,
+      "incomplete_required": [],
       "execution_error": null,
       "opening_severity": "quarantining",
       "opened_by": {
@@ -68,7 +66,7 @@
         "ref": "dq_daily:2026-09-19:s1"
       },
       "opened_at": "2026-09-19T13:00:00Z",
-      "records": 1,
+      "records": ["result:59"],
       "batch_state": "published",
       "age_sessions": 4
     }

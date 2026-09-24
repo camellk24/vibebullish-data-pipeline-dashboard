@@ -966,8 +966,13 @@
         const attempts = pick(execution, 'attempts');
         const retryable = pick(execution, 'retryable');
         const err = pick(execution, 'error');
-        const attemptsPart = isNum(attempts) ? ` attempt ${esc(String(attempts))}/3` : '';
-        const retryPart = retryable === true ? ', retryable' : retryable === false ? ', exhausted' : '';
+        const attemptsPart = isNum(attempts) ? ` attempt ${esc(String(attempts))}` : '';
+        const retryPart =
+            state === 'failed' && retryable === true
+                ? ', retryable'
+                : state === 'failed' && retryable === false
+                ? ', exhausted'
+                : '';
         const errPart = err ? ` — ${esc(String(err))}` : '';
         return `<div class="ops-dim">execution: ${esc(String(state || 'unknown'))}${attemptsPart}${retryPart}${errPart}</div>`;
     }
@@ -1074,7 +1079,7 @@
 
         if (sum) {
             const blocking = unresolved.some(e => pick(e, 'currentSeverity', 'current_severity') === 'blocking');
-            sum.textContent = `${esc(String(pick(cs, 'state') || 'unknown'))} · ${unresolved.length} unresolved`;
+            sum.textContent = `${String(pick(cs, 'state') || 'unknown')} · ${unresolved.length} unresolved`;
             sum.className = 'card-badge' + (blocking ? ' ops-badge-bad' : '');
         }
     }

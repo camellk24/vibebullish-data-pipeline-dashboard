@@ -17,10 +17,9 @@
     {
       "id": 41,
       "as_of": "2026-09-22",
-      "state": "open",
       "current_severity": "blocking",
       "failed_checks": ["session_bars_complete"],
-      "incomplete_required": false,
+      "incomplete_required": [],
       "execution_error": null,
       "opening_severity": "blocking",
       "opened_by": {
@@ -28,7 +27,7 @@
         "ref": "dq_daily:2026-09-22:s1"
       },
       "opened_at": "2026-09-22T13:00:00Z",
-      "records": 1,
+      "records": ["result:60"],
       "batch_state": "unpublished",
       "age_sessions": 1
     }
