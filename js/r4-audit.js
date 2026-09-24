@@ -26,8 +26,13 @@
     const H3 = [['filler', 'Filler / rehash'], ['notable', 'Notable'], ['material', 'Material'], ['major', 'Major']];
 
     let round = 'dev1';
-    let current = null; // the item on screen
+    let current = null; // the item on screen, with the round it was served for
     let busy = false;
+    // Bumped on every round change and every load; a response whose
+    // generation is no longer current is dropped, so a slow reply for the
+    // PREVIOUS round can never replace the item on screen. Submission uses
+    // current.round (the round the item was served for), never the selector.
+    let generation = 0;
 
     function esc(s) {
         return String(s == null ? '' : s)
@@ -80,6 +85,7 @@
         el('r4-round').addEventListener('change', e => {
             round = e.target.value;
             current = null;
+            generation++;
             load();
         });
     }
@@ -136,14 +142,17 @@
     }
 
     async function load(keepStatus) {
+        const gen = ++generation;
+        const forRound = round;
         renderProgress(null);
         if (!keepStatus) setStatus('');
         const box = el('r4-item');
         if (box) box.innerHTML = '<div class="ops-loading">Loading…</div>';
         const [p, n] = await Promise.all([
-            api('/api/ops/r4?view=progress&round=' + encodeURIComponent(round)),
-            api('/api/ops/r4?view=next&round=' + encodeURIComponent(round)),
+            api('/api/ops/r4?view=progress&round=' + encodeURIComponent(forRound)),
+            api('/api/ops/r4?view=next&round=' + encodeURIComponent(forRound)),
         ]);
+        if (gen !== generation) return; // stale: the round changed meanwhile
         if (p.ok) renderProgress(p.body.progress, p.body.open_rounds);
         if (!n.ok) {
             current = null;
@@ -162,7 +171,7 @@
             setStatus('Round complete for you. Nothing left to rate.');
             return;
         }
-        current = n.body.item;
+        current = Object.assign({}, n.body.item, { round: forRound });
         renderItem(current);
     }
 
@@ -178,17 +187,19 @@
         }
         busy = true;
         el('r4-submit').disabled = true;
+        const item = current;
         const r = await api('/api/ops/r4?view=label', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                round,
-                cluster_id: current.cluster_id,
+                round: item.round,
+                cluster_id: item.cluster_id,
                 h1, h2, h3,
                 note: (f.querySelector('textarea[name="note"]') || {}).value || '',
             }),
         });
         busy = false;
+        if (current !== item) return; // the round changed mid-submit; the answer is stored under its own round
         if (!r.ok) {
             const btn = el('r4-submit');
             if (btn) btn.disabled = false;
