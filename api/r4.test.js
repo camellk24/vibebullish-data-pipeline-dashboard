@@ -219,3 +219,19 @@ test('r4: GET on the label view is rejected as method_not_allowed', async () => 
         assert.strictEqual(calls.length, 0);
     });
 });
+
+test('r4: spot and spot_topup rounds are accepted and forwarded', async () => {
+    for (const round of ['spot', 'spot_topup']) {
+        await withOwner(async () => {
+            const calls = installFetch({
+                '/api/admin/whoami': whoamiOK,
+                '/api/internal/r4/next': () => upstreamResponse(200, { done: false, item: { ticker: 'X' } }),
+            });
+            const res = fakeRes();
+            await handler(fakeReq({ url: `/api/ops/r4?view=next&round=${round}`, headers: { authorization: 'Bearer t' } }), res);
+            assert.strictEqual(res.statusCode, 200);
+            const fwd = calls.find(c => c.url.includes('/api/internal/r4/next'));
+            assert.strictEqual(fwd.url, `https://backend.test/api/internal/r4/next?round=${round}`);
+        });
+    }
+});

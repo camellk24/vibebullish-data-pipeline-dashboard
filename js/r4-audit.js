@@ -16,6 +16,8 @@
     'use strict';
 
     const ROUNDS = [
+        { id: 'spot', label: 'Spot-check (rev 4, initial 20)' },
+        { id: 'spot_topup', label: 'Spot-check top-up (20)' },
         { id: 'dev1', label: 'Practice (dev, pass 1)' },
         { id: 'dev2', label: 'Practice re-rate (dev, pass 2)' },
         { id: 'conf', label: 'Confirmatory' },
@@ -25,7 +27,7 @@
     const H2 = [['bullish', 'Bullish'], ['bearish', 'Bearish'], ['neutral', 'Neutral'], ['unclear', 'Unclear']];
     const H3 = [['filler', 'Filler / rehash'], ['notable', 'Notable'], ['material', 'Material'], ['major', 'Major']];
 
-    let round = 'dev1';
+    let round = 'spot';
     let current = null; // the item on screen, with the round it was served for
     let busy = false;
     // Bumped on every round change and every load; a response whose

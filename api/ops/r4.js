@@ -16,7 +16,7 @@
 
 const { verifiedProxy, send, parseJSONBody } = require('../_verified_proxy.js');
 
-const ROUNDS = new Set(['dev1', 'dev2', 'conf', 'relook']);
+const ROUNDS = new Set(['dev1', 'dev2', 'conf', 'relook', 'spot', 'spot_topup']);
 const H1 = new Set(['yes', 'passing_mention', 'no']);
 const H2 = new Set(['bullish', 'bearish', 'neutral', 'unclear']);
 const H3 = new Set(['filler', 'notable', 'material', 'major']);
