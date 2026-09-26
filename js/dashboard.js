@@ -25,11 +25,12 @@ const MODELS = {
     'claude-sonnet-4-6':  { input: 0.00300,  output: 0.01500, label: 'Claude Sonnet 4.6',   fam: 'claude' },
     'claude-haiku-4-5':   { input: 0.00080,  output: 0.00400, label: 'Claude Haiku 4.5',    fam: 'claude' },
     // R4 news-label-audit panel judges (offline research runs, component r4_panel_*).
-    // List prices 2026-09-25: Astra $10/$50 per M, Opus 5.5 $4/$20 per M. Measured
-    // against the 2026-09-25 run's logged usage (402 calls each): the flat 2000/500
-    // estimate is 8.8x the actual Astra bill ($18.09 vs $2.07 — 93% of its input was
-    // cache-hit at $1/M) and 1.7x the actual Opus bill ($7.24 vs $4.31). Still an
-    // ESTIMATE; llm_call_log carries no token counts.
+    // List prices 2026-09-25: Astra $10/$50 per M, Opus 5.5 $4/$20 per M. Compared
+    // with the cost calculated from the 2026-09-25 run's recorded token usage at the
+    // applicable rates (402 calls each; NOT reconciled to provider billing): the flat
+    // 2000/500 estimate is 8.8x for Astra ($18.09 vs $2.07 — 93% of its input was
+    // cache-hit at $1/M) and 1.7x for Opus 5.5 ($7.24 vs $4.31). Still an ESTIMATE;
+    // llm_call_log carries no token counts.
     'gpt-6-astra':        { input: 0.01000,  output: 0.05000, label: 'GPT-6 Astra',         fam: 'gpt' },
     'claude-opus-5-5':    { input: 0.00400,  output: 0.02000, label: 'Claude Opus 5.5',     fam: 'claude' },
     'deepseek-v4-flash':  { input: 0.00014,  output: 0.00028, label: 'DeepSeek V4 Flash',   fam: 'deepseek' },
