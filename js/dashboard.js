@@ -24,6 +24,11 @@ const MODELS = {
     'claude-opus-4-7':    { input: 0.00500,  output: 0.02500, label: 'Claude Opus 4.7',     fam: 'claude' },
     'claude-sonnet-4-6':  { input: 0.00300,  output: 0.01500, label: 'Claude Sonnet 4.6',   fam: 'claude' },
     'claude-haiku-4-5':   { input: 0.00080,  output: 0.00400, label: 'Claude Haiku 4.5',    fam: 'claude' },
+    // R4 news-label-audit panel judges (offline research runs, component r4_panel_*).
+    // List prices 2026-09-25: Astra $10/$50 per M, Opus 5.5 $4/$20 per M. The flat
+    // 2000/500 token assumption OVERSTATES these calls (~1.8k in, ~50-200 out).
+    'gpt-6-astra':        { input: 0.01000,  output: 0.05000, label: 'GPT-6 Astra',         fam: 'gpt' },
+    'claude-opus-5-5':    { input: 0.00400,  output: 0.02000, label: 'Claude Opus 5.5',     fam: 'claude' },
     'deepseek-v4-flash':  { input: 0.00014,  output: 0.00028, label: 'DeepSeek V4 Flash',   fam: 'deepseek' },
     'deepseek-v4-pro':    { input: 0.000435, output: 0.00087, label: 'DeepSeek V4 Pro',     fam: 'deepseek' },
     'deepseek-chat':      { input: 0.00014,  output: 0.00028, label: 'DeepSeek Chat (legacy alias)',     fam: 'deepseek', alias: true },
