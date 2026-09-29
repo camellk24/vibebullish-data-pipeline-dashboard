@@ -33,6 +33,11 @@ const MODELS = {
     // llm_call_log carries no token counts.
     'gpt-6-astra':        { input: 0.01000,  output: 0.05000, label: 'GPT-6 Astra',         fam: 'gpt' },
     'claude-opus-5-5':    { input: 0.00400,  output: 0.02000, label: 'Claude Opus 5.5',     fam: 'claude' },
+    // deepseek-flash = DeepSeek-V4.1-Flash, the backend worker since 2026-09-29 (DeepSeek retired
+    // V4-Flash 2026-09-10; the legacy name is only temporarily routed). Priced at the PEAK cache-miss
+    // rates fetched 2026-09-29 ($0.30 in / $1.20 out per M; off-peak is half) — an upper bound.
+    // Mirrors backend internal/services/llm_cost_model.go (one cost model, change both together).
+    'deepseek-flash':     { input: 0.00030,  output: 0.00120, label: 'DeepSeek V4.1 Flash (peak rate)', fam: 'deepseek' },
     'deepseek-v4-flash':  { input: 0.00014,  output: 0.00028, label: 'DeepSeek V4 Flash',   fam: 'deepseek' },
     'deepseek-v4-pro':    { input: 0.000435, output: 0.00087, label: 'DeepSeek V4 Pro',     fam: 'deepseek' },
     'deepseek-chat':      { input: 0.00014,  output: 0.00028, label: 'DeepSeek Chat (legacy alias)',     fam: 'deepseek', alias: true },
