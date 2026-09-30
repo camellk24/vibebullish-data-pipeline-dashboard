@@ -40,10 +40,9 @@ const MODELS = {
 };
 const TOK_IN = 2000, TOK_OUT = 500;
 
+// Attribute-safe (escapes quotes) — see js/html-escape.js.
 function esc(s) {
-    const d = document.createElement('div');
-    d.textContent = String(s);
-    return d.innerHTML;
+    return HtmlEscape.esc(s);
 }
 
 function fmt(n) { return Number(n).toLocaleString(); }
