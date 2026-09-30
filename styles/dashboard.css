@@ -348,7 +348,8 @@ body {
 
 .grid-2 {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, …): a wide child (table) must not push the column past the viewport. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--s-md);
     position: relative;
     z-index: 1;
