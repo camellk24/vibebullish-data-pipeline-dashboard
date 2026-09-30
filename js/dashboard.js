@@ -690,19 +690,20 @@ function renderActionEngineBacktest(d) {
             const retColor = b.avg_return_pct > 0 ? '#4ade80' : b.avg_return_pct < 0 ? '#f87171' : '#999';
             return `
                 <tr>
-                    <td style="font-weight:600">${esc(b.key)}</td>
-                    <td style="text-align:right">${b.n_decisions.toLocaleString()}</td>
-                    <td style="text-align:right">${b.n_resolved.toLocaleString()}</td>
-                    <td style="text-align:right">${graded.toLocaleString()}${gradedDays > 0 ? `<span style="color:${gradedDays === 1 ? '#fbbf24' : '#888'};font-size:0.8rem"> / ${gradedDays}d</span>` : ''}</td>
-                    <td style="text-align:right;color:${hitColor};font-weight:600">${graded > 0 ? b.hit_pct.toFixed(1) + '%' : '—'}</td>
-                    <td style="text-align:right;color:#888">${graded > 0 ? b.baseline_pct.toFixed(1) + '%' : '—'}</td>
-                    <td style="text-align:right;color:${edgeColor};font-weight:600">${graded > 0 && edge != null ? (edge >= 0 ? '+' : '') + edge.toFixed(1) + 'pp' : '—'}</td>
-                    <td style="text-align:right;color:${retColor};font-weight:600">${b.avg_return_pct >= 0 ? '+' : ''}${b.avg_return_pct.toFixed(2)}%</td>
+                    <td style="font-weight:600;padding:0.4rem 0.5rem">${esc(b.key)}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right">${b.n_decisions.toLocaleString()}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right">${b.n_resolved.toLocaleString()}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right">${graded.toLocaleString()}${gradedDays > 0 ? `<span style="color:${gradedDays === 1 ? '#fbbf24' : '#888'};font-size:0.8rem"> / ${gradedDays}d</span>` : ''}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right;color:${hitColor};font-weight:600">${graded > 0 ? b.hit_pct.toFixed(1) + '%' : '—'}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right;color:#888">${graded > 0 ? b.baseline_pct.toFixed(1) + '%' : '—'}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right;color:${edgeColor};font-weight:600">${graded > 0 && edge != null ? (edge >= 0 ? '+' : '') + edge.toFixed(1) + 'pp' : '—'}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right;color:${retColor};font-weight:600">${b.avg_return_pct >= 0 ? '+' : ''}${b.avg_return_pct.toFixed(2)}%</td>
                 </tr>
             `;
         }).join('');
         document.getElementById(id).innerHTML = `
-            <table style="width:100%;border-collapse:collapse">
+            <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;white-space:nowrap">
                 <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
                     <th style="text-align:left;padding:0.5rem">${label}</th>
                     <th style="text-align:right;padding:0.5rem">Decisions</th>
@@ -715,6 +716,7 @@ function renderActionEngineBacktest(d) {
                 </tr></thead>
                 <tbody>${rows}</tbody>
             </table>
+            </div>
         `;
     };
 
@@ -745,7 +747,8 @@ function renderActionEngineBacktest(d) {
             `;
         }).join('');
         document.getElementById('ae-recent').innerHTML = `
-            <table style="width:100%;border-collapse:collapse">
+            <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;white-space:nowrap">
                 <thead><tr style="color:#888;font-size:0.85rem;border-bottom:1px solid #333">
                     <th style="text-align:left;padding:0.5rem">Ticker</th>
                     <th style="text-align:left;padding:0.5rem" title="adjusted_pt_pct — per-horizon LGBM prediction the hit is computed against">Predicted</th>
