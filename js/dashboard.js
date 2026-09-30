@@ -674,7 +674,7 @@ function renderActionEngineBacktest(d) {
         </div>
     `;
 
-    const renderBuckets = (id, buckets, label) => {
+    const renderBuckets = (id, buckets, label, dim) => {
         if (!buckets || buckets.length === 0) {
             document.getElementById(id).innerHTML = '<div style="color:#999;padding:1rem">No data</div>';
             return;
@@ -688,6 +688,16 @@ function renderActionEngineBacktest(d) {
             // 72.0% baseline is 14.2pp WORSE than guessing, and used to render green.
             const hitColor = graded >= 5 ? edgeColor : '#666';
             const retColor = b.avg_return_pct > 0 ? '#4ade80' : b.avg_return_pct < 0 ? '#f87171' : '#999';
+            if (AEBuckets.isUnmatured60dBucket(dim, b.key, b.n_resolved)) {
+                return `
+                <tr>
+                    <td style="font-weight:600;padding:0.4rem 0.5rem">${esc(b.key)}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right">${b.n_decisions.toLocaleString()}</td>
+                    <td style="padding:0.4rem 0.5rem;text-align:right">${b.n_resolved.toLocaleString()}</td>
+                    <td colspan="5" style="padding:0.4rem 0.5rem;text-align:right;color:#888;font-style:italic" title="${esc(AEBuckets.MATURITY_TITLE)}">${esc(AEBuckets.MATURITY_NOTE)}</td>
+                </tr>
+            `;
+            }
             return `
                 <tr>
                     <td style="font-weight:600;padding:0.4rem 0.5rem">${esc(b.key)}</td>
@@ -720,9 +730,9 @@ function renderActionEngineBacktest(d) {
         `;
     };
 
-    renderBuckets('ae-by-horizon', d.by_horizon, 'Horizon');
-    renderBuckets('ae-by-trigger', d.by_trigger, 'Trigger');
-    renderBuckets('ae-by-action-predicate', d.by_action_predicate, 'Predicate');
+    renderBuckets('ae-by-horizon', d.by_horizon, 'Horizon', 'horizon');
+    renderBuckets('ae-by-trigger', d.by_trigger, 'Trigger', 'trigger');
+    renderBuckets('ae-by-action-predicate', d.by_action_predicate, 'Predicate', 'predicate');
 
     const recent = d.recent_resolutions || [];
     if (recent.length === 0) {
