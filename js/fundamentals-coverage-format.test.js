@@ -2,16 +2,10 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { coverageEntries, tiersTableHTML, peBreakdownLine } = require('./fundamentals-coverage-format.js');
+const { coverageEntries, tiersTableHTML, peBreakdownLine, scoredDecisionAgesLine } = require('./fundamentals-coverage-format.js');
 
-function esc(s) {
-    return String(s == null ? '' : s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+// The production escaper (dashboard.js's global esc delegates to it).
+const { esc } = require('./html-escape.js');
 
 const ORDER = ['market_cap', 'pe_ratio', 'ps_ratio', 'pb_ratio', 'ev_ebitda', 'roe', 'roa', 'revenue', 'free_float_pct'];
 
@@ -85,4 +79,27 @@ test('peBreakdownLine: descriptive counts, no causal wording', () => {
     assert.match(h, /P\/E null · EPS negative · polygon: <b>465<\/b>/);
     assert.match(h, /finnhub-adr: <b>128<\/b>/);
     assert.doesNotMatch(h, /loss|because|expected/i);
+});
+
+test('tiersTableHTML: a quote in a ticker cannot break out of the title attribute (production esc)', () => {
+    const cov = { tiers: [{ key: 'stored_unscored', label: 'Stored, unscored', tickers: 1, coverage: { market_cap: 0 },
+        rows_older_7d: 1, stalest_ticker: 'A" onmouseover="x', stalest_age_hours: 100, no_coverage_ledger: 0, no_coverage_ledger_30d: 0 }] };
+    const h = tiersTableHTML(cov, ORDER, esc);
+    assert.match(h, /title="Stalest: A&quot; onmouseover=&quot;x \(4d\)"/);
+    assert.doesNotMatch(h, /onmouseover="/);
+});
+
+test('html-escape: quotes, ampersands and null', () => {
+    assert.equal(esc(`<a href='x'>"&"</a>`), '&lt;a href=&#39;x&#39;&gt;&quot;&amp;&quot;&lt;/a&gt;');
+    assert.equal(esc(null), '');
+    assert.equal(esc(undefined), '');
+    assert.equal(esc(0), '0');
+});
+
+test('scoredDecisionAgesLine: full scored-set totals, absent when the backend omits them', () => {
+    assert.equal(
+        scoredDecisionAgesLine({ scored_decisions_older_7d: 4956, scored_decisions_older_30d: 398 }).replace(/<[^>]+>/g, ''),
+        'All scored tickers: decisions &gt;7d: 4,956; decisions &gt;30d: 398');
+    assert.equal(scoredDecisionAgesLine({ scored_tickers: 5 }), '');
+    assert.equal(scoredDecisionAgesLine(null), '');
 });
