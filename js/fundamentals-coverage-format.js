@@ -103,7 +103,14 @@
             '<span style="color:#c8c8d4">Rank universe P/E × EPS × source</span> — ' + parts.join(' &nbsp;|&nbsp; ') + '</div>';
     }
 
-    const FundCoverageFormat = { coverageEntries, tiersTableHTML, peBreakdownLine, covColor };
+    // Full scored-set decision ages (the per-tier rows sum to these).
+    function scoredDecisionAgesLine(cov) {
+        if (!cov || cov.scored_decisions_older_7d == null) return '';
+        return '<div style="color:#8a8a9e;font-size:0.75rem;margin-top:6px">All scored tickers: decisions &gt;7d: ' +
+            fmtInt(cov.scored_decisions_older_7d) + '; decisions &gt;30d: ' + fmtInt(cov.scored_decisions_older_30d) + '</div>';
+    }
+
+    const FundCoverageFormat = { coverageEntries, tiersTableHTML, peBreakdownLine, scoredDecisionAgesLine, covColor };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = FundCoverageFormat;
