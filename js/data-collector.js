@@ -135,7 +135,10 @@ function renderDCTables(tables) {
       }
       if (data.null_coverage) {
         body += '<div style="margin-top:10px">';
-        Object.entries(data.null_coverage).slice(0, 6).forEach(([col, covRaw]) => {
+        if (data.coverage_tiers) {
+          body += '<div style="color:#8a8a9e;font-size:0.7rem;margin-bottom:4px">Non-NULL over all stored rows — by population below</div>';
+        }
+        FundCoverageFormat.coverageEntries(data.null_coverage, data.coverage_order).forEach(([col, covRaw]) => {
           const cov = VBReads.num(covRaw) || 0;
           const color = cov > 80 ? '#00E5A0' : cov > 50 ? '#FBBF24' : '#FF4560';
           body += `
@@ -158,6 +161,25 @@ function renderDCTables(tables) {
     grid.appendChild(card);
   });
   c.appendChild(grid);
+  renderDCFundTiers(c, tables.ticker_fundamentals);
+}
+
+// ticker_fundamentals coverage by population (rank universe vs the rest).
+function renderDCFundTiers(c, fund) {
+  if (!fund || (!fund.coverage_tiers && !fund.coverage_tiers_error)) return;
+  const box = document.createElement('div');
+  box.style.cssText = 'margin-top:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px';
+  let h = '<div style="font-size:0.75rem;color:#8a8a9e;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px">ticker_fundamentals by population</div>';
+  if (fund.coverage_tiers_error) {
+    h += `<div style="color:#FF4560;font-size:0.8rem">Breakdown unavailable — ${esc(fund.coverage_tiers_error)}</div>`;
+  } else {
+    const cov = fund.coverage_tiers;
+    h += `<div style="color:#8a8a9e;font-size:0.75rem;margin-bottom:8px">${dcFmt(cov.scored_tickers)} tickers have a latest 60d score; the rank universe is those with market cap ≥ $${(cov.min_market_cap_usd / 1e9).toFixed(0)}B. Coverage = non-NULL presence, not correctness.</div>`;
+    h += FundCoverageFormat.tiersTableHTML(cov, fund.coverage_order, esc);
+    h += FundCoverageFormat.peBreakdownLine(cov.pe_breakdown, esc);
+  }
+  box.innerHTML = h;
+  c.appendChild(box);
 }
 
 function renderDCAPI(api) {
