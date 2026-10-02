@@ -45,7 +45,11 @@
         <div class="ops-access-note" id="ops-access-note"></div>
 
         <!-- Tab: LLM Usage -->
-        <div id="tab-llm-usage">
+        <div id="tab-llm-usage" class="personal-mode-disabled">
+            <div class="personal-mode-notice" role="status">
+                <strong>Disabled in personal research mode.</strong>
+                This tab's data reads are switched off until they move to signed-in access.
+            </div>
 
         <!-- Date picker (LLM Usage only) -->
         <div class="llm-date-picker" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:var(--s-lg);">
@@ -158,7 +162,11 @@
         </div><!-- /tab-llm-usage -->
 
         <!-- Tab: System Health -->
-        <div id="tab-system-health" style="display:none">
+        <div id="tab-system-health" class="personal-mode-disabled" style="display:none">
+            <div class="personal-mode-notice" role="status">
+                <strong>Disabled in personal research mode.</strong>
+                This tab's data reads are switched off until they move to signed-in access.
+            </div>
             <section class="card">
                 <div class="card-header">
                     <h2>Scanner Activity (last 24h)</h2>
@@ -181,7 +189,11 @@
         </div><!-- /tab-system-health -->
 
         <!-- Tab: Action Engine -->
-        <div id="tab-action-engine" style="display:none">
+        <div id="tab-action-engine" class="personal-mode-disabled" style="display:none">
+            <div class="personal-mode-notice" role="status">
+                <strong>Disabled in personal research mode.</strong>
+                This tab's data reads are switched off until they move to signed-in access.
+            </div>
             <p id="ae-freshness" style="font-size:0.8rem;color:#888;margin:0 0 0.5rem"></p>
             <section class="hero-metrics" id="ae-hero"></section>
             <!-- Stacked, not grid-2: the 8-column bucket tables need the full card width. -->
@@ -213,7 +225,11 @@
         </div><!-- /tab-action-engine -->
 
         <!-- Tab: Quant Quality -->
-        <div id="tab-quant-quality" style="display:none">
+        <div id="tab-quant-quality" class="personal-mode-disabled" style="display:none">
+            <div class="personal-mode-notice" role="status">
+                <strong>Disabled in personal research mode.</strong>
+                This tab's data reads are switched off until they move to signed-in access.
+            </div>
             <!-- Model Quantiles (weekly rank-decile forward returns) -->
             <section class="card">
                 <div class="card-header">
@@ -268,7 +284,11 @@
         </div><!-- /tab-quant-quality -->
 
         <!-- Tab: Data Collector -->
-        <div id="tab-data-collector" style="display:none">
+        <div id="tab-data-collector" class="personal-mode-disabled" style="display:none">
+            <div class="personal-mode-notice" role="status">
+                <strong>Disabled in personal research mode.</strong>
+                This tab's data reads are switched off until they move to signed-in access.
+            </div>
             <section class="hero-metrics" id="dc-hero">
                 <div class="metric-card hero">
                     <div class="metric-label">Pending</div>
@@ -329,7 +349,11 @@
         </div><!-- /tab-data-collector -->
 
         <!-- Tab: Catalyst Accuracy -->
-        <div id="tab-catalyst-accuracy" style="display:none">
+        <div id="tab-catalyst-accuracy" class="personal-mode-disabled" style="display:none">
+            <div class="personal-mode-notice" role="status">
+                <strong>Disabled in personal research mode.</strong>
+                This tab's data reads are switched off until they move to signed-in access.
+            </div>
             <section class="card">
                 <div class="card-header">
                     <h2>Filters</h2>
@@ -524,6 +548,7 @@
         </footer>
     </div>
 
+    <script src="js/personal-mode.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/quant.js"></script>
     <script src="js/data-collector.js"></script>

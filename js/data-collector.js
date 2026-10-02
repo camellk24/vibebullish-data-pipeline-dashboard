@@ -4,7 +4,7 @@ var DC_REFRESH_MS = 30000;
 
 async function refreshDataCollectorHealth() {
   try {
-    const r = await fetch(DC_API + '?t=' + Date.now());
+    const r = await vbPersonalModeRead(DC_API + '?t=' + Date.now());
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     renderDCHero(data.queue);

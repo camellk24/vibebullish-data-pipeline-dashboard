@@ -1563,3 +1563,19 @@ body {
 .r4-actions { display: flex; gap: var(--s-md); align-items: center; flex-wrap: wrap; }
 .r4-status { min-height: 1.2em; margin-top: var(--s-sm); font-size: 0.85rem; }
 @media (max-width: 600px) { .r4-opt { display: flex; margin-right: 0; } }
+
+/* Personal research mode: tabs whose direct data reads are switched off show
+   only their static notice (index.html, js/personal-mode.js). */
+.personal-mode-disabled > :not(.personal-mode-notice) { display: none !important; }
+.personal-mode-notice {
+    margin: var(--s-lg, 24px) auto;
+    max-width: 640px;
+    padding: 16px 20px;
+    border: 1px solid var(--border, #2a2f3a);
+    border-radius: 12px;
+    color: var(--text-secondary, #b4bcc8);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    text-align: center;
+}
+.personal-mode-notice strong { display: block; color: var(--text-primary, #f2f6fa); margin-bottom: 4px; }

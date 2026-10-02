@@ -87,7 +87,7 @@
 
     async function load() {
         try {
-            const res = await fetch(`${API}?hours=24`);
+            const res = await vbPersonalModeRead(`${API}?hours=24`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const m = await res.json();
             renderHero(m);
