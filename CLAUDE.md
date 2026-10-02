@@ -43,7 +43,14 @@ token-gated backend route is reached only through a serverless function under `a
 which reads the secret from a Vercel environment variable server-side. See the Agents
 tab section of `README.md` for the required variables.
 
-The dashboard polls two backend endpoints every 60 seconds (auto-refresh pauses when viewing historical dates):
+**Personal research mode:** the direct backend reads of the LLM Usage, System Health,
+Action Engine, Quant Quality, Data Collector and Catalyst Accuracy tabs are switched off.
+Their call sites use `vbPersonalModeRead()` (`js/personal-mode.js`), which makes no request,
+and the tabs show a static notice. Re-enable a tab by moving its reads to `VBAuth.fetch`
+behind a verified `api/` proxy, never by restoring a bare `fetch()`; `js/personal-mode.test.js`
+pins the remaining bare `fetch()` calls. The Agents and ops tabs are unaffected.
+
+Before personal research mode, the dashboard polled two backend endpoints every 60 seconds (auto-refresh pauses when viewing historical dates):
 - `GET /api/llm-usage/today?date=YYYY-MM-DD` — usage summary for a specific date (defaults to today ET)
 - `GET /api/llm-usage/week` — last 7 days of daily summaries
 

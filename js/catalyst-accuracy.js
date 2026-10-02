@@ -81,7 +81,7 @@
             const container = document.getElementById(dim.el);
             const countEl = document.getElementById(dim.count);
             try {
-                const res = await fetch(`${API}?dimension=${dim.d}&days=${days}`);
+                const res = await vbPersonalModeRead(`${API}?dimension=${dim.d}&days=${days}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const rows = data.rows || [];

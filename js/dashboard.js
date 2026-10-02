@@ -76,7 +76,7 @@ function dayName(dateStr) {
 // All fetchers must throw on non-2xx so a backend outage renders as an
 // explicit error state, not a normal-looking zero-usage day.
 async function getJSON(url) {
-    const r = await fetch(url);
+    const r = await vbPersonalModeRead(url); // personal research mode: no request (js/personal-mode.js)
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
 }
@@ -412,7 +412,9 @@ function renderLoadError(err) {
         span.textContent = msg; // textContent — upstream error text never hits innerHTML
         el.appendChild(span);
     });
-    document.getElementById('last-updated').textContent = 'Error — backend unreachable';
+    document.getElementById('last-updated').textContent = err && err.personalMode
+        ? 'Personal research mode — data reads off'
+        : 'Error — backend unreachable';
 }
 
 async function refresh() {
@@ -553,7 +555,7 @@ async function fetchActionEngineBacktest() {
 
 async function fetchActionEngineStats() {
     try {
-        const resp = await fetch('https://api.vibebullish.com/api/action-engine/backtest/stats?days=30');
+        const resp = await vbPersonalModeRead('https://api.vibebullish.com/api/action-engine/backtest/stats?days=30');
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const d = await resp.json();
         renderActionEngineBacktest(d);
@@ -564,7 +566,7 @@ async function fetchActionEngineStats() {
 
 async function fetchActionEngineTrend() {
     try {
-        const resp = await fetch('https://api.vibebullish.com/api/action-engine/backtest/trend?days=7');
+        const resp = await vbPersonalModeRead('https://api.vibebullish.com/api/action-engine/backtest/trend?days=7');
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const d = await resp.json();
         renderActionEngineTrend(d);
@@ -786,7 +788,7 @@ async function fetchWSStatus() {
         // No auth header: this is a public static bundle, so it must never
         // carry INTERNAL_API_TOKEN. If the backend ever locks this endpoint
         // down, the card degrades to the error state below.
-        const r = await fetch(`${API_BASE}/api/internal/ws-status?t=${Date.now()}`);
+        const r = await vbPersonalModeRead(`${API_BASE}/api/internal/ws-status?t=${Date.now()}`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
         renderWSStatus(data);

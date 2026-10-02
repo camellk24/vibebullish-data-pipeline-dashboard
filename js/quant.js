@@ -16,7 +16,7 @@ var quantRefreshTimer = null;
 
 async function refreshQuantHealth() {
     try {
-        var r = await fetch(QUANT_API + '?t=' + Date.now());
+        var r = await vbPersonalModeRead(QUANT_API + '?t=' + Date.now());
         if (!r.ok) throw new Error('HTTP ' + r.status);
         var data = await r.json();
         renderTrainingMetrics(data);
@@ -34,7 +34,7 @@ async function refreshQuantLive() {
         // top-line + by_horizon / by_trigger / by_action_predicate rollups
         // computed against action_decisions + action_resolutions (served from
         // a 10-min server-side cache).
-        var statsPromise = fetch(QUANT_LIVE_STATS_API + '&t=' + Date.now())
+        var statsPromise = vbPersonalModeRead(QUANT_LIVE_STATS_API + '&t=' + Date.now())
             .then(function(r) { return r.ok ? r.json() : null; })
             .catch(function() { return null; });
         // Predictions: read recent action_decisions (1d horizon, top-N).
@@ -42,7 +42,7 @@ async function refreshQuantLive() {
         // to read action_decisions LEFT JOIN action_resolutions; same shape
         // as before with cohort_id always empty (action_decisions doesn't
         // tag cohort).
-        var predsPromise = fetch(API_BASE + '/api/quant/live-predictions' +
+        var predsPromise = vbPersonalModeRead(API_BASE + '/api/quant/live-predictions' +
             '?timeframe=1d&limit=' + QUANT_LIVE_PREDS_TOP_N + '&t=' + Date.now())
             .then(function(r) { return r.ok ? r.json() : { predictions: [] }; })
             .catch(function() { return { predictions: [] }; });
@@ -188,7 +188,7 @@ function renderQuantLivePredictions(preds) {
 
 async function refreshQuantTrainingRuns() {
     try {
-        var r = await fetch(QUANT_RUNS_API + '&t=' + Date.now());
+        var r = await vbPersonalModeRead(QUANT_RUNS_API + '&t=' + Date.now());
         if (!r.ok) throw new Error('HTTP ' + r.status);
         var data = await r.json();
         renderQuantRuns(data.runs || []);
@@ -199,7 +199,7 @@ async function refreshQuantTrainingRuns() {
 
 async function refreshQuantBacktests() {
     try {
-        var r = await fetch(QUANT_BACKTESTS_API + '&t=' + Date.now());
+        var r = await vbPersonalModeRead(QUANT_BACKTESTS_API + '&t=' + Date.now());
         if (!r.ok) throw new Error('HTTP ' + r.status);
         var data = await r.json();
         renderQuantBacktests(data.backtests || []);
@@ -655,7 +655,7 @@ function renderTrainingMetrics(data) {
 // ── Model Quantiles (weekly rank-decile report) ─────────────────────────
 async function refreshQuantileReport() {
     try {
-        var r = await fetch(QUANTILE_REPORT_API + '?t=' + Date.now());
+        var r = await vbPersonalModeRead(QUANTILE_REPORT_API + '?t=' + Date.now());
         if (!r.ok) return;
         var d = await r.json();
         var windowEl = document.getElementById('quantile-window');
