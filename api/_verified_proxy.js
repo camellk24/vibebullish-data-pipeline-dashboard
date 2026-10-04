@@ -351,7 +351,13 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
     // Every credential in play — the bearer always, the internal token whenever
     // it is configured (even on a bearer-only route) — must be absent from what
     // the browser receives. Fixed body: nothing about the match is described.
-    if (containsCredential(payload, text, [idToken, token])) {
+    // The OUTGOING serialization is scanned as well: JSON normalization can
+    // produce a credential that neither the raw text nor any decoded string
+    // contains (e.g. 1.234e3 → 1234).
+    if (
+        containsCredential(payload, text, [idToken, token]) ||
+        containsCredential(null, JSON.stringify(payload), [idToken, token])
+    ) {
         return send(res, 502, {
             error: 'upstream_error',
             message: 'Backend response withheld.',

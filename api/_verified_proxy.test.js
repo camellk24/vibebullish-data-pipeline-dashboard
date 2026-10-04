@@ -477,3 +477,25 @@ test('containsCredential: non-empty credentials only; values, keys and raw text'
     assert.strictEqual(containsCredential({ a: 1 }, 'raw secret text', ['secret']), true);
     assert.strictEqual(containsCredential({ a: [{ b: 'fine' }] }, '{"a":[{"b":"fine"}]}', ['secret']), false);
 });
+
+test('credential echo: a credential produced only by JSON re-serialization (1.234e3 → 1234) is caught', async () => {
+    const prev = process.env.INTERNAL_API_TOKEN;
+    const prevBase = process.env.BACKEND_API_BASE;
+    const prevFetch = globalThis.fetch;
+    process.env.INTERNAL_API_TOKEN = '1234';
+    process.env.BACKEND_API_BASE = 'https://backend.test';
+    try {
+        installFetch({
+            '/api/admin/whoami': () => upstreamResponse(200, { uid: 'a' }),
+            '/api/quant/health': () => upstreamResponse(200, '{"n":1.234e3}'),
+        });
+        const res = fakeRes();
+        await verifiedProxy(bearerReq(), res, '/api/quant/health', { forwardAuth: 'bearer' });
+        assert.strictEqual(res.statusCode, 502);
+        assert.ok(!responseSurface(res).includes('1234'));
+    } finally {
+        if (prev === undefined) delete process.env.INTERNAL_API_TOKEN; else process.env.INTERNAL_API_TOKEN = prev;
+        if (prevBase === undefined) delete process.env.BACKEND_API_BASE; else process.env.BACKEND_API_BASE = prevBase;
+        globalThis.fetch = prevFetch;
+    }
+});
