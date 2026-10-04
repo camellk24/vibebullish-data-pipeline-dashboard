@@ -187,6 +187,13 @@ function createSandbox(opts) {
         }
     }
 
+    // Minimal well-formed payloads for views whose renderers require a shape
+    // (a response that lacks it is, by design, a render failure).
+    const DEFAULT_RESPONSES = {
+        'data-collector-health': { queue: { Pending: 0, InProgress: 0, CompletedLastHr: 0, FailedLastHr: 0, AvgCompletionMs: 0, BySource: {}, ByDataType: {} }, tables: {}, api_usage: {}, recent_errors: [] },
+        'llm-week': [],
+    };
+
     // ── sandbox globals ───────────────────────────────────────────────────
     function respondFor(url) {
         const u = new URL(url, 'https://dashboard.example.test');
@@ -197,7 +204,7 @@ function createSandbox(opts) {
         if (p === '/api/ops/reads') {
             const view = u.searchParams.get('view');
             if (state.fail[view]) return ok(state.fail[view].status, state.fail[view].body);
-            return ok(200, state.responses[view] || { ok: true, view });
+            return ok(200, state.responses[view] || DEFAULT_RESPONSES[view] || { ok: true, view });
         }
         if (p === '/api/agent-ops') return ok(200, { generated_at: new Date().toISOString(), summary: {}, roles: [] });
         if (p.startsWith('/api/ops/')) return ok(200, { rows: [], routines: [], items: [] });
