@@ -17,10 +17,10 @@ function consoleFor(rows) {
             return elements.get(id);
         },
     };
-    const window = { DQReadinessFormat: require('../js/dq-readiness-format.js'), addEventListener() {}, VBAuth: { isAdmin: true, async fetch(url) {
+    const window = { DQReadinessFormat: require('./dq-readiness-format.js'), addEventListener() {}, VBAuth: { isAdmin: true, async fetch(url) {
         return { status: 200, async json() { return url.includes('heartbeats') ? rows : { enabled: false }; } };
     } } };
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../js/ops-console.js'), 'utf8'), {
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, 'ops-console.js'), 'utf8'), {
         window, document, URLSearchParams, location: { search: '' },
     });
     return { rows, window, document, html: () => document.getElementById('ops-hb-table').innerHTML };
