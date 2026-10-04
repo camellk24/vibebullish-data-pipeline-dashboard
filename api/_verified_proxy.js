@@ -237,7 +237,10 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
     const sendsInternal = forwardAuth === 'internal' || forwardAuth === 'both';
     const sendsBearer = forwardAuth === 'bearer' || forwardAuth === 'both';
 
-    const token = process.env.INTERNAL_API_TOKEN || '';
+    // Trimmed on read: Fetch strips surrounding HTTP whitespace from header
+    // values, so the credential on the wire must be the one that is scanned.
+    const rawToken = process.env.INTERNAL_API_TOKEN || '';
+    const token = rawToken.replace(/^[\t\n\r ]+|[\t\n\r ]+$/g, '');
     if (sendsInternal && !token) {
         return send(res, 503, {
             error: 'not_configured',
@@ -354,9 +357,10 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
     // The OUTGOING serialization is scanned as well: JSON normalization can
     // produce a credential that neither the raw text nor any decoded string
     // contains (e.g. 1.234e3 → 1234).
+    const credentials = [idToken, token, rawToken];
     if (
-        containsCredential(payload, text, [idToken, token]) ||
-        containsCredential(null, JSON.stringify(payload), [idToken, token])
+        containsCredential(payload, text, credentials) ||
+        containsCredential(null, JSON.stringify(payload), credentials)
     ) {
         return send(res, 502, {
             error: 'upstream_error',

@@ -38,7 +38,12 @@ function clearDataCollector() {
 function dcFmt(n) { const v = VBReads.num(n == null ? 0 : n); return v === null ? '—' : v.toLocaleString(); }
 
 function renderDCHero(q) {
-  if (!q) return;
+  // A successful response without a queue object is a render failure: the
+  // caller's catch clears the hero metrics and shows unavailable, instead of
+  // leaving the previous readings on screen.
+  if (!q || typeof q !== 'object' || Array.isArray(q)) {
+    throw new Error('Data collector queue is missing or invalid.');
+  }
   document.getElementById('dc-pending').textContent = dcFmt(q.Pending);
   document.getElementById('dc-inprogress').textContent = dcFmt(q.InProgress);
   document.getElementById('dc-completed').textContent = dcFmt(q.CompletedLastHr);

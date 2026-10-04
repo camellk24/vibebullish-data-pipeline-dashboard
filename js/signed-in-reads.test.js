@@ -413,6 +413,16 @@ test('success followed by failure: every independently rendered panel replaces i
     sb.ctx.VBTabs.reload(); await sb.flush();
     assert.equal(sb.byId.get('dc-pending').textContent, '—');
     assert.ok(sb.byId.get('dc-by-source').innerHTML.includes('ops-unavailable'));
+    // A SUCCESSFUL response whose queue is missing must not keep the old hero readings either.
+    delete sb.state.fail['data-collector-health'];
+    sb.ctx.VBTabs.reload(); await sb.flush();
+    assert.equal(sb.byId.get('dc-pending').textContent, '42', 'control: success restores the reading');
+    sb.state.responses['data-collector-health'] = { queue: null, tables: {}, api_usage: {}, recent_errors: [] };
+    sb.ctx.VBTabs.reload(); await sb.flush();
+    assert.equal(sb.byId.get('dc-pending').textContent, '—', 'null queue clears the hero metric');
+    assert.ok(sb.byId.get('dc-by-source').innerHTML.includes('ops-unavailable'));
+    sb.errors.length = 0; // the render-failed log line above is the intended path here
+    sb.state.responses['data-collector-health'] = { queue: { Pending: 42, BySource: {}, ByDataType: {} }, tables: {}, api_usage: {}, recent_errors: [] };
     // Auth failure from the proxy (e.g. admin revoked server-side) → sign-in state on the panel.
     sb.state.fail['data-collector-health'] = { status: 403, body: { error: 'forbidden', message: 'This Google account is not an admin of VibeBullish.' } };
     sb.ctx.VBTabs.reload(); await sb.flush();

@@ -499,3 +499,28 @@ test('credential echo: a credential produced only by JSON re-serialization (1.23
         globalThis.fetch = prevFetch;
     }
 });
+
+test('credential echo: a token with surrounding whitespace is sent trimmed (Fetch strips it) and the trimmed echo is caught', async () => {
+    const prev = process.env.INTERNAL_API_TOKEN;
+    const prevBase = process.env.BACKEND_API_BASE;
+    const prevFetch = globalThis.fetch;
+    process.env.INTERNAL_API_TOKEN = '  synthetic-secret-9f3a\t';
+    process.env.BACKEND_API_BASE = 'https://backend.test';
+    try {
+        const calls = installFetch({
+            '/api/admin/whoami': () => upstreamResponse(200, { uid: 'a' }),
+            // The upstream echoes the header as Fetch would have delivered it.
+            '/api/internal/ws-status': (opts) => upstreamResponse(200, { echo: new Headers(opts.headers).get('X-Internal-Token') }),
+        });
+        const res = fakeRes();
+        await verifiedProxy(bearerReq(), res, '/api/internal/ws-status', { forwardAuth: 'both' });
+        assert.strictEqual(res.statusCode, 502);
+        assert.ok(!responseSurface(res).includes('synthetic-secret-9f3a'));
+        const fwd = calls.find(c => c.url.includes('/api/internal/ws-status'));
+        assert.strictEqual(fwd.opts.headers['X-Internal-Token'], 'synthetic-secret-9f3a', 'the header carries the trimmed credential');
+    } finally {
+        if (prev === undefined) delete process.env.INTERNAL_API_TOKEN; else process.env.INTERNAL_API_TOKEN = prev;
+        if (prevBase === undefined) delete process.env.BACKEND_API_BASE; else process.env.BACKEND_API_BASE = prevBase;
+        globalThis.fetch = prevFetch;
+    }
+});
