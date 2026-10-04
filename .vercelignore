@@ -1,0 +1,8 @@
+# Vercel builds EVERY .js under api/ as a serverless function (files prefixed
+# with "_" excepted), and the Hobby plan allows 12 per deployment. The api
+# tests are not functions: keep them out of the deployment so the count stays
+# at the real routes (agent-ops, config, ops/*). `npm test` runs from git, not
+# from the deployment, so nothing is lost.
+api/**/*.test.js
+js/*.test.js
+js/_test_dom.js
