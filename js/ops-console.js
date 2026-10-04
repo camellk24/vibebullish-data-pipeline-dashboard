@@ -865,6 +865,28 @@
         return `<span class="ops-chip ops-chip-${key}">${esc(s || 'never')}</span>`;
     }
 
+    function heartbeatRevisionDetail(rt) {
+        if (pick(rt, 'routine', 'Routine') !== 'daily_bars_eod') return '';
+        const detail = pick(rt, 'lastDetail', 'last_detail', 'LastDetail');
+        if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return '';
+        const revision = detail.post_publish_revision;
+        if (!revision || typeof revision !== 'object' || Array.isArray(revision) ||
+            typeof detail.note !== 'string' || !detail.note.trim()) return '';
+        const text = value => typeof value === 'string' && value ? esc(value) : 'not reported';
+        const count = value => Number.isSafeInteger(value) && value >= 0 ? esc(String(value)) : 'not reported';
+        // Render the recorded evidence only. The backend owns PASS/WARN/FAIL
+        // and the decision whether a revision is informational or an alert.
+        return `<details class="ops-hb-revision">
+            <summary>Post-publication revision</summary>
+            <p>${esc(detail.note)}</p>
+            <div>Session: ${text(detail.session_date)}</div>
+            <div>Batch: ${text(revision.batch_id)}</div>
+            <div>Accepted snapshot: ${count(revision.accepted_id)}</div>
+            <div>Changed tickers: ${count(revision.differing_tickers_count)}</div>
+            <div>Rows parsed: ${count(revision.rows_parsed)}</div>
+        </details>`;
+    }
+
     async function loadHeartbeats() {
         if (!window.VBAuth || !window.VBAuth.isAdmin) return;
 
@@ -919,7 +941,7 @@
                     <td class="r">${esc(schedule)}</td>
                     <td class="r">${cadenceCell}</td>
                     <td class="r" title="${esc(lastRan ? shortTs(lastRan) : '')}">${ageCell}</td>
-                    <td>${hbStatusChip(pick(rt, 'lastStatus', 'last_status', 'LastStatus'))}</td>
+                    <td>${hbStatusChip(pick(rt, 'lastStatus', 'last_status', 'LastStatus'))}${heartbeatRevisionDetail(rt)}</td>
                     <td class="r">${isLate ? '<span class="ops-bad">LATE</span>' : inWindow === false ? '<span class="ops-dim">out of window</span>' : '<span class="ops-good">on time</span>'}</td>
                     <td class="r">${isEnabled ? 'yes' : '<span class="ops-dim">no</span>'}</td>
                     <td class="r">${esc(String(pick(rt, 'channel', 'Channel') || '—'))}</td>
