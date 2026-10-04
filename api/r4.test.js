@@ -30,10 +30,10 @@ test('r4: unknown view / bad round → 400 without any network call', async () =
     await withOwner(async () => {
         const calls = installFetch({});
         let res = fakeRes();
-        await handler(fakeReq({ url: '/api/ops/r4?view=__proto__', headers: { authorization: 'Bearer t' } }), res);
+        await handler(fakeReq({ url: '/api/ops/r4?view=__proto__', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
         assert.strictEqual(res.statusCode, 400);
         res = fakeRes();
-        await handler(fakeReq({ url: '/api/ops/r4?view=next&round=all', headers: { authorization: 'Bearer t' } }), res);
+        await handler(fakeReq({ url: '/api/ops/r4?view=next&round=all', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
         assert.strictEqual(res.statusCode, 400);
         assert.strictEqual(calls.length, 0);
     });
@@ -47,7 +47,7 @@ test('r4: next forwards only the validated round with the token', async () => {
         });
         const res = fakeRes();
         await handler(
-            fakeReq({ url: '/api/ops/r4?view=next&round=DEV1&rater=astra_flagger&x=1', headers: { authorization: 'Bearer t' } }),
+            fakeReq({ url: '/api/ops/r4?view=next&round=DEV1&rater=astra_flagger&x=1', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }),
             res
         );
         assert.strictEqual(res.statusCode, 200);
@@ -67,7 +67,7 @@ test('r4: label POST forwards the JSON body, token attached, 201 passed through'
         const res = fakeRes();
         const body = { round: 'dev1', cluster_id: '0123456789abcdef', h1: 'yes', h2: 'bullish', h3: 'notable', note: 'n' };
         await handler(
-            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' }, body }),
+            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' }, body }),
             res
         );
         assert.strictEqual(res.statusCode, 200);
@@ -92,7 +92,7 @@ test('r4: a browser-supplied rater never reaches the backend — object body OR 
                 '/api/internal/r4/label': () => upstreamResponse(201, { id: 1 }),
             });
             const res = fakeRes();
-            await handler(fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' }, body }), res);
+            await handler(fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' }, body }), res);
             assert.strictEqual(res.statusCode, 200);
             const fwd = calls.find(c => c.url.includes('/api/internal/r4/label'));
             const sent = JSON.parse(fwd.opts.body);
@@ -112,7 +112,7 @@ test('r4: an invalid field is rejected before any upstream call', async () => {
             { round: 'dev1', cluster_id: '0123456789abcdef', h1: 'yes', h2: 'up', h3: 'notable' },
         ]) {
             const res = fakeRes();
-            await handler(fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' }, body }), res);
+            await handler(fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' }, body }), res);
             assert.strictEqual(res.statusCode, 400);
         }
         assert.strictEqual(calls.length, 0);
@@ -123,11 +123,11 @@ test('r4: another admin is refused (403) on GET and POST, no upstream call', asy
     await withOwner(async () => {
         const calls = installFetch({ '/api/admin/whoami': whoamiOtherAdmin });
         let res = fakeRes();
-        await handler(fakeReq({ url: '/api/ops/r4?view=next&round=dev1', headers: { authorization: 'Bearer t' } }), res);
+        await handler(fakeReq({ url: '/api/ops/r4?view=next&round=dev1', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
         assert.strictEqual(res.statusCode, 403);
         res = fakeRes();
         await handler(
-            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' },
+            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' },
                 body: { round: 'dev1', cluster_id: '0123456789abcdef', h1: 'yes', h2: 'bullish', h3: 'notable' } }),
             res
         );
@@ -141,7 +141,7 @@ test('r4: unset R4_OWNER_UID closes the route (503) before any network call', as
         delete process.env.R4_OWNER_UID;
         const calls = installFetch({});
         const res = fakeRes();
-        await handler(fakeReq({ url: '/api/ops/r4?view=next&round=dev1', headers: { authorization: 'Bearer t' } }), res);
+        await handler(fakeReq({ url: '/api/ops/r4?view=next&round=dev1', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
         assert.strictEqual(res.statusCode, 503);
         assert.strictEqual(calls.length, 0);
     });
@@ -156,7 +156,7 @@ test('r4: POST validation statuses come back typed and body-free', async () => {
             });
             const res = fakeRes();
             await handler(
-                fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' },
+                fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' },
                     body: { round: 'dev1', cluster_id: '0123456789abcdef', h1: 'yes', h2: 'bullish', h3: 'notable' } }),
                 res
             );
@@ -172,7 +172,7 @@ test('r4: POST with a non-object or oversized body is refused before any upstrea
     await withOwner(async () => {
         const calls = installFetch({ '/api/admin/whoami': whoamiOK });
         let res = fakeRes();
-        await handler(fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' }, body: '[1]' }), res);
+        await handler(fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' }, body: '[1]' }), res);
         assert.strictEqual(res.statusCode, 400);
         assert.ok(!calls.some(c => c.url.includes('/api/internal/')));
     });
@@ -186,7 +186,7 @@ test('r4: an oversized note is truncated to 2000 chars, so the forwarded body st
         });
         const res = fakeRes();
         await handler(
-            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' },
+            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' },
                 body: { round: 'dev1', cluster_id: '0123456789abcdef', h1: 'yes', h2: 'bullish', h3: 'notable', note: 'x'.repeat(MAX_FORWARD_BODY_BYTES + 1) } }),
             res
         );
@@ -201,7 +201,7 @@ test('r4: a non-admin never reaches the upstream, GET or POST', async () => {
         const calls = installFetch({ '/api/admin/whoami': () => upstreamResponse(403, {}) });
         const res = fakeRes();
         await handler(
-            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' },
+            fakeReq({ method: 'POST', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' },
                 body: { round: 'dev1', cluster_id: '0123456789abcdef', h1: 'yes', h2: 'bullish', h3: 'notable' } }),
             res
         );
@@ -214,7 +214,7 @@ test('r4: GET on the label view is rejected as method_not_allowed', async () => 
     await withOwner(async () => {
         const calls = installFetch({});
         const res = fakeRes();
-        await handler(fakeReq({ method: 'GET', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer t' } }), res);
+        await handler(fakeReq({ method: 'GET', url: '/api/ops/r4?view=label', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
         assert.strictEqual(res.statusCode, 405);
         assert.strictEqual(calls.length, 0);
     });
@@ -228,7 +228,7 @@ test('r4: spot and spot_topup rounds are accepted and forwarded', async () => {
                 '/api/internal/r4/next': () => upstreamResponse(200, { done: false, item: { ticker: 'X' } }),
             });
             const res = fakeRes();
-            await handler(fakeReq({ url: `/api/ops/r4?view=next&round=${round}`, headers: { authorization: 'Bearer t' } }), res);
+            await handler(fakeReq({ url: `/api/ops/r4?view=next&round=${round}`, headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
             assert.strictEqual(res.statusCode, 200);
             const fwd = calls.find(c => c.url.includes('/api/internal/r4/next'));
             assert.strictEqual(fwd.url, `https://backend.test/api/internal/r4/next?round=${round}`);
