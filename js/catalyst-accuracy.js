@@ -49,9 +49,10 @@
                 ${rows.map(r => {
                     const n = VBReads.num(r.n);
                     const hits = VBReads.num(r.directionalHits);
-                    const dirPct = VBReads.num(r.directionalPct) == null ? 0 : VBReads.num(r.directionalPct);
-                    const magPct = VBReads.num(r.magnitudePct) == null ? 0 : VBReads.num(r.magnitudePct);
-                    const avg = VBReads.num(r.avgRealized) == null ? 0 : VBReads.num(r.avgRealized);
+                    // Invalid or missing measurements show the dash, never a measured 0.
+                    const dirPct = VBReads.num(r.directionalPct);
+                    const magPct = VBReads.num(r.magnitudePct);
+                    const avg = VBReads.num(r.avgRealized);
                     const dirColor = colorForRate(dirPct);
                     const magColor = colorForRate(magPct);
                     const group = r.groupValue == null || r.groupValue === '' ? '(unknown)' : String(r.groupValue);
@@ -61,22 +62,22 @@
                         <td style="padding:8px;font-family:monospace;color:#888;">${n == null ? '—' : n}</td>
                         <td style="padding:8px;">
                             <div style="display:flex;align-items:center;gap:8px;">
-                                <span style="color:${dirColor};font-weight:700;font-family:monospace;width:54px;">${dirPct.toFixed(1)}%</span>
+                                <span style="color:${dirColor};font-weight:700;font-family:monospace;width:54px;">${dirPct === null ? '—' : dirPct.toFixed(1) + '%'}</span>
                                 <div style="flex:1;height:6px;background:#1a1a1a;border-radius:3px;overflow:hidden;max-width:200px;">
-                                    <div style="height:100%;width:${Math.max(0, Math.min(100, dirPct))}%;background:${dirColor};"></div>
+                                    <div style="height:100%;width:${dirPct === null ? 0 : Math.max(0, Math.min(100, dirPct))}%;background:${dirColor};"></div>
                                 </div>
                                 <span style="color:#666;font-size:10px;">${hits == null ? '—' : hits}/${n == null ? '—' : n}</span>
                             </div>
                         </td>
                         <td style="padding:8px;">
                             <div style="display:flex;align-items:center;gap:8px;">
-                                <span style="color:${magColor};font-weight:600;font-family:monospace;width:54px;">${magPct.toFixed(1)}%</span>
+                                <span style="color:${magColor};font-weight:600;font-family:monospace;width:54px;">${magPct === null ? '—' : magPct.toFixed(1) + '%'}</span>
                                 <div style="flex:1;height:4px;background:#1a1a1a;border-radius:2px;overflow:hidden;max-width:200px;">
-                                    <div style="height:100%;width:${Math.max(0, Math.min(100, magPct))}%;background:${magColor};opacity:0.6;"></div>
+                                    <div style="height:100%;width:${magPct === null ? 0 : Math.max(0, Math.min(100, magPct))}%;background:${magColor};opacity:0.6;"></div>
                                 </div>
                             </div>
                         </td>
-                        <td style="padding:8px;font-family:monospace;color:#aaa;">${avg.toFixed(2)}%</td>
+                        <td style="padding:8px;font-family:monospace;color:#aaa;">${avg === null ? '—' : avg.toFixed(2) + '%'}</td>
                     </tr>
                     `;
                 }).join('')}

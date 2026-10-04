@@ -240,7 +240,7 @@ async function loadLLMUsage(ctx) {
 // Explicit state: a backend outage must not look like a zero-usage day, and
 // numbers from a previous load must not survive a failure.
 function renderLLMUnavailable(kind, message) {
-    LLM_METRICS.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+    clearLLMUsage(); // summary badges (week total, ticker count, …) must not outlive the failure
     LLM_REGIONS.forEach(id => VBReads.unavailable(document.getElementById(id), kind, message));
     const lu = document.getElementById('last-updated');
     if (lu) lu.textContent = kind === 'unauthenticated' || kind === 'forbidden' ? 'Sign in required' : 'Error — backend unavailable';
@@ -496,7 +496,8 @@ function renderWeekly(days) {
     const container = document.getElementById('weekly-chart');
     const badge = document.getElementById('week-total');
 
-    if (!days || !days.length) {
+    badge.textContent = '';
+    if (!Array.isArray(days) || !days.length) {
         container.textContent = 'No weekly data.';
         return;
     }

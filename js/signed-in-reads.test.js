@@ -216,18 +216,35 @@ test('catalyst: Refresh and the window selector reload through the controller wi
     sb.state.responses['catalyst-accuracy'] = { rows: [{ groupValue: 'G', n: 3, directionalHits: 2, directionalPct: 66.7, magnitudePct: 33.3, avgRealized: 1.5 }] };
     sb.releasePending(); await sb.flush();
     assert.match(sb.byId.get('ca-meta').textContent, /last 90 days/, 'the meta line reflects the LAST window only');
-    // Departure: a success and a failure arriving after leaving the tab render nothing.
+    // Departure, deferred SUCCESS: configured before the request, resolved after leaving the tab.
+    sb.state.responses['catalyst-accuracy'] = { rows: [{ groupValue: 'LATE-OK', n: 9, directionalHits: 9, directionalPct: 100, magnitudePct: 100, avgRealized: 9 }] };
     sb.resetCalls();
     sel.value = '60'; sel.dispatch('change'); await sb.flush();
-    const held = sb.pending.splice(0);
+    let held = sb.pending.splice(0);
     sb.clickTab('data-collector'); await sb.flush();
     sb.releasePending(); await sb.flush();
-    const before = sb.byId.get('ca-by-model').innerHTML;
-    sb.state.fail['catalyst-accuracy'] = { status: 502, body: { error: 'upstream_error', message: 'late failure' } };
+    const panelBefore = sb.byId.get('ca-by-model').innerHTML;
+    const metaBefore = sb.byId.get('ca-meta').textContent;
     for (const p of held) p.resolve();
     await sb.flush();
-    assert.equal(sb.byId.get('ca-by-model').innerHTML, before, 'nothing rendered for the departed tab');
-    assert.ok(!sb.byId.get('ca-meta').textContent.includes('60'));
+    assert.equal(sb.byId.get('ca-by-model').innerHTML, panelBefore, 'late success did not render');
+    assert.equal(sb.byId.get('ca-meta').textContent, metaBefore);
+    assert.ok(!panelBefore.includes('LATE-OK'));
+    // Departure, deferred FAILURE: configured before the request, resolved after leaving the tab.
+    sb.clickTab('catalyst-accuracy'); await sb.flush();
+    sb.releasePending(); await sb.flush();
+    const okPanel = sb.byId.get('ca-by-model').innerHTML;
+    assert.ok(okPanel.includes('LATE-OK'), 'control: the same payload renders while the tab is active');
+    sb.state.fail['catalyst-accuracy'] = { status: 502, body: { error: 'upstream_error', message: 'late failure' } };
+    sb.resetCalls();
+    sel.value = '7'; sel.dispatch('change'); await sb.flush();
+    held = sb.pending.splice(0);
+    sb.clickTab('data-collector'); await sb.flush();
+    sb.releasePending(); await sb.flush();
+    for (const p of held) p.resolve();
+    await sb.flush();
+    assert.equal(sb.byId.get('ca-by-model').innerHTML, okPanel, 'late failure did not replace the panel');
+    assert.ok(!sb.byId.get('ca-by-model').innerHTML.includes('late failure'));
     assert.deepEqual(sb.errors, []);
 });
 
@@ -303,9 +320,9 @@ function evilPayloads() {
     const bucket = { key: EVIL_ATTR, n_decisions: EVIL, n_resolved: EVIL, n_graded: 6, n_graded_days: EVIL, hit_pct: EVIL, baseline_pct: EVIL, edge_pp: EVIL, avg_return_pct: EVIL };
     return {
         'llm-today': { total_calls: EVIL, date: EVIL_ATTR, unique_tickers: '7', by_model: { [EVIL]: 5, 'gpt-4o': EVIL, [EVIL_ATTR]: 2 }, by_service: { [EVIL_ATTR]: 3 }, by_component: { [EVIL]: 2, crypto_x: EVIL }, hourly_calls: [EVIL, 1, '2'], top_tickers: [{ ticker: EVIL, calls: EVIL, models: { [EVIL]: EVIL } }] },
-        'llm-week': { days: [{ date: EVIL_ATTR, total_calls: EVIL }, { date: '2026-10-01', total_calls: 5 }] },
+        'llm-week': [{ date: EVIL_ATTR, total_calls: EVIL }, { date: '2026-10-01', total_calls: 5 }],
         'llm-scanner': { web_search_llm_calls: EVIL, ticker_scans: [{ source: 'web_search', ticker: EVIL }] },
-        'catalyst-accuracy': { rows: [{ groupValue: EVIL, n: EVIL, directionalHits: EVIL_ATTR, directionalPct: EVIL, magnitudePct: '55', avgRealized: EVIL }, { groupValue: EVIL_ATTR, n: 3, directionalHits: 2, directionalPct: 66.6, magnitudePct: 10, avgRealized: 1 }] },
+        'catalyst-accuracy': { rows: [{ groupValue: EVIL, n: EVIL, directionalHits: EVIL_ATTR, directionalPct: EVIL, magnitudePct: '55', avgRealized: EVIL }, { groupValue: EVIL_ATTR, n: 3, directionalHits: 2, directionalPct: 66.6, magnitudePct: 0, avgRealized: 0 }] },
         'scanner-metrics': { unique_tickers: EVIL, total_dispatches: 3, by_source: [{ source: EVIL_ATTR, dispatches: EVIL, errors: EVIL, avg_duration_ms: EVIL, unique_tickers: EVIL, llm_calls: EVIL }] },
         'ae-stats': { window_days: EVIL, total_decisions: EVIL, resolved_decisions: 1, resolution_coverage_pct: EVIL, graded_decisions: 10, overall_hit_pct: EVIL, overall_baseline_pct: 50, overall_avg_return_pct: EVIL, overall_avg_abs_error_pt: 1, graded_days: EVIL, computed_at: EVIL, by_horizon: [bucket, Object.assign({}, bucket, { key: '60d', n_resolved: 0 })], by_trigger: [bucket], by_action_predicate: [bucket], recent_resolutions: [{ ticker: EVIL, predicted_pct: EVIL, horizon: EVIL_ATTR, trigger_type: EVIL, realized_return_pct: EVIL, hit: EVIL, resolved_at: EVIL }] },
         'ae-trend': { points: [{ date: EVIL_ATTR, n_decisions: EVIL, n_resolved: EVIL, n_graded: EVIL, hit_pct: EVIL, baseline_pct: EVIL, avg_return_pct: EVIL }] },
@@ -343,6 +360,15 @@ test('every recovered renderer: HTML tags, quote breakouts and HTML in numeric f
     // Numeric fields that carried HTML rendered as the dash, never the string.
     assert.equal(sb.byId.get('m-total').textContent, '0');
     assert.ok(sb.byId.get('ae-hero').innerHTML.includes('—'));
+    // The weekly chart really rendered its hostile rows (array payload), and
+    // only the valid day counted.
+    assert.match(sb.byId.get('weekly-chart').innerHTML, /class="w-bar"/);
+    assert.equal(sb.byId.get('week-total').textContent, '5 total');
+    // Catalyst: invalid measurements are dashes; valid zeroes are still percentages.
+    const ca = sb.byId.get('ca-by-model').innerHTML;
+    const cells = [...ca.matchAll(/width:54px;">([^<]*)<\/span>/g)].map(m => m[1]);
+    assert.deepEqual(cells, ['—', '55.0%', '66.6%', '0.0%']);
+    assert.ok(ca.includes('>—</td>') && ca.includes('>0.00%</td>'));
     // Text contexts keep the literal: the escaped form is present.
     assert.ok(htmls.some(h => h.includes('&lt;img src=x onerror=alert(1)&gt;')));
     assert.ok(htmls.some(h => h.includes('&quot; onmouseover=&quot;alert(1)')));
@@ -391,11 +417,22 @@ test('success followed by failure: every independently rendered panel replaces i
     sb.state.fail['data-collector-health'] = { status: 403, body: { error: 'forbidden', message: 'This Google account is not an admin of VibeBullish.' } };
     sb.ctx.VBTabs.reload(); await sb.flush();
     assert.ok(sb.byId.get('dc-by-source').innerHTML.includes('Admin sign-in required'));
-    // LLM: failure replaces the hero numbers and every region.
-    sb.state.fail['llm-week'] = { status: 502, body: { error: 'upstream_error', message: 'x' } };
+    // LLM: a real success first (summary badges populated), then a failure
+    // replaces the hero numbers, every region AND the summary badges.
+    sb.state.responses['llm-today'] = { total_calls: 23, date: '2026-10-04', unique_tickers: 7, by_model: { 'gpt-4o': 23 }, top_tickers: [{ ticker: 'AAPL', calls: 23, models: {} }] };
+    sb.state.responses['llm-week'] = [{ date: '2026-10-03', total_calls: 23 }];
+    sb.state.responses['llm-scanner'] = { web_search_llm_calls: 9, ticker_scans: [] };
     sb.clickTab('llm-usage'); await sb.flush();
+    assert.equal(sb.byId.get('week-total').textContent, '23 total');
+    assert.equal(sb.byId.get('ticker-count').textContent, '7 unique');
+    assert.equal(sb.byId.get('web-search-count').textContent, '9 LLM calls');
+    sb.state.fail['llm-week'] = { status: 502, body: { error: 'upstream_error', message: 'x' } };
+    sb.ctx.VBTabs.reload(); await sb.flush();
     assert.equal(sb.byId.get('m-total').textContent, '—');
     assert.ok(sb.byId.get('weekly-chart').innerHTML.includes('ops-unavailable'));
     assert.equal(sb.byId.get('last-updated').textContent, 'Error — backend unavailable');
+    for (const id of ['week-total', 'ticker-count', 'web-search-count', 'm-date', 'cost-note']) {
+        assert.equal(sb.byId.get(id).textContent, '', id + ' summary cleared on failure');
+    }
     assert.deepEqual(sb.errors, []);
 });
