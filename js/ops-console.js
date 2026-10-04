@@ -895,6 +895,7 @@
         // fetch (failed / empty) must never leave the DQ panel stuck on
         // "Loading…".
         loadDQReadiness();
+        if (window.ModelHealth) window.ModelHealth.load();
 
         const el = document.getElementById('ops-hb-table');
         const sum = document.getElementById('ops-hb-summary');

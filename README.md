@@ -188,3 +188,17 @@ npx vercel --prod --yes
 static files only, so `/api/agent-ops`, `/api/config` and `/api/ops/*` 404 — the header then
 reads "sign-in not configured", the ops tabs stay hidden, and the Agents tab shows its
 unreachable state. Use `?fixture=1` for Agents-tab UI work.
+
+### Saved model-health report
+
+The admin **Heartbeats** tab includes Model health: the latest saved inference-health
+report, cohort checks, generation time, sample size, and freshness. Report status
+and freshness are separate; a stale PASS is explicitly historical. The displayed
+age advances while the panel is open without fetching or computing another report.
+Reopening the tab reads the latest saved snapshot.
+
+`GET /api/ops/heartbeats?view=model-health` verifies admin access, then reads only
+`/api/internal/inference-health?source=snapshot`. Browser-supplied source/sample
+parameters are ignored. Missing snapshots are distinct from backend failures.
+This panel neither enables scheduled refresh nor calls the live inference-health
+path. It reuses the existing serverless function and server-side token.

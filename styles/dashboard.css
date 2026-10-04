@@ -1583,3 +1583,7 @@ body {
 .ops-hb-revision { margin-top: 8px; max-width: 420px; white-space: normal; overflow-wrap: anywhere; font-size: 0.8rem; line-height: 1.5; }
 .ops-hb-revision summary { cursor: pointer; color: #a6adc1; }
 .ops-hb-revision p { margin: 8px 0; }
+
+.ops-model-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.ops-model-stale { color: #e7b65a; }
+#ops-model-health { overflow-wrap: anywhere; }
