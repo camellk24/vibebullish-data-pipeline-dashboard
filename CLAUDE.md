@@ -14,8 +14,10 @@ npx serve . -l 3000
 # or
 python -m http.server 8000
 
-# Deploy to production
-vercel --prod
+# Production deploys happen automatically: the Vercel project is GitHub-linked,
+# so a merge to main produces a production deployment within about a minute.
+# (The old "Deploy to Vercel" GitHub Action was removed 2026-10-04: it duplicated
+# the Git deploy and had been failing with "Could not retrieve Project Settings".)
 ```
 
 ## Configuration
