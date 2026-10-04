@@ -25,7 +25,25 @@
 //   - Every response is `Cache-Control: no-store` — a stale ops number read as
 //     current is the exact failure this console exists to prevent.
 //
-// Required Vercel env: INTERNAL_API_TOKEN
+// FORWARDING MODES (opts.forwardAuth, resolved before any env or network step):
+//   'internal' (default) — X-Internal-Token only. Machine-class upstreams.
+//   'bearer'             — the SAME Firebase ID token verifyAdmin just verified,
+//                          as `Authorization: Bearer …`; X-Internal-Token is never
+//                          attached, even when configured. Human-class upstreams
+//                          (admin-only routes that authenticate the person).
+//   'both'               — both headers. Only for an upstream that is machine-
+//                          class today and becomes human-class later.
+//   INTERNAL_API_TOKEN is required (503) only for 'internal' and 'both'.
+//   verifyAdmin runs in EVERY mode: it is the only admin gate in front of a
+//   public upstream, and a duplicate identity check behind an admin one.
+//
+// CREDENTIAL ECHO: a successful upstream payload is scanned (decoded values,
+// property names, and the raw text) for every non-empty credential in play —
+// the bearer token, and INTERNAL_API_TOKEN whenever it is configured — and a
+// match is withheld with a fixed, credential-free 502. Empty credentials are
+// never scanned; there is no minimum-length bypass.
+//
+// Required Vercel env: INTERNAL_API_TOKEN (not for 'bearer'-only routes)
 // Optional:            BACKEND_API_BASE (default https://api.vibebullish.com)
 
 const DEFAULT_BACKEND = 'https://api.vibebullish.com';
@@ -164,12 +182,38 @@ function forwardBody(req, opts) {
     return { text };
 }
 
+const FORWARD_AUTH_MODES = ['internal', 'bearer', 'both'];
+
+// containsCredential: true when any non-empty credential appears, as a complete
+// substring, in the raw upstream text, in any decoded string value, or in any
+// property name (searched recursively).
+function containsCredential(payload, rawText, credentials) {
+    const creds = credentials.filter(c => typeof c === 'string' && c.length > 0);
+    if (!creds.length) return false;
+    const hit = s => creds.some(c => s.includes(c));
+    if (typeof rawText === 'string' && hit(rawText)) return true;
+    const stack = [payload];
+    while (stack.length) {
+        const v = stack.pop();
+        if (typeof v === 'string') {
+            if (hit(v)) return true;
+        } else if (v && typeof v === 'object') {
+            for (const k of Object.keys(v)) {
+                if (hit(k)) return true;
+                stack.push(v[k]);
+            }
+        }
+    }
+    return false;
+}
+
 // verifiedProxy: admin-verify, then forward `upstreamPath` (path + query) to the
-// backend with the internal token. opts.method: 'GET' (default) or 'POST'; a
-// POST forwards opts.body if given (a route-built, allow-listed object), else
-// the request's JSON body, capped. opts.requireUidEnv names an env var holding
-// the ONE Firebase UID allowed through: the verified admin's uid must equal
-// it, else 403 — and an unset var fails closed with 503, never open.
+// backend with the credential(s) selected by opts.forwardAuth (see the header
+// comment). opts.method: 'GET' (default) or 'POST'; a POST forwards opts.body if
+// given (a route-built, allow-listed object), else the request's JSON body,
+// capped. opts.requireUidEnv names an env var holding the ONE Firebase UID
+// allowed through: the verified admin's uid must equal it, else 403 — and an
+// unset var fails closed with 503, never open.
 async function verifiedProxy(req, res, upstreamPath, opts) {
     const method = ((opts && opts.method) || 'GET').toUpperCase();
 
@@ -180,8 +224,21 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
         });
     }
 
-    const token = process.env.INTERNAL_API_TOKEN;
-    if (!token) {
+    // The forwarding mode is a route-author constant, resolved before any env
+    // or network step. An unknown value is a programming error: fail closed.
+    const forwardAuth =
+        opts && opts.forwardAuth !== undefined && opts.forwardAuth !== null ? opts.forwardAuth : 'internal';
+    if (!FORWARD_AUTH_MODES.includes(forwardAuth)) {
+        return send(res, 500, {
+            error: 'misconfigured',
+            message: 'This route names an unsupported forwarding mode; it is closed.',
+        });
+    }
+    const sendsInternal = forwardAuth === 'internal' || forwardAuth === 'both';
+    const sendsBearer = forwardAuth === 'bearer' || forwardAuth === 'both';
+
+    const token = process.env.INTERNAL_API_TOKEN || '';
+    if (sendsInternal && !token) {
         return send(res, 503, {
             error: 'not_configured',
             message:
@@ -217,14 +274,14 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
         }
     }
 
+    const idToken = bearerToken(req); // non-empty: verifyAdmin accepted it above
     const fetchOpts = {
         method,
-        headers: {
-            'X-Internal-Token': token,
-            Accept: 'application/json',
-        },
+        headers: { Accept: 'application/json' },
         redirect: 'manual',
     };
+    if (sendsInternal) fetchOpts.headers['X-Internal-Token'] = token;
+    if (sendsBearer) fetchOpts.headers.Authorization = `Bearer ${idToken}`;
     if (method === 'POST') {
         const fb = forwardBody(req, opts);
         if (fb.error) return send(res, fb.error.status, fb.error.body);
@@ -291,12 +348,24 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
         });
     }
 
+    // Every credential in play — the bearer always, the internal token whenever
+    // it is configured (even on a bearer-only route) — must be absent from what
+    // the browser receives. Fixed body: nothing about the match is described.
+    if (containsCredential(payload, text, [idToken, token])) {
+        return send(res, 502, {
+            error: 'upstream_error',
+            message: 'Backend response withheld.',
+        });
+    }
+
     return send(res, 200, payload);
 }
 
 module.exports = {
     verifiedProxy,
     verifyAdmin,
+    containsCredential,
+    FORWARD_AUTH_MODES,
     send,
     forwardBody,
     parseJSONBody,

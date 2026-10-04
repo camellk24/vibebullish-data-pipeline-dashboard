@@ -17,6 +17,16 @@
 // This file is a MODULE (Firebase Web SDK v10 modular, gstatic CDN). It talks to
 // the rest of the dashboard through `window.VBAuth` and a `vb-auth-change`
 // CustomEvent, so classic scripts (js/ops-console.js) need no module plumbing.
+//
+// AUTH GENERATION. `VBAuth.gen` increments on every identity change and at
+// sign-out ENTRY. Sign-out revokes local access synchronously — isAdmin false,
+// token acquisition latched off, vb-auth-change emitted — BEFORE Firebase is
+// awaited, so nothing can start an authenticated read in the gap. A pending
+// admin check whose generation has moved changes nothing. Access comes back
+// only through a fresh identity → admin verification.
+//
+// Firebase is attached through a small adapter (`bind`) so the lifecycle can
+// be driven by a fake in js/auth.test.js without the SDK.
 
 const FB_APP = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 const FB_AUTH = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -34,12 +44,20 @@ let providerRef = null;
 let signInFnRef = null;
 let signOutFnRef = null;
 let currentUser = null;
+let authGen = 0;      // see AUTH GENERATION above
+let revoked = false;  // sign-out began; no token until a fresh identity arrives
+
+function bumpGen() {
+    authGen++;
+    window.VBAuth.gen = authGen;
+}
 
 function emit() {
     window.VBAuth.state = state.state;
     window.VBAuth.isAdmin = state.state === 'admin';
     window.VBAuth.email = state.email;
-    window.dispatchEvent(new CustomEvent('vb-auth-change', { detail: Object.assign({}, state) }));
+    window.VBAuth.gen = authGen;
+    window.dispatchEvent(new CustomEvent('vb-auth-change', { detail: Object.assign({ gen: authGen }, state) }));
 }
 
 function setState(next, patch) {
@@ -120,24 +138,41 @@ window.VBAuth = {
     state: 'loading',
     isAdmin: false,
     email: null,
+    gen: 0,
 
-    // A fresh ID token, or null when signed out / unavailable.
+    // A fresh ID token, or null when signed out / revoked / unavailable.
     async getIdToken(forceRefresh) {
-        if (!currentUser) return null;
+        if (revoked || !currentUser) return null;
         try {
-            return await currentUser.getIdToken(!!forceRefresh);
+            const t = await currentUser.getIdToken(!!forceRefresh);
+            return revoked ? null : t;
         } catch (_e) {
             return null;
         }
     },
 
-    // fetch() with the Bearer ID token attached. Ops panels use this for every
-    // /api/ops/* call; it resolves to a Response like fetch does.
+    // fetch() with the Bearer ID token attached; resolves to a Response like
+    // fetch does. Ops panels use it for every /api/ops/* call.
+    //
+    // opts.requireAuth: the token is read per request and the call REJECTS
+    // before any network when the token is absent, or when sign-out began (the
+    // generation moved) while the token was being acquired. The recovered
+    // tabs' reads (js/reads.js) always pass it. Without the option the
+    // behaviour is unchanged: a tokenless call goes out without Authorization.
     async fetch(url, opts) {
+        const requireAuth = !!(opts && opts.requireAuth);
+        const gen = authGen;
         const token = await window.VBAuth.getIdToken();
+        if (requireAuth && (!token || gen !== authGen || revoked)) {
+            const err = new Error('Not signed in as an admin.');
+            err.unauthenticated = true;
+            throw err;
+        }
         const headers = Object.assign({ Accept: 'application/json' }, (opts && opts.headers) || {});
         if (token) headers.Authorization = 'Bearer ' + token;
-        return fetch(url, Object.assign({}, opts, { headers }));
+        const fetchOpts = Object.assign({}, opts, { headers });
+        delete fetchOpts.requireAuth;
+        return fetch(url, fetchOpts);
     },
 
     async signIn() {
@@ -153,6 +188,12 @@ window.VBAuth = {
     },
 
     async signOut() {
+        // Revoke locally FIRST, synchronously: nothing may start an
+        // authenticated read while Firebase's sign-out is in flight.
+        bumpGen();
+        revoked = true;
+        currentUser = null;
+        setState('signed_out', { email: null, uid: null, message: '' });
         if (!authRef || !signOutFnRef) return;
         try {
             await signOutFnRef(authRef);
@@ -160,20 +201,48 @@ window.VBAuth = {
             /* onAuthStateChanged still fires the truth */
         }
     },
+
+    // bind(adapter): attach an auth backend. adapter.onAuthStateChanged(cb)
+    // calls cb(user|null) on every identity change; adapter.signOut() signs
+    // out. A `user` exposes getIdToken(force) and email. boot() binds Firebase;
+    // the tests bind a fake.
+    bind(adapter) {
+        authRef = adapter;
+        signOutFnRef = () => adapter.signOut();
+        adapter.onAuthStateChanged(onIdentityChange);
+    },
 };
+
+function onIdentityChange(user) {
+    bumpGen();
+    currentUser = user || null;
+    revoked = false;
+    if (!user) {
+        setState('signed_out', { email: null, uid: null, message: '' });
+        return;
+    }
+    state.email = user.email || null;
+    checkAdmin();
+}
 
 // ── boot ─────────────────────────────────────────────────────────────────────
 
 async function checkAdmin() {
+    // Every completion path re-checks the generation captured here: a verdict
+    // for an identity that has since signed out (or changed) changes nothing.
+    const gen = authGen;
+    const stale = () => gen !== authGen;
     setState('checking', {});
     let resp;
     try {
         resp = await window.VBAuth.fetch('/api/ops/whoami');
     } catch (err) {
+        if (stale()) return;
         // The network never answered — an outage, not a verdict on this account.
         setState('verify_failed', { message: 'Could not reach /api/ops/whoami.' });
         return;
     }
+    if (stale()) return;
 
     let body = null;
     try {
@@ -181,6 +250,7 @@ async function checkAdmin() {
     } catch (_e) {
         body = null;
     }
+    if (stale()) return;
 
     if (resp.status === 200 && body && body.admin) {
         setState('admin', {
@@ -252,19 +322,16 @@ async function boot() {
         const app = appMod.getApps && appMod.getApps().length
             ? appMod.getApps()[0]
             : appMod.initializeApp(cfg);
-        authRef = authMod.getAuth(app);
+        const fbAuthRef = authMod.getAuth(app);
         providerRef = new authMod.GoogleAuthProvider();
-        signInFnRef = authMod.signInWithPopup;
-        signOutFnRef = authMod.signOut;
+        signInFnRef = (_adapter, provider) => authMod.signInWithPopup(fbAuthRef, provider);
+        const signOutFnRef0 = auth => authMod.signOut(auth);
+        authRef = fbAuthRef;
 
-        authMod.onAuthStateChanged(authRef, user => {
-            currentUser = user || null;
-            if (!user) {
-                setState('signed_out', { email: null, uid: null, message: '' });
-                return;
-            }
-            state.email = user.email || null;
-            checkAdmin();
+        const fbAuth = authRef;
+        window.VBAuth.bind({
+            onAuthStateChanged: cb => authMod.onAuthStateChanged(fbAuth, cb),
+            signOut: () => signOutFnRef0(fbAuth),
         });
     } catch (err) {
         setState('error', { message: String((err && err.message) || err) });

@@ -1,38 +1,41 @@
-// js/data-collector.js
-var DC_API = API_BASE + '/api/data-collector/health';
+// js/data-collector.js — reads through VBReads.get('data-collector-health')
+// (js/reads.js → /api/ops/reads); activation and the 30 s poll are owned by
+// VBTabs (js/dashboard.js).
 var DC_REFRESH_MS = 30000;
+var DC_METRICS = ['dc-pending', 'dc-inprogress', 'dc-completed', 'dc-failed', 'dc-latency'];
+var DC_REGIONS = ['dc-by-source', 'dc-by-type', 'dc-tables', 'dc-api', 'dc-errors'];
 
-async function refreshDataCollectorHealth() {
+async function loadDataCollector(ctx) {
+  const r = await VBReads.get('data-collector-health');
+  if (!ctx.live()) return;
+  if (!r.ok) { renderDCUnavailable(r.kind, r.message); return; }
   try {
-    const r = await vbPersonalModeRead(DC_API + '?t=' + Date.now());
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
+    const data = r.body;
     renderDCHero(data.queue);
     renderDCBySource(data.queue);
     renderDCByType(data.queue);
     renderDCTables(data.tables);
     renderDCAPI(data.api_usage);
-    renderDCErrors(data.recent_errors || []);
+    renderDCErrors(Array.isArray(data.recent_errors) ? data.recent_errors : []);
   } catch (err) {
-    console.error('Data collector fetch failed:', err);
-    // Explicit error state — an outage must not look like an empty queue.
-    ['dc-pending', 'dc-inprogress', 'dc-completed', 'dc-failed', 'dc-latency'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = '—';
-    });
-    ['dc-by-source', 'dc-by-type', 'dc-tables', 'dc-api', 'dc-errors'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = '';
-      const span = document.createElement('span');
-      span.style.cssText = 'color:#FF4560;font-size:0.85rem';
-      span.textContent = 'Failed to load — ' + (err && err.message ? err.message : err);
-      el.appendChild(span);
-    });
+    console.error('Data collector render failed:', err);
+    renderDCUnavailable('upstream_error', 'The backend payload could not be rendered.');
   }
 }
 
-function dcFmt(n) { return Number(n || 0).toLocaleString(); }
+// Explicit state — an outage must not look like an empty queue, and numbers
+// from a previous load must not survive a failure.
+function renderDCUnavailable(kind, message) {
+  DC_METRICS.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+  DC_REGIONS.forEach(id => VBReads.unavailable(document.getElementById(id), kind, message));
+}
+
+function clearDataCollector() {
+  DC_METRICS.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+  DC_REGIONS.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+}
+
+function dcFmt(n) { const v = VBReads.num(n == null ? 0 : n); return v === null ? '—' : v.toLocaleString(); }
 
 function renderDCHero(q) {
   if (!q) return;
@@ -40,7 +43,7 @@ function renderDCHero(q) {
   document.getElementById('dc-inprogress').textContent = dcFmt(q.InProgress);
   document.getElementById('dc-completed').textContent = dcFmt(q.CompletedLastHr);
   document.getElementById('dc-failed').textContent = dcFmt(q.FailedLastHr);
-  document.getElementById('dc-latency').textContent = (q.AvgCompletionMs || 0) + 'ms';
+  document.getElementById('dc-latency').textContent = dcFmt(q.AvgCompletionMs || 0) + 'ms';
 }
 
 function renderDCBySource(q) {
@@ -59,7 +62,11 @@ function renderDCBySource(q) {
 
   const all = ['scanner', 'sweep', 'user', 'lightgbm', 'compute_force_refresh'];
   all.forEach(src => {
-    const s = sources[src] || { Pending: 0, Completed: 0, Failed: 0, AvgMs: 0 };
+    const raw = sources[src] || {};
+    const s = {
+      Pending: VBReads.num(raw.Pending) || 0, Completed: VBReads.num(raw.Completed) || 0,
+      Failed: VBReads.num(raw.Failed) || 0, AvgMs: VBReads.num(raw.AvgMs) || 0,
+    };
     const total = s.Completed + s.Failed;
     const rate = total > 0 ? ((s.Completed / total) * 100).toFixed(1) + '%' : '—';
     const tr = document.createElement('tr');
@@ -79,9 +86,9 @@ function renderDCByType(q) {
   const c = document.getElementById('dc-by-type');
   c.innerHTML = '';
   const types = q && q.ByDataType ? q.ByDataType : {};
-  const max = Math.max(1, ...Object.values(types));
+  const max = Math.max(1, ...Object.values(types).map(v => VBReads.num(v) || 0));
   ['fundamentals','short_data','earnings','ohlcv'].forEach(dt => {
-    const count = types[dt] || 0;
+    const count = VBReads.num(types[dt]) || 0;
     const pct = (count / max) * 100;
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:8px 0';
@@ -119,11 +126,12 @@ function renderDCTables(tables) {
       body += `<div style="font-size:1.4rem;font-weight:700;font-family:'JetBrains Mono',monospace">${dcFmt(data.total_rows)} rows</div>`;
       body += `<div style="color:#8a8a9e;font-size:0.8rem;margin-top:4px">Updated last 24h: ${dcFmt(data.updated_last_24h || 0)}</div>`;
       if (data.stalest_ticker) {
-        body += `<div style="color:#8a8a9e;font-size:0.8rem">Stalest: ${esc(data.stalest_ticker)} (${(data.stalest_age_hours || 0).toFixed(1)}h)</div>`;
+        body += `<div style="color:#8a8a9e;font-size:0.8rem">Stalest: ${esc(data.stalest_ticker)} (${VBReads.fixed(data.stalest_age_hours || 0, 1)}h)</div>`;
       }
       if (data.null_coverage) {
         body += '<div style="margin-top:10px">';
-        Object.entries(data.null_coverage).slice(0, 6).forEach(([col, cov]) => {
+        Object.entries(data.null_coverage).slice(0, 6).forEach(([col, covRaw]) => {
+          const cov = VBReads.num(covRaw) || 0;
           const color = cov > 80 ? '#00E5A0' : cov > 50 ? '#FBBF24' : '#FF4560';
           body += `
             <div style="display:flex;align-items:center;gap:8px;font-size:0.75rem;margin:3px 0">
@@ -154,8 +162,8 @@ function renderDCAPI(api) {
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px';
   ['polygon', 'finnhub'].forEach(vendor => {
-    const calls = api[vendor + '_calls_last_hour'] || 0;
-    const errs = api[vendor + '_errors_last_hour'] || 0;
+    const calls = VBReads.num(api[vendor + '_calls_last_hour']) || 0;
+    const errs = VBReads.num(api[vendor + '_errors_last_hour']) || 0;
     const card = document.createElement('div');
     card.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px';
     card.innerHTML = `
@@ -188,7 +196,8 @@ function renderDCErrors(errors) {
   const tbody = t.querySelector('tbody');
   errors.forEach(e => {
     const tr = document.createElement('tr');
-    const when = e.at ? new Date(e.at).toLocaleTimeString() : '—';
+    const at = e.at ? new Date(e.at) : null;
+    const when = at && Number.isFinite(at.getTime()) ? at.toLocaleTimeString() : '—';
     tr.innerHTML = `
       <td style="font-family:'JetBrains Mono',monospace">${esc(e.ticker)}</td>
       <td style="color:#A855F7">${esc(e.data_type)}</td>
@@ -199,10 +208,8 @@ function renderDCErrors(errors) {
   c.appendChild(t);
 }
 
-// Auto-refresh when tab is active
-setInterval(() => {
-  const tab = document.querySelector('.tab[data-tab="data-collector"]');
-  if (tab && tab.classList.contains('active')) {
-    refreshDataCollectorHealth();
-  }
-}, DC_REFRESH_MS);
+VBTabs.register('data-collector', {
+  load: loadDataCollector,
+  clear: clearDataCollector,
+  intervalMs: DC_REFRESH_MS,
+});

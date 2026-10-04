@@ -1564,10 +1564,13 @@ body {
 .r4-status { min-height: 1.2em; margin-top: var(--s-sm); font-size: 0.85rem; }
 @media (max-width: 600px) { .r4-opt { display: flex; margin-right: 0; } }
 
-/* Personal research mode: tabs whose direct data reads are switched off show
-   only their static notice (index.html, js/personal-mode.js). */
-.personal-mode-disabled > :not(.personal-mode-notice) { display: none !important; }
-.personal-mode-notice {
+/* Signed-in tabs (LLM Usage, System Health, Action Engine, Quant Quality,
+   Data Collector, Catalyst Accuracy): while not admin, VBTabs (js/dashboard.js)
+   gates the panel — only the sign-in notice is shown, the data regions are
+   cleared, and no read is issued. */
+.vb-gated > :not(.vb-gate) { display: none !important; }
+.vb-gate[hidden] { display: none; }
+.vb-gate {
     margin: var(--s-lg, 24px) auto;
     max-width: 640px;
     padding: 16px 20px;
@@ -1578,7 +1581,6 @@ body {
     line-height: 1.5;
     text-align: center;
 }
-.personal-mode-notice strong { display: block; color: var(--text-primary, #f2f6fa); margin-bottom: 4px; }
 /* Recorded daily-bars revisions are informational; the heartbeat chip owns severity. */
 .ops-hb-revision { margin-top: 8px; max-width: 420px; white-space: normal; overflow-wrap: anywhere; font-size: 0.8rem; line-height: 1.5; }
 .ops-hb-revision summary { cursor: pointer; color: #a6adc1; }
