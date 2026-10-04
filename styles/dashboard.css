@@ -1579,3 +1579,7 @@ body {
     text-align: center;
 }
 .personal-mode-notice strong { display: block; color: var(--text-primary, #f2f6fa); margin-bottom: 4px; }
+/* Recorded daily-bars revisions are informational; the heartbeat chip owns severity. */
+.ops-hb-revision { margin-top: 8px; max-width: 420px; white-space: normal; overflow-wrap: anywhere; font-size: 0.8rem; line-height: 1.5; }
+.ops-hb-revision summary { cursor: pointer; color: #a6adc1; }
+.ops-hb-revision p { margin: 8px 0; }
