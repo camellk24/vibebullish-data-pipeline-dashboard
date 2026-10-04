@@ -517,6 +517,11 @@
                 </div>
                 <div id="ops-dq-readiness"></div>
             </section>
+            <section class="card">
+                <div class="card-header"><h2>Model health</h2></div>
+                <p class="ao-intro">The latest saved inference-health report. Opening this panel reads the saved report; it does not run a new check.</p>
+                <div id="ops-model-health" aria-live="polite"></div>
+            </section>
         </div><!-- /tab-ops-heartbeats -->
 
         <!-- Tab: Label audit (admin only) — registry R4 rev 3.1 -->
@@ -556,6 +561,7 @@
     <script src="js/scanner-metrics.js"></script>
     <script src="js/agent-ops.js"></script>
     <script src="js/dq-readiness-format.js"></script>
+    <script src="js/model-health.js"></script>
     <script src="js/ops-console.js"></script>
     <script src="js/r4-audit.js"></script>
     <script src="js/ae-buckets.js"></script>

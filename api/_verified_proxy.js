@@ -248,6 +248,17 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
     const text = await upstream.text();
 
     if (!upstream.ok) {
+        // Recognize one documented, non-secret sentinel for the saved-report
+        // panel. Never forward arbitrary upstream error text.
+        if (opts && opts.recognizeMissingSnapshot && upstream.status === 503) {
+            let failure;
+            try { failure = JSON.parse(text); } catch (_e) { failure = null; }
+            if (failure && failure.error === 'inference health snapshot missing') {
+                return send(res, 404, {
+                    error: 'snapshot_missing', message: 'No saved model-health report yet.',
+                });
+            }
+        }
         // The upstream body is NOT echoed: a token-gated 4xx body can carry
         // header echoes. We report the status only, typed, so the panel can
         // render an explicit "unavailable" state (e.g. 404 = not deployed yet).
