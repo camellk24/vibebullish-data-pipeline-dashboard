@@ -103,3 +103,18 @@ test('scoredDecisionAgesLine: full scored-set totals, absent when the backend om
     assert.equal(scoredDecisionAgesLine({ scored_tickers: 5 }), '');
     assert.equal(scoredDecisionAgesLine(null), '');
 });
+
+test('numeric fields are coerced: string numbers format, markup-bearing values never render', () => {
+    const cov = { tiers: [{ key: 'scored_below', label: 'Scored, < $1B', tickers: '2996',
+        coverage: { market_cap: '100', pe_ratio: '<img src=x onerror=alert(1)>', ps_ratio: 79 },
+        rows_older_7d: '1199', stalest_ticker: 'ABCD', stalest_age_hours: '10',
+        decisions_older_7d: '<b>x</b>', decisions_older_30d: 102, no_coverage_ledger: null, no_coverage_ledger_30d: 0 }] };
+    const h = tiersTableHTML(cov, ORDER, esc);
+    assert.match(h, />2,996</);
+    assert.match(h, />100%</);
+    assert.match(h, /title="Stalest: ABCD \(10\.0h\)"/);
+    assert.match(h, />1,199</);
+    assert.doesNotMatch(h, /<img|onerror|<b>x/);
+    assert.equal(scoredDecisionAgesLine({ scored_decisions_older_7d: '<i>', scored_decisions_older_30d: '398' }).replace(/<[^>]+>/g, ''),
+        'All scored tickers: decisions &gt;7d: —; decisions &gt;30d: 398');
+});

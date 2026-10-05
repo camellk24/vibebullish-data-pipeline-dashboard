@@ -174,7 +174,7 @@ function renderDCFundTiers(c, fund) {
     h += `<div style="color:#FF4560;font-size:0.8rem">Breakdown unavailable — ${esc(fund.coverage_tiers_error)}</div>`;
   } else {
     const cov = fund.coverage_tiers;
-    h += `<div style="color:#8a8a9e;font-size:0.75rem;margin-bottom:8px">${dcFmt(cov.scored_tickers)} tickers have a latest 60d score; the rank universe is those with market cap ≥ $${(cov.min_market_cap_usd / 1e9).toFixed(0)}B. Coverage = non-NULL presence, not correctness.</div>`;
+    h += `<div style="color:#8a8a9e;font-size:0.75rem;margin-bottom:8px">${dcFmt(cov.scored_tickers)} tickers have a latest 60d score; the rank universe is those with market cap ≥ $${VBReads.num(cov.min_market_cap_usd) === null ? '—' : VBReads.fixed(VBReads.num(cov.min_market_cap_usd) / 1e9, 0)}B. Coverage = non-NULL presence, not correctness.</div>`;
     h += FundCoverageFormat.tiersTableHTML(cov, fund.coverage_order, esc);
     h += FundCoverageFormat.scoredDecisionAgesLine(cov);
     h += FundCoverageFormat.peBreakdownLine(cov.pe_breakdown, esc);

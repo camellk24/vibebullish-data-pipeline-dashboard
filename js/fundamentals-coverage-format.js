@@ -43,10 +43,23 @@
         return out;
     }
 
-    function fmtInt(n) { return Number(n || 0).toLocaleString('en-US'); }
+    // Numeric fields are coerced before any formatting (same rule as
+    // VBReads.num on the rest of the page): a non-finite or non-numeric value
+    // renders as a dash / nothing, never as markup or a thrown TypeError.
+    function fin(v) {
+        if (v === null || v === undefined || v === '') return null;
+        const n = typeof v === 'number' ? v : (typeof v === 'string' ? Number(v) : NaN);
+        return Number.isFinite(n) ? n : null;
+    }
 
-    function fmtAge(h) {
-        if (!(h > 0)) return '';
+    function fmtInt(v) {
+        const n = fin(v);
+        return n === null ? '—' : n.toLocaleString('en-US');
+    }
+
+    function fmtAge(v) {
+        const h = fin(v);
+        if (h === null || !(h > 0)) return '';
         return h >= 48 ? Math.round(h / 24) + 'd' : h.toFixed(1) + 'h';
     }
 
@@ -80,8 +93,10 @@
                 } else if (admitted && c === 'market_cap') {
                     h += '<td style="' + TD + ';color:#8a8a9e" title="Required for inclusion: the rank universe is defined by market_cap ≥ $1B">req.</td>';
                 } else {
-                    const p = Number(t.coverage[c] || 0);
-                    h += '<td style="' + TD + ';color:' + (t.tickers ? covColor(p) : '#555') + '">' + (t.tickers ? p.toFixed(0) + '%' : '—') + '</td>';
+                    const raw = t.coverage[c];
+                    const p = raw === undefined ? 0 : fin(raw);
+                    const show = fin(t.tickers) > 0 && p !== null;
+                    h += '<td style="' + TD + ';color:' + (show ? covColor(p) : '#555') + '">' + (show ? p.toFixed(0) + '%' : '—') + '</td>';
                 }
             });
             const stalest = t.stalest_ticker ? ' title="Stalest: ' + esc(t.stalest_ticker) + ' (' + fmtAge(t.stalest_age_hours) + ')"' : '';
