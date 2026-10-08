@@ -52,8 +52,7 @@ admin-verified proxy `GET /api/ops/reads?view=<name>` (`api/ops/reads.js`, 14 al
 with validated params), reached from the browser via `VBReads.get()` (`js/reads.js`) →
 `VBAuth.fetch(…, {requireAuth:true})`. The proxy verifies the Firebase admin, then forwards the
 same bearer (`forwardAuth: 'bearer'`; these are human-class backend routes under backend PR #449),
-except `ws-status`, which forwards both the bearer and `INTERNAL_API_TOKEN` (`'both'`) until #449
-is confirmed deployed — then flip it to `'bearer'` in a follow-up. Signed out, the six tabs are
+for all 14 views (`ws-status` forwarded `'both'` until backend #449 deployed). Signed out, the six tabs are
 gated (`.vb-gated`, no request); `VBTabs` in `js/dashboard.js` owns activation, the single poll
 timer and request invalidation (auth generation + per-tab sequence). Never add a bare `fetch()` to
 a tab script: `js/signed-in-reads.test.js` pins the exact native-fetch inventory, drives the whole

@@ -33,7 +33,7 @@ const EXPECTED_TABLE = {
     'quant-backtests':        ['/api/quant/backtests',              ['limit'],              'bearer'],
     'quantile-report':        ['/api/quantile-report',              [],                     'bearer'],
     'data-collector-health':  ['/api/data-collector/health',        [],                     'bearer'],
-    'ws-status':              ['/api/internal/ws-status',           [],                     'both'],
+    'ws-status':              ['/api/internal/ws-status',           [],                     'bearer'],
 };
 
 test('the view table is exactly the 14 recovered reads, with path, params and mode pinned', () => {
@@ -41,8 +41,8 @@ test('the view table is exactly the 14 recovered reads, with path, params and mo
     for (const k of Object.keys(VIEWS)) actual[k] = [VIEWS[k].path, VIEWS[k].params, VIEWS[k].forwardAuth];
     assert.deepStrictEqual(actual, EXPECTED_TABLE);
     assert.strictEqual(Object.getPrototypeOf(VIEWS), null);
-    // 'both' is pinned to the one machine-class-today upstream.
-    assert.deepStrictEqual(Object.keys(VIEWS).filter(k => VIEWS[k].forwardAuth === 'both'), ['ws-status']);
+    // Every view is human-class since backend #449: bearer only, no internal token anywhere.
+    assert.deepStrictEqual(Object.keys(VIEWS).filter(k => VIEWS[k].forwardAuth !== 'bearer'), []);
 });
 
 test('non-GET → 405, no network', async () => {
@@ -151,14 +151,11 @@ test('duplicates: first value wins in BOTH query representations', async () => {
     assert.strictEqual(Object.getPrototypeOf(queryOf({ url: '/r?__proto__=1' })), null);
 });
 
-test('simulated pre-#449 upstream (ws-status needs X-Internal-Token; public routes anonymous): every view passes', async () => {
+test('no view ever carries the internal token upstream, with or without INTERNAL_API_TOKEN configured', async () => {
     for (const view of Object.keys(VIEWS)) {
         await withEnv(async () => {
             const calls = installFetch({
                 '/api/admin/whoami': admin200,
-                '/api/internal/ws-status': (opts) => opts.headers['X-Internal-Token'] === TOKEN
-                    ? upstreamResponse(200, { healthy: true })
-                    : upstreamResponse(401, { error: 'unauthorized' }),
                 'https://backend.test/api/': () => upstreamResponse(200, { ok: view }),
             });
             const res = fakeRes();
@@ -168,7 +165,7 @@ test('simulated pre-#449 upstream (ws-status needs X-Internal-Token; public rout
             assert.strictEqual(res.statusCode, 200, `${view}: ${res.body}`);
             const fwd = calls.find(c => !c.url.includes('/api/admin/whoami'));
             assert.ok(fwd.url.startsWith('https://backend.test' + VIEWS[view].path), view);
-            if (VIEWS[view].forwardAuth === 'bearer') assert.ok(!('X-Internal-Token' in fwd.opts.headers), view);
+            assert.ok(!('X-Internal-Token' in fwd.opts.headers), view);
             assert.strictEqual(fwd.opts.headers.Authorization, `Bearer ${BEARER}`, view);
             assert.ok(!responseSurface(res).includes(TOKEN), view);
         });
@@ -191,7 +188,7 @@ test('simulated post-#449 upstream (every route human-class: bearer + admin): ev
     }
 });
 
-test('failed verification → no target request, for a bearer view and the both view', async () => {
+test('failed verification → no target request (ws-status included)', async () => {
     for (const view of ['quant-health', 'ws-status']) {
         await withEnv(async () => {
             const calls = installFetch({ '/api/admin/whoami': () => upstreamResponse(403, {}) });

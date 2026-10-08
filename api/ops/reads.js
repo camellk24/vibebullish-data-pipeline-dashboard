@@ -8,9 +8,9 @@
 // Why bearer: these upstreams are HUMAN-class routes (admin sign-in) — today
 // most are still anonymous reads, and the verified proxy is their only admin
 // gate; once backend #449 is deployed they require the same Firebase bearer
-// this route forwards. `ws-status` is the one exception: it needs the
-// internal token today and the bearer later, so it forwards BOTH until #449 is
-// confirmed deployed, after which a follow-up PR flips it to 'bearer'.
+// this route forwards. `ws-status` was the one exception until backend #449
+// deployed: it needed the internal token before, so it forwarded BOTH; it is
+// human-class now, like the other 13, and forwards the bearer only.
 //
 // Only an explicit allow-list of query parameters is forwarded, each validated
 // here; everything else — including the client's cache-buster `t` — is dropped.
@@ -34,9 +34,9 @@ const VIEWS = Object.assign(Object.create(null), {
     'quant-backtests':       { path: '/api/quant/backtests',               params: ['limit'],              forwardAuth: 'bearer' },
     'quantile-report':       { path: '/api/quantile-report',               params: [],                     forwardAuth: 'bearer' },
     'data-collector-health': { path: '/api/data-collector/health',         params: [],                     forwardAuth: 'bearer' },
-    // Machine-class today (X-Internal-Token), human-class after backend #449.
-    // Flip to 'bearer' only after #449 is CONFIRMED deployed, not on its date.
-    'ws-status':             { path: '/api/internal/ws-status',            params: [],                     forwardAuth: 'both' },
+    // Human-class since backend #449 (was 'both' while it still needed the
+    // internal token; dashboard #28).
+    'ws-status':             { path: '/api/internal/ws-status',            params: [],                     forwardAuth: 'bearer' },
 });
 
 const DIMENSIONS = new Set(['extractor', 'model', 'event_type', 'horizon']);
