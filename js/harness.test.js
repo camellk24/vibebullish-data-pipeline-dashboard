@@ -249,3 +249,17 @@ test('veto failure shows an inline error line and re-enables the buttons', async
     assert.ok(!/ disabled>/.test(sb.html('hz-queue')));
     assert.match(sb.html('hz-queue'), /data-hz-act="top" data-hz-id="q1"/);
 });
+
+test('queue: a task id of __proto__ / constructor shows Do next + Skip until a veto is really saved', async () => {
+    const sb = await page('');
+    // JSON.parse yields {} for vetoes: inherited keys must not read as an existing veto.
+    routeHarness(sb, () => json(200, JSON.parse(JSON.stringify({ state: { schema_version: 1, tasks: [
+        { id: '__proto__', title: 'Proto task', state: 'queued', rank: 1 },
+        { id: 'constructor', title: 'Ctor task', state: 'queued', rank: 2 },
+    ] }, vetoes: {} }))));
+    await sb.signIn();
+    sb.clickTab('harness'); await sb.flush();
+    const q = sb.html('hz-queue');
+    assert.doesNotMatch(q, /Undo/);
+    assert.equal((q.match(/Do next/g) || []).length, 2);
+});

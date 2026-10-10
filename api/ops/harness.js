@@ -67,10 +67,20 @@ function queryOf(req) {
 }
 
 async function streamText(stream) {
-    // A web ReadableStream (what get() returns) → string, with a size cap.
-    const text = await new Response(stream).text();
-    if (Buffer.byteLength(text, 'utf8') > MAX_BLOB_BYTES) throw new BlobReadError('blob too large');
-    return text;
+    // A web ReadableStream (what get() returns) → string. The cap is enforced
+    // while streaming, so an oversized blob is never fully buffered.
+    let bytes = 0;
+    const limited = stream.pipeThrough(new TransformStream({
+        transform(chunk, controller) {
+            bytes += chunk.byteLength;
+            if (bytes > MAX_BLOB_BYTES) {
+                controller.error(new BlobReadError('blob too large'));
+                return;
+            }
+            controller.enqueue(chunk);
+        },
+    }));
+    return new Response(limited).text();
 }
 
 // readJSON → { missing: true } | { doc, etag }. Throws on blob failure
@@ -100,7 +110,10 @@ function failure(res, err, which) {
         });
     }
     const name = (err && err.constructor && err.constructor.name) || '';
-    if (name === 'BlobPreconditionFailedError') {
+    // ifMatch lost (file changed since read) or a create lost to a concurrent
+    // create (no allowOverwrite on a missing file): both are a conflict.
+    if (name === 'BlobPreconditionFailedError' ||
+        (which === schema.VETOES_PATH && /already exists/i.test(String((err && err.message) || '')))) {
         return send(res, 409, {
             error: 'conflict',
             message: 'The vetoes file changed while this request was saving. Try again.',
@@ -197,7 +210,9 @@ function createHandler(deps) {
 
         const putOpts = {
             access: 'private',
-            allowOverwrite: true,
+            // Creating a missing file must not clobber a concurrent create;
+            // replacing an existing one is guarded by ifMatch below.
+            allowOverwrite: Boolean(etag),
             contentType: 'application/json',
             addRandomSuffix: false,
         };

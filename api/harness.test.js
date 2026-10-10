@@ -41,6 +41,15 @@ function fakeBlob(files, opts) {
         async put(pathname, body, o) {
             calls.push({ op: 'put', pathname, body, opts: o });
             if (opts.putError) throw opts.putError;
+            if (opts.beforePut) opts.beforePut(files, etags);
+            const exists = Object.prototype.hasOwnProperty.call(files, pathname);
+            if (o && o.ifMatch && etags[pathname] !== o.ifMatch) {
+                class BlobPreconditionFailedError extends Error {}
+                throw new BlobPreconditionFailedError('Precondition failed');
+            }
+            if (exists && !(o && (o.allowOverwrite || o.ifMatch))) {
+                throw new Error('Vercel Blob: This blob already exists, use `allowOverwrite: true` if you want to overwrite it.');
+            }
             files[pathname] = body;
             etags[pathname] = 'etag-' + (++n);
             return { pathname, url: 'https://x.private.blob.vercel-storage.com/' + pathname };
@@ -217,7 +226,8 @@ test('POST skip on a missing vetoes file creates it with by_uid; top adds; undo 
     assert.deepEqual(r.body.vetoes, { q1: { action: 'skip', at: NOW.toISOString(), by_uid: 'owner-uid' } });
     let put = blob.calls.filter(c => c.op === 'put').pop();
     assert.equal(put.pathname, schema.VETOES_PATH);
-    assert.deepEqual(put.opts, { access: 'private', allowOverwrite: true, contentType: 'application/json', addRandomSuffix: false });
+    // Creating a missing file never overwrites (a concurrent create → 409).
+    assert.deepEqual(put.opts, { access: 'private', allowOverwrite: false, contentType: 'application/json', addRandomSuffix: false });
     assert.deepEqual(JSON.parse(put.body), { schema_version: 1, vetoes: r.body.vetoes });
 
     r = await call(h, POST(JSON.stringify({ task_id: 'q2', action: 'top' })));
@@ -291,7 +301,9 @@ test('normalizeVetoes drops malformed entries and rejects non-v1 documents', () 
     assert.equal(schema.normalizeVetoes({ schema_version: 2, vetoes: {} }), null);
     assert.equal(schema.normalizeVetoes([]), null);
     const n = schema.normalizeVetoes({ schema_version: 1, vetoes: { ok: { action: 'top', at: 'x', by_uid: 'u' }, 'bad id': { action: 'top' }, k: { action: 'nuke' } } });
-    assert.deepEqual(n, { schema_version: 1, vetoes: { ok: { action: 'top', at: 'x', by_uid: 'u' } } });
+    // vetoes is a prototype-free map (so __proto__ stays an own key): compare by value.
+    assert.equal(Object.getPrototypeOf(n.vetoes), null);
+    assert.deepEqual(JSON.parse(JSON.stringify(n)), { schema_version: 1, vetoes: { ok: { action: 'top', at: 'x', by_uid: 'u' } } });
 });
 
 // ── scripts/harness-push.mjs (no network: dry run, validation, usage) ──────
@@ -325,4 +337,56 @@ test('harness-push: dry run validates; bad files exit 3; missing token exits 2; 
     assert.equal(r.status, 2);
     for (const out of [r.stdout, r.stderr]) assert.ok(!out.includes(secret));
     fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// ── Astra round-1 regressions ─────────────────────────────────────────────
+
+test('POST create race: a concurrent first write is not clobbered (409, first veto kept)', async () => {
+    const blob = fakeBlob({}, {
+        beforePut(files) {
+            // Another request created the file between our read (missing) and our put.
+            files[schema.VETOES_PATH] = JSON.stringify({ schema_version: 1, vetoes: { other: { action: 'skip', at: 'x', by_uid: 'u' } } });
+        },
+    });
+    const { res, body } = await call(handlerWith(blob), POST({ task_id: 't9', action: 'top' }));
+    assert.equal(res.statusCode, 409);
+    assert.equal(body.error, 'conflict');
+    const put = blob.calls.find(c => c.op === 'put');
+    assert.equal(put.opts.allowOverwrite, false);
+    assert.deepEqual(Object.keys(JSON.parse(blob.files[schema.VETOES_PATH]).vetoes), ['other']);
+});
+
+test('POST replace of an existing file is conditional (ifMatch) and allowed to overwrite', async () => {
+    const blob = fakeBlob({ [schema.VETOES_PATH]: JSON.stringify({ schema_version: 1, vetoes: {} }) });
+    const { res } = await call(handlerWith(blob), POST({ task_id: 't1', action: 'skip' }));
+    assert.equal(res.statusCode, 200);
+    const put = blob.calls.find(c => c.op === 'put');
+    assert.equal(put.opts.allowOverwrite, true);
+    assert.ok(put.opts.ifMatch);
+});
+
+for (const id of ['__proto__', 'constructor']) {
+    test(`POST ${id} as a task id saves, reads back and undoes as an own key`, async () => {
+        const blob = fakeBlob({});
+        const h = handlerWith(blob);
+        let r = await call(h, POST({ task_id: id, action: 'skip' }));
+        assert.equal(r.res.statusCode, 200);
+        assert.ok(Object.prototype.hasOwnProperty.call(r.body.vetoes, id));
+        const saved = JSON.parse(blob.files[schema.VETOES_PATH]);
+        assert.ok(Object.prototype.hasOwnProperty.call(saved.vetoes, id));
+        r = await call(h, { query: {} });
+        assert.equal(r.res.statusCode, 200);
+        assert.equal(r.body.vetoes[id] && r.body.vetoes[id].action, 'skip');
+        r = await call(h, POST({ task_id: id, action: 'undo' }));
+        assert.equal(r.res.statusCode, 200);
+        assert.ok(!Object.prototype.hasOwnProperty.call(JSON.parse(blob.files[schema.VETOES_PATH]).vetoes, id));
+    });
+}
+
+test('GET oversized state blob → 502 bad_blob without buffering it all', async () => {
+    const big = '{"schema_version":1,"pad":"' + 'x'.repeat(3 * 1024 * 1024) + '"}';
+    const blob = fakeBlob({ [schema.STATE_PATH]: big });
+    const { res, body } = await call(handlerWith(blob), { query: {} });
+    assert.equal(res.statusCode, 502);
+    assert.equal(body.error, 'bad_blob');
 });

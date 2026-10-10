@@ -60,14 +60,14 @@ function validateState(s) {
 
 // emptyVetoes is what a missing vetoes.json means.
 function emptyVetoes() {
-    return { schema_version: SCHEMA_VERSION, vetoes: {} };
+    return { schema_version: SCHEMA_VERSION, vetoes: Object.create(null) };
 }
 
 // normalizeVetoes keeps only well-formed entries; null when the document is
 // not a v1 vetoes file at all (the caller must not overwrite it blindly).
 function normalizeVetoes(doc) {
     if (!isObj(doc) || doc.schema_version !== SCHEMA_VERSION || !isObj(doc.vetoes)) return null;
-    const out = {};
+    const out = Object.create(null); // task ids like __proto__ stay own keys
     for (const [id, v] of Object.entries(doc.vetoes)) {
         if (!TASK_ID_RE.test(id) || !isObj(v)) continue;
         if (v.action !== 'skip' && v.action !== 'top') continue;

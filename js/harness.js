@@ -238,7 +238,9 @@
         }
         const dis = busy ? ' disabled' : '';
         box.innerHTML = `<div class="hz-scroll"><table class="data-table hz-table hz-table-q"><thead><tr><th>#</th><th>Task</th><th>Repo</th><th class="r">Your call</th></tr></thead><tbody>${q.map((t, i) => {
-            const v = obj(model.vetoes) && obj(model.vetoes[t.id]);
+            const v = obj(model.vetoes) &&
+                Object.prototype.hasOwnProperty.call(model.vetoes, t.id) &&
+                obj(model.vetoes[t.id]);
             const id = esc(t.id);
             const ctl = v
                 ? `<div class="hz-btns"><span class="ao-pill hz-pill-warn">${v.action === 'skip' ? 'skip' : 'do next'} sent</span><button type="button" class="hz-btn" data-hz-act="undo" data-hz-id="${id}"${dis}>Undo</button></div>`
