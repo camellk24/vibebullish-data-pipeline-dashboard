@@ -21,12 +21,17 @@ js/agent-ops-fixture.js     Fixture data for the Agents tab — dev only, loaded
                             lazily and only when the URL carries ?fixture=...
 js/auth.js                  Firebase Google sign-in (module) — admin gate
 js/ops-console.js           Shadow book + Heartbeats tabs (admin only)
+js/harness.js               Harness tab (admin only) — agent harness board
+js/harness-fixture.js       Harness fixture data — dev only, ?fixture=harness…
 api/_verified_proxy.js      Shared admin-verified proxy holding INTERNAL_API_TOKEN
 api/config.js               Public Firebase web config from Vercel env
 api/agent-ops.js            Agents-tab proxy (now admin-verified)
 api/ops/whoami.js           "is this account an admin?"
 api/ops/shadow.js           Shadow status/evidence/diffs/attribution/alerts
 api/ops/heartbeats.js       Routine registry + lateness
+api/ops/harness.js          Harness tab: private Vercel Blob read + owner vetoes
+api/_harness_schema.js      Harness blob paths + schema v1 validation (shared)
+scripts/harness-push.mjs    Uploader the harness runs on the owner's Mac
 styles/dashboard.css        Dark theme (matches iOS Theme.swift)
 vercel.json                 Vercel deployment config
 ```
@@ -160,6 +165,103 @@ Run against a deployment (or `vercel dev` — `npx serve .` has no serverless fu
       panels are cleared.
 - [ ] In devtools → Network, confirm no response body or header anywhere contains the
       internal token, and that `/api/ops/*` requests carry only the Firebase Bearer token.
+
+## Harness tab (admin only)
+
+The **Harness** tab (after Agents) is the board for the agent harness that builds roadmap
+work two lanes at a time: a status line (heartbeat → live / stale / not started, deploy-window
+pill, next tick), hero metrics (running of 2 lanes, needs you, done in 7 days, median
+build → ready, queued), a **Needs you** card (amber while anything is open), one card per lane
+with the 7-step stepper (Build, Verify, Astra, Merge, Deploy, Check, Done), the **Up next**
+queue with **Do next / Skip / Undo**, the latest 40 activity events, and the Finished table.
+Times are Pacific. Like the other ops tabs, the button is hidden until the signed-in Google
+account is confirmed as an admin; signed out, the panel shows an explicit sign-in state and
+requests nothing. It polls every 60 s only while the tab is open and the page is visible.
+
+### Data path: a private Vercel Blob store
+
+```
+harness (owner's Mac) ──scripts/harness-push.mjs──▶ harness/state.json  (private blob)
+                                                         │
+browser ──Bearer <Firebase ID token>──▶ /api/ops/harness ─┤ verifyAdmin first, then get() both blobs
+                                                         │
+browser ──POST ?view=veto───────────────▶ /api/ops/harness ─▶ harness/vetoes.json (private blob)
+                                                         │
+harness (next tick) ◀──harness-push.mjs --pull-vetoes─────┘
+```
+
+- `GET /api/ops/harness` → `{state, vetoes, read_at}`. `state` is `null` until the harness
+  first uploads (the tab says "The harness has not reported yet").
+- `POST /api/ops/harness?view=veto`, body `{task_id, action: "skip"|"top"|"undo"}` (≤ 2 KB,
+  `task_id` matches `^[A-Za-z0-9._:-]{1,80}$`) → read-modify-write of `harness/vetoes.json`
+  (conditional on the ETag read; `undo` deletes the key) → `{vetoes, read_at}`. The verified
+  admin's Firebase uid is recorded as `by_uid`.
+- Both verify the admin before any blob call (no bearer → 401, not admin → 403). No Blob
+  configuration → 503 `not_configured`; a Blob failure → 502 `unreachable` (internals never
+  echoed). Every response is `Cache-Control: no-store`.
+
+**Schema v1** — `harness/state.json` (written by the harness):
+
+```
+{schema_version: 1,
+ status: {mode: "not_started"|"running"|"paused", heartbeat_at, next_tick_at,
+          lanes: [{id, task_id}], deploy_window: {open, note}, synced_at},
+ tasks:  [{id, title, source, repo, state, rank, why, lane, risk: "low"|"medium"|"high"|null,
+           rounds, verdict, pr, pr_label, head, started_at, engineering_ready_at, live_at,
+           done_at, updated_at, stop_reason, outcome, summary}],
+ needs:  [{id, question, detail, kind, task_id, since, link, resolved}],
+ events: [{ts, kind, task_id, text}]}
+```
+
+`task.state` ∈ `queued | implementing | verifying | reviewing | merging | deploying | checking |
+done | stopped | vetoed`. `harness/vetoes.json` (written by this dashboard):
+`{schema_version: 1, vetoes: {<task_id>: {action: "skip"|"top", at, by_uid}}}`.
+`api/_harness_schema.js` is the one definition both the route and the uploader validate against.
+
+### Setup (owner, once)
+
+1. Vercel → Storage → create a **private** Blob store, then connect it to the
+   `vibebullish-dashboard` project for **Production and Preview**. Connecting sets the
+   credentials the route uses — `BLOB_READ_WRITE_TOKEN`, or `BLOB_STORE_ID` with Vercel OIDC
+   (`@vercel/blob` prefers OIDC + `BLOB_STORE_ID` when both exist). Redeploy.
+2. On the Mac that runs the harness, put the store's read-write token in the harness's
+   environment as `BLOB_READ_WRITE_TOKEN` (never in this repo), and `npm install` in a checkout
+   of this repo.
+
+| Variable | Where | Notes |
+| --- | --- | --- |
+| `BLOB_READ_WRITE_TOKEN` | Vercel (Production + Preview) and the harness Mac | Private store read-write token. Server-side only. |
+| `BLOB_STORE_ID` | Vercel (alternative) | With Vercel OIDC instead of the token. |
+
+### harness-push (what the harness calls)
+
+```bash
+node scripts/harness-push.mjs state.json            # validate, then upload harness/state.json (private, overwrite)
+node scripts/harness-push.mjs --dry-run state.json  # validate only
+node scripts/harness-push.mjs --pull-vetoes         # print harness/vetoes.json (empty v1 doc if absent)
+```
+
+Exit codes: 0 ok, 1 blob failure, 2 usage / missing token, 3 invalid state file. The token is
+never printed. `scripts/` is excluded from the deployment (`.vercelignore`).
+
+`@vercel/blob` is pinned to an exact version (`2.8.0`) and locked in `package-lock.json`
+(resolved with `npm install --before=2026-09-24`, so no dependency is younger than two weeks).
+The site itself still has no build step.
+
+### Previewing without a Blob store
+
+```
+http://localhost:3000/?fixture=harness                 populated board
+http://localhost:3000/?fixture=harness-empty           the harness has not reported yet
+http://localhost:3000/?fixture=harness-notconfigured   no Blob store connected
+http://localhost:3000/?fixture=harness-forbidden       signed in, not an admin
+http://localhost:3000/?fixture=harness-signedout       signed out
+http://localhost:3000/?fixture=harness-unreachable     Blob store down
+```
+
+As with the Agents fixture, fixture mode needs **no sign-in**: it reveals the Harness button
+for that page load, lands on it, and Do next / Skip / Undo edit an in-memory map — nothing is
+sent. Without a `?fixture=harness…` parameter `js/harness-fixture.js` is never requested.
 
 ## Tests
 
