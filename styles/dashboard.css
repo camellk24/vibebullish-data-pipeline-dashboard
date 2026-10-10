@@ -1589,3 +1589,210 @@ body {
 .ops-model-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .ops-model-stale { color: #e7b65a; }
 #ops-model-health { overflow-wrap: anywhere; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Harness tab (admin only) — js/harness.js. Reuses .card, .card-header,
+   .card-badge, .metric-card(.hero), .data-table and .ao-pill-*; everything
+   new is prefixed hz-. Must hold at 375 px: the page never scrolls sideways,
+   the two tables scroll inside .hz-scroll.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hz-message[hidden] { display: none; }
+.hz-message { margin-bottom: var(--s-md); position: relative; z-index: 1; }
+.hz-board { position: relative; z-index: 1; min-width: 0; }
+.hz-board .card { min-width: 0; }
+
+/* Status line: heartbeat dot, text, deploy-window pill, next tick. */
+.hz-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-sm) var(--s-md);
+    margin-bottom: var(--s-md);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.hz-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-quaternary);
+    flex: 0 0 auto;
+}
+.hz-dot-live {
+    background: var(--positive);
+    box-shadow: 0 0 8px rgba(182, 255, 206, 0.4);
+    animation: pulse 2s ease-in-out infinite;
+}
+.hz-dot-bad { background: var(--negative); box-shadow: 0 0 8px rgba(255, 181, 181, 0.4); }
+.hz-strip-text { color: var(--text-primary); font-weight: 500; }
+.hz-meta { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-tertiary); }
+
+/* Five hero metrics (the shared .hero-metrics grid has four columns). */
+.hero-metrics.hz-kpis { grid-template-columns: 1.5fr repeat(4, minmax(0, 1fr)); }
+.metric-card.hz-alert { border-color: rgba(251, 191, 36, 0.25); }
+.metric-card.hz-alert .metric-value { color: var(--warning); }
+
+/* "Needs you" turns amber only while something is open. */
+.card.hz-needs-open {
+    border-color: rgba(251, 191, 36, 0.22);
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.06), rgba(255, 255, 255, 0.02));
+}
+.hz-need { display: grid; gap: 4px; padding: var(--s-sm) 0; min-width: 0; }
+.hz-need + .hz-need { border-top: 1px solid var(--border); }
+.hz-need-q { font-weight: 600; color: var(--text-primary); overflow-wrap: anywhere; }
+.hz-need-detail { font-size: 0.85rem; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.hz-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    color: var(--text-tertiary);
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+.hz-meta-row a, .hz-board .data-table a { color: var(--neutral); text-decoration: none; }
+.hz-meta-row a:hover, .hz-board .data-table a:hover { color: var(--text-primary); text-decoration: underline; }
+.hz-empty { color: var(--text-tertiary); font-size: 0.85rem; }
+
+/* Lanes */
+.hz-lanes { margin-bottom: var(--s-md); }
+.hz-lanes > .card { margin-bottom: 0; }
+.hz-lane .card-header { margin-bottom: var(--s-md); gap: var(--s-sm); flex-wrap: wrap; }
+.hz-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.hz-board .ao-pill { white-space: nowrap; }
+.hz-pill-warn { color: var(--warning); background: rgba(251, 191, 36, 0.10); border-color: rgba(251, 191, 36, 0.25); }
+.hz-pill-accent { color: var(--accent); background: rgba(168, 85, 247, 0.12); border-color: rgba(168, 85, 247, 0.2); }
+.hz-lane-title { margin: 0 0 var(--s-md); font-size: 0.95rem; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.hz-summary { font-size: 0.82rem; color: var(--text-secondary); margin-top: var(--s-sm); line-height: 1.45; overflow-wrap: anywhere; }
+.hz-bad { color: var(--negative); }
+
+/* 7-step stepper: Build, Verify, Astra, Merge, Deploy, Check, Done. */
+.hz-steps {
+    list-style: none;
+    margin: 0 0 var(--s-md);
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+}
+.hz-steps li {
+    display: grid;
+    gap: 6px;
+    font-size: 0.66rem;
+    color: var(--text-quaternary);
+    text-align: center;
+    letter-spacing: 0.02em;
+    min-width: 0;
+}
+.hz-steps li::before { content: ""; height: 6px; border-radius: 3px; background: var(--bg-tint); }
+.hz-steps li.done { color: var(--text-tertiary); }
+.hz-steps li.done::before { background: rgba(182, 255, 206, 0.45); }
+.hz-steps li.now { color: var(--text-primary); font-weight: 600; }
+.hz-steps li.now::before {
+    background: var(--grad-accent);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.45);
+    animation: pulse 2s ease-in-out infinite;
+}
+.hz-steps li.stop::before { background: var(--negative); }
+
+/* Queue + activity */
+.hz-grid-q {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: var(--s-md);
+    margin-bottom: var(--s-md);
+    position: relative;
+    z-index: 1;
+}
+.hz-grid-q > .card { margin-bottom: 0; }
+
+.hz-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.hz-table td { vertical-align: top; padding: 10px 8px; }
+.hz-table th { padding: 8px; white-space: nowrap; }
+.hz-table td.hz-t { white-space: normal; color: var(--text-primary); min-width: 13rem; overflow-wrap: anywhere; }
+.hz-table td.hz-outcome { white-space: normal; min-width: 9rem; }
+.hz-table-q { min-width: 440px; }
+.hz-table-done { min-width: 760px; }
+.hz-sub {
+    display: block;
+    color: var(--text-quaternary);
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    margin-top: 2px;
+    white-space: normal;
+}
+.hz-mono { font-family: var(--font-mono); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+.hz-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.hz-btn {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.hz-btn:hover:not(:disabled) { border-color: rgba(168, 85, 247, 0.35); color: var(--text-primary); background: var(--bg-tint); }
+.hz-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hz-btn:disabled { opacity: 0.45; cursor: default; }
+.hz-action-error[hidden] { display: none; }
+.hz-action-error { color: var(--negative); font-size: 0.8rem; margin-bottom: var(--s-sm); overflow-wrap: anywhere; }
+
+.hz-feed { list-style: none; margin: 0; padding: 0; }
+.hz-feed li {
+    display: grid;
+    grid-template-columns: 8.6rem minmax(0, 1fr);
+    gap: var(--s-sm);
+    padding: var(--s-sm) 0;
+    font-size: 0.82rem;
+}
+.hz-feed li + li { border-top: 1px solid var(--border); }
+.hz-when { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-quaternary); padding-top: 2px; }
+.hz-what { color: var(--text-secondary); overflow-wrap: anywhere; min-width: 0; }
+.hz-kind {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-right: 6px;
+}
+
+.hz-foot { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-quaternary); margin-top: var(--s-sm); }
+
+@media (max-width: 860px) {
+    .hero-metrics.hz-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero-metrics.hz-kpis .hero { grid-column: 1 / -1; }
+    .hz-grid-q { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 520px) {
+    .hz-board .card { padding: var(--s-md); }
+    .hz-board .metric-card { padding: var(--s-md); }
+    .hz-board .metric-value { font-size: 1.6rem; }
+    /* Only the current step keeps its label on a phone. */
+    .hz-steps li { font-size: 0; gap: 0; }
+    .hz-steps li.now { font-size: 0.66rem; gap: 6px; }
+    .hz-feed li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+    /* The queue's buttons must be reachable without sideways scrolling:
+       drop the repo column (the source line names it) and stack the buttons. */
+    .hz-table-q { min-width: 0; }
+    .hz-table-q td.hz-t { min-width: 0; }
+    .hz-table-q th:nth-child(3), .hz-table-q td:nth-child(3) { display: none; }
+    .hz-table-q .hz-btns { flex-direction: column; align-items: flex-end; }
+}
+
+@media (max-width: 480px) {
+    /* The shared rule collapses .hero-metrics to one column; keep two. */
+    .hero-metrics.hz-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hz-dot-live, .hz-steps li.now::before { animation: none; }
+}
