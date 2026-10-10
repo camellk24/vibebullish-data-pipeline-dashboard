@@ -33,8 +33,12 @@ index.html          → Single page with all sections
 js/reads.js         → VBReads: the one client read path for the six signed-in tabs (+ esc())
 js/dashboard.js     → VBTabs controller, LLM Usage / System Health / Action Engine loaders + renderers
 js/agent-ops.js     → Agents tab (agent-role health + accountability)
+js/harness.js       → Harness tab (admin only): agent-harness board; fixture js/harness-fixture.js
 api/ops/reads.js    → admin-verified proxy for the six tabs' 14 reads (bearer forwarding)
 api/agent-ops.js    → Vercel serverless proxy (holds INTERNAL_API_TOKEN)
+api/ops/harness.js  → Harness tab data: admin-verified read of private Vercel Blob harness/state.json
+                      + owner vetoes written to harness/vetoes.json (schema: api/_harness_schema.js)
+scripts/harness-push.mjs → uploader the harness runs on the owner's Mac (BLOB_READ_WRITE_TOKEN)
 styles/dashboard.css → Dark theme (matches iOS app Theme.swift)
 vercel.json         → Vercel deployment config (zero-config + rewrites)
 ```

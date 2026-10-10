@@ -23,7 +23,9 @@
     let inFlight = false;
 
     // ?fixture=1 | unreachable | notconfigured | upstream  — dev only.
-    const FIXTURE = new URLSearchParams(location.search).get('fixture');
+    // ?fixture=harness… belongs to the Harness tab (js/harness.js), not here.
+    const RAW_FIXTURE = new URLSearchParams(location.search).get('fixture');
+    const FIXTURE = RAW_FIXTURE && !/^harness/.test(RAW_FIXTURE) ? RAW_FIXTURE : null;
 
     // ── helpers ──────────────────────────────────────────────────────────────
 

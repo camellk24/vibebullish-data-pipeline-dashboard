@@ -6,3 +6,5 @@
 api/**/*.test.js
 js/*.test.js
 js/_test_dom.js
+# The harness uploader runs on the owner's Mac, never in the deployment.
+scripts/

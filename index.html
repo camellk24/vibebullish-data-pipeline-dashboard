@@ -38,6 +38,7 @@
             <button class="tab" data-tab="data-collector">Data Collector</button>
             <button class="tab" data-tab="catalyst-accuracy">Catalyst Accuracy</button>
             <button class="tab" data-tab="agent-ops">Agents</button>
+            <button class="tab" data-tab="harness" data-ops-tab style="display:none">Harness</button>
             <button class="tab" data-tab="ops-shadow" data-ops-tab style="display:none">Shadow book</button>
             <button class="tab" data-tab="ops-heartbeats" data-ops-tab style="display:none">Heartbeats</button>
             <button class="tab" data-tab="ops-r4" data-ops-tab style="display:none">Label audit</button>
@@ -417,6 +418,54 @@
             </section>
         </div><!-- /tab-agent-ops -->
 
+        <!-- Tab: Harness (admin only) — the agent harness board, read from the private
+             Vercel Blob store through /api/ops/harness (js/harness.js). -->
+        <div id="tab-harness" style="display:none">
+            <div class="ao-head">
+                <p class="ao-intro">
+                    Roadmap work the harness picks, builds, gets reviewed by Astra, then merges and
+                    deploys &mdash; two lanes at a time. Anything that needs you shows up in
+                    <strong>amber</strong>. <em>Do next</em> and <em>Skip</em> are read by the harness on
+                    its next tick. Times are Pacific.
+                </p>
+                <span class="ao-updated" id="hz-updated"></span>
+            </div>
+
+            <div id="hz-message" class="hz-message" aria-live="polite" hidden></div>
+
+            <div id="hz-board" class="hz-board" style="display:none">
+                <div class="hz-strip" id="hz-strip"></div>
+
+                <section class="hero-metrics hz-kpis" id="hz-kpis"></section>
+
+                <section class="card hz-needs-card" id="hz-needs-card">
+                    <div class="card-header"><h2>Needs you</h2><span class="card-badge" id="hz-needs-badge">0 open</span></div>
+                    <div id="hz-needs"></div>
+                </section>
+
+                <div class="grid-2 hz-lanes" id="hz-lanes"></div>
+
+                <div class="hz-grid-q">
+                    <section class="card">
+                        <div class="card-header"><h2>Up next</h2><span class="card-badge" id="hz-queue-badge">0 queued</span></div>
+                        <div class="hz-action-error" id="hz-action-error" role="alert" hidden></div>
+                        <div id="hz-queue"></div>
+                    </section>
+                    <section class="card">
+                        <div class="card-header"><h2>Activity</h2><span class="card-badge">latest 40</span></div>
+                        <ul class="hz-feed" id="hz-feed"></ul>
+                    </section>
+                </div>
+
+                <section class="card">
+                    <div class="card-header"><h2>Finished</h2><span class="card-badge" id="hz-done-badge">0</span></div>
+                    <div id="hz-done"></div>
+                </section>
+
+                <p class="hz-foot" id="hz-foot"></p>
+            </div>
+        </div><!-- /tab-harness -->
+
         <!-- Tab: Shadow book (admin only) -->
         <div id="tab-ops-shadow" style="display:none">
             <div class="ao-head">
@@ -547,6 +596,7 @@
     <script src="js/model-health.js"></script>
     <script src="js/ops-console.js"></script>
     <script src="js/r4-audit.js"></script>
+    <script src="js/harness.js"></script>
     <script src="js/ae-buckets.js"></script>
     <script type="module" src="js/auth.js"></script>
 </body>
