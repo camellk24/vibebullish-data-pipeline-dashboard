@@ -17,7 +17,7 @@
 (function () {
     'use strict';
 
-    const OPS_TABS = ['ops-shadow', 'ops-heartbeats', 'ops-r4'];
+    const OPS_TABS = ['ops-shadow', 'ops-heartbeats', 'ops-r4', 'ops-strategies'];
     const LOADING = '<div class="ops-loading">Loading…</div>';
 
     let bookId = null; // null = let the backend default to the shadow book
@@ -1117,6 +1117,44 @@
         }
     }
 
+    // ── Strategies tab ───────────────────────────────────────────────────────
+    // Book diagnostics card: correlation, turnover, capacity per active paper
+    // book. Rendering lives in js/strategy-diagnostics-format.js (pure, tested
+    // under node). strategiesSeq drops a response that a newer load, or a
+    // sign-out (setOpsVisible bumps it), has superseded.
+
+    let strategiesSeq = 0;
+
+    async function loadStrategies() {
+        if (!window.VBAuth || !window.VBAuth.isAdmin) return;
+        const el = document.getElementById('ops-sd-panel');
+        const sum = document.getElementById('ops-sd-summary');
+        if (!el) return;
+        const seq = ++strategiesSeq;
+        el.innerHTML = LOADING;
+        if (sum) {
+            sum.textContent = '';
+            sum.className = 'card-badge';
+        }
+
+        const r = await opsGet('/api/ops/strategy-diagnostics');
+        if (seq !== strategiesSeq || !window.VBAuth || !window.VBAuth.isAdmin) return;
+        if (!r.ok) return unavailable(el, r.kind, r.message);
+        if (!r.body || !Array.isArray(r.body.books)) {
+            return unavailable(el, 'unreachable', 'Malformed response: no books list.');
+        }
+        if (!window.StrategyDiagnosticsFormat) {
+            return unavailable(el, 'unreachable', 'The diagnostics renderer did not load.');
+        }
+
+        const out = window.StrategyDiagnosticsFormat.render(r.body, esc);
+        el.innerHTML = out.html;
+        if (sum) {
+            sum.textContent = out.badge;
+            sum.className = 'card-badge' + (out.badgeBad ? ' ops-badge-bad' : '');
+        }
+    }
+
     // ── tab visibility, driven by the auth state ─────────────────────────────
 
     function setOpsVisible(visible) {
@@ -1127,6 +1165,7 @@
         if (note) note.style.display = visible ? 'none' : '';
 
         if (!visible) {
+            strategiesSeq++; // an in-flight Strategies read must not land after sign-out
             // If an ops tab was open when access went away, fall back to the
             // first public tab rather than leaving a stale panel on screen.
             const active = document.querySelector('.tab.active');
@@ -1138,7 +1177,8 @@
                 ['ops-shadow-status', 'ops-shadow-evidence', 'ops-shadow-attribution',
                  'ops-shadow-diffs', 'ops-shadow-alerts', 'ops-hb-table',
                  'ops-sleeve-select-wrap', 'ops-diffs-comparison-wrap',
-                 'ops-dq-readiness', 'ops-dq-summary', 'r4-item', 'r4-status'].forEach(pid => {
+                 'ops-dq-readiness', 'ops-dq-summary', 'r4-item', 'r4-status',
+                 'ops-sd-panel', 'ops-sd-summary'].forEach(pid => {
                     const el = document.getElementById(pid);
                     if (el) el.innerHTML = '';
                 });
@@ -1167,6 +1207,7 @@
     window.OpsConsole = {
         loadShadow,
         loadHeartbeats,
+        loadStrategies,
         setBookId(id) {
             bookId = id;
             bookGeneration++;

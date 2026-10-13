@@ -1796,3 +1796,16 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .hz-dot-live, .hz-steps li.now::before { animation: none; }
 }
+
+/* ── Strategies tab: book diagnostics card ─────────────────────────────── */
+.sd-head { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; margin-bottom: 0.6rem; }
+.sd-notes { margin: 0 0 0.8rem; font-size: 0.8rem; color: var(--text-tertiary); }
+.sd-notes summary { cursor: pointer; }
+.sd-h { font-size: 0.85rem; font-weight: 600; margin: 0.9rem 0 0.4rem; }
+.sd-sub { color: var(--text-quaternary); font-size: 0.76rem; margin-top: 0.15rem; }
+/* `.data-table td` is nowrap; the book cell wraps its A21 note instead of
+   pushing turnover and capacity off-screen. */
+.sd-books td:first-child { white-space: normal; min-width: 14rem; max-width: 22rem; }
+.sd-note { color: var(--text-tertiary); font-size: 0.76rem; margin-top: 0.2rem; }
+.sd-ci { color: var(--text-quaternary); font-size: 0.76rem; }
+.sd-grey td { opacity: 0.55; }
