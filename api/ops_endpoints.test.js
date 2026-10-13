@@ -332,3 +332,86 @@ test('shadow: view=sleeves, non-admin → 403 and the upstream is never contacte
         assert.strictEqual(calls.length, 1);
     });
 });
+
+// ── api/ops/strategy-diagnostics.js ──────────────────────────────────────────
+
+const strategyDiagnostics = require('./ops/strategy-diagnostics.js');
+
+test('strategy-diagnostics: admin → forwards to the fixed internal path with the internal token', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/ops/strategy-diagnostics': () =>
+                upstreamResponse(200, { status: 'DIAGNOSTIC', books: [], correlation: { pairs: [] } }),
+        });
+        const res = fakeRes();
+        await strategyDiagnostics(fakeReq({ headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
+
+        assert.strictEqual(res.statusCode, 200);
+        assert.strictEqual(JSON.parse(res.body).status, 'DIAGNOSTIC');
+        const fwd = calls.find(c => c.url.includes('/api/internal/'));
+        assert.strictEqual(fwd.url, 'https://backend.test/api/internal/ops/strategy-diagnostics');
+        assert.strictEqual(fwd.opts.headers['X-Internal-Token'], TOKEN);
+        assert.ok(!('Authorization' in fwd.opts.headers), 'machine-class route: the bearer is not forwarded');
+        assert.ok(!responseSurface(res).includes(TOKEN));
+    });
+});
+
+test('strategy-diagnostics: the caller\'s query string is NEVER forwarded', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/ops/strategy-diagnostics': () => upstreamResponse(200, { books: [] }),
+        });
+        const res = fakeRes();
+        await strategyDiagnostics(
+            fakeReq({
+                url: '/api/ops/strategy-diagnostics?book_id=1&path=../../secret',
+                query: { book_id: '1', path: '../../secret' },
+                headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' },
+            }),
+            res
+        );
+        const fwd = calls.find(c => c.url.includes('/api/internal/'));
+        assert.strictEqual(fwd.url, 'https://backend.test/api/internal/ops/strategy-diagnostics');
+    });
+});
+
+test('strategy-diagnostics: non-admin → 403 and the upstream is never contacted', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': () => upstreamResponse(403, { error: 'not_admin' }),
+        });
+        const res = fakeRes();
+        await strategyDiagnostics(fakeReq({ headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
+        assert.strictEqual(res.statusCode, 403);
+        assert.strictEqual(calls.length, 1);
+    });
+});
+
+test('strategy-diagnostics: backend 503 (book list unreadable) → typed 502, upstream body not echoed', async () => {
+    await withEnv(async () => {
+        installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/ops/strategy-diagnostics': () =>
+                upstreamResponse(503, { error: 'strategy diagnostics unavailable' }),
+        });
+        const res = fakeRes();
+        await strategyDiagnostics(fakeReq({ headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
+        assert.strictEqual(res.statusCode, 502);
+        const body = JSON.parse(res.body);
+        assert.strictEqual(body.error, 'upstream_error');
+        assert.strictEqual(body.upstream_status, 503);
+        assert.ok(!res.body.includes('strategy diagnostics unavailable'));
+    });
+});
+
+test('strategy-diagnostics: POST → 405 before any network call', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({});
+        const res = fakeRes();
+        await strategyDiagnostics(fakeReq({ method: 'POST', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
+        assert.strictEqual(res.statusCode, 405);
+        assert.strictEqual(calls.length, 0);
+    });
+});

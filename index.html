@@ -42,6 +42,7 @@
             <button class="tab" data-tab="ops-shadow" data-ops-tab style="display:none">Shadow book</button>
             <button class="tab" data-tab="ops-heartbeats" data-ops-tab style="display:none">Heartbeats</button>
             <button class="tab" data-tab="ops-r4" data-ops-tab style="display:none">Label audit</button>
+            <button class="tab" data-tab="ops-strategies" data-ops-tab style="display:none">Strategies</button>
         </nav>
         <div class="ops-access-note" id="ops-access-note"></div>
 
@@ -578,6 +579,25 @@
             </section>
         </div><!-- /tab-ops-r4 -->
 
+        <!-- Tab: Strategies (admin only) — 2.0 plan §4G; spec docs/superpowers/specs/2026-10-11-strategies-tab-diagnostics-spec.md -->
+        <div id="tab-ops-strategies" style="display:none">
+            <div class="ao-head">
+                <p class="ao-intro">
+                    How alike the active paper books are, how much they trade, and how large each could
+                    grow. These are <strong>diagnostics, not verdicts</strong>: nothing here ranks a book,
+                    and a correlation under 30 common sessions is greyed.
+                </p>
+            </div>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Book diagnostics</h2>
+                    <span class="card-badge" id="ops-sd-summary"></span>
+                </div>
+                <div id="ops-sd-panel"></div>
+            </section>
+        </div><!-- /tab-ops-strategies -->
+
         <footer class="footer">
             <span>VibeBullish Data Pipeline</span>
             <span class="dim">Auto-refreshes every 60s</span>
@@ -594,6 +614,7 @@
     <script src="js/agent-ops.js"></script>
     <script src="js/dq-readiness-format.js"></script>
     <script src="js/model-health.js"></script>
+    <script src="js/strategy-diagnostics-format.js"></script>
     <script src="js/ops-console.js"></script>
     <script src="js/r4-audit.js"></script>
     <script src="js/harness.js"></script>

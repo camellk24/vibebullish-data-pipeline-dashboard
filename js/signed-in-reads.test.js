@@ -44,7 +44,7 @@ test('native fetch inventory: exactly auth.js (transport + /api/config), agent-o
     }
 });
 
-test('index.html: reads.js loads before every tab script, no personal-mode remains, six gates, eleven tab buttons', () => {
+test('index.html: reads.js loads before every tab script, no personal-mode remains, six gates, twelve tab buttons', () => {
     const html = read('index.html');
     assert.equal(SCRIPTS[0], 'js/reads.js');
     assert.ok(SCRIPTS.indexOf('js/dashboard.js') < SCRIPTS.indexOf('js/quant.js'));
@@ -52,8 +52,8 @@ test('index.html: reads.js loads before every tab script, no personal-mode remai
     assert.ok(!/personal-mode/.test(html));
     const gates = [...html.matchAll(/<div id="tab-([a-z0-9-]+)"[^>]*>\s*<div class="vb-gate" role="status" hidden><\/div>/g)].map(m => m[1]);
     assert.deepEqual(gates, ['llm-usage', 'system-health', 'action-engine', 'quant-quality', 'data-collector', 'catalyst-accuracy']);
-    for (const kept of ['agent-ops', 'harness', 'ops-shadow', 'ops-heartbeats', 'ops-r4']) assert.ok(!new RegExp(`id="tab-${kept}"[^>]*>\\s*<div class="vb-gate"`).test(html), kept);
-    assert.equal([...html.matchAll(/<button class="tab[^"]*" data-tab=/g)].length, 11);
+    for (const kept of ['agent-ops', 'harness', 'ops-shadow', 'ops-heartbeats', 'ops-r4', 'ops-strategies']) assert.ok(!new RegExp(`id="tab-${kept}"[^>]*>\\s*<div class="vb-gate"`).test(html), kept);
+    assert.equal([...html.matchAll(/<button class="tab[^"]*" data-tab=/g)].length, 12);
     const css = read('styles/dashboard.css');
     assert.match(css, /\.vb-gated > :not\(\.vb-gate\) \{ display: none !important; \}/);
     assert.ok(!/personal-mode/.test(css));
@@ -303,6 +303,8 @@ test('Agents and ops tabs keep their own behaviour; sign-out while an ops tab is
     assert.ok(sb.fetchCalls.some(c => c.url.startsWith('/api/ops/heartbeats')));
     sb.clickTab('ops-r4'); await sb.flush();
     assert.ok(sb.fetchCalls.some(c => c.url.startsWith('/api/ops/r4')));
+    sb.clickTab('ops-strategies'); await sb.flush();
+    assert.ok(sb.fetchCalls.some(c => c.url === '/api/ops/strategy-diagnostics'), 'Strategies tab dispatched through OpsConsole');
     const opsCallsBefore = sb.fetchCalls.length;
     sb.clickTab('ops-shadow'); await sb.flush();
     assert.ok(sb.fetchCalls.length > opsCallsBefore);

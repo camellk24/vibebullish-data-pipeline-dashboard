@@ -34,8 +34,12 @@ js/reads.js         → VBReads: the one client read path for the six signed-in 
 js/dashboard.js     → VBTabs controller, LLM Usage / System Health / Action Engine loaders + renderers
 js/agent-ops.js     → Agents tab (agent-role health + accountability)
 js/harness.js       → Harness tab (admin only): agent-harness board; fixture js/harness-fixture.js
+js/strategy-diagnostics-format.js → Strategies tab (admin only) book diagnostics card: pure renderer
+                      (correlation, turnover, capacity); loader in js/ops-console.js
 api/ops/reads.js    → admin-verified proxy for the six tabs' 14 reads (bearer forwarding)
 api/agent-ops.js    → Vercel serverless proxy (holds INTERNAL_API_TOKEN)
+api/ops/strategy-diagnostics.js → admin-verified proxy for GET /api/internal/ops/strategy-diagnostics
+                      (machine class, internal token; no caller params forwarded)
 api/ops/harness.js  → Harness tab data: admin-verified read of private Vercel Blob harness/state.json
                       + owner vetoes written to harness/vetoes.json (schema: api/_harness_schema.js)
 scripts/harness-push.mjs → uploader the harness runs on the owner's Mac (BLOB_READ_WRITE_TOKEN)
