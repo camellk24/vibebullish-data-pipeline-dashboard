@@ -121,7 +121,9 @@ breaks and never leaves stale numbers on screen.
 ### Vercel environment variables
 
 Set on the Vercel project (`vibebullish-dashboard`) → Settings → Environment Variables for
-**Production only** (Preview deployments carry no secrets), then redeploy:
+**Production only**, then redeploy. Preview deployments carry no secrets: the only one of
+these on Preview is the public `FIREBASE_WEB_API_KEY`, and without `FIREBASE_AUTH_DOMAIN` and
+`FIREBASE_APP_ID` a preview cannot sign in (`/api/config` answers 503).
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
@@ -136,7 +138,7 @@ Set on the Vercel project (`vibebullish-dashboard`) → Settings → Environment
 `api/config.js`, not env vars.
 
 **Also required, outside Vercel:** add the dashboard origin
-(`vibebullish-dashboard.vercel.app`, plus any preview origin you sign in from) to the
+(`vibebullish-dashboard.vercel.app`; previews have no sign-in config) to the
 Firebase console → Authentication → Settings → **Authorized domains**. Without it the
 Google popup fails with `auth/unauthorized-domain`.
 
