@@ -12,7 +12,7 @@
 // upstream is contacted at all. The Agents tab therefore requires admin sign-in;
 // signed out it renders its "unauthenticated" state rather than data.
 //
-// Required Vercel env var (Production + Preview):  INTERNAL_API_TOKEN
+// Required Vercel env var (Production only):       INTERNAL_API_TOKEN
 // Optional:                                       BACKEND_API_BASE
 //
 // The token is never echoed into a response body, a header, or a log line.

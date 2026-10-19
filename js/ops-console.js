@@ -146,7 +146,7 @@
             kind === 'not_found'
                 ? 'The Phase D endpoint is not deployed on this backend. Nothing is shown rather than something stale.'
                 : kind === 'not_configured'
-                ? 'Set <code>INTERNAL_API_TOKEN</code> on the Vercel project (Production + Preview) and redeploy.'
+                ? 'Set <code>INTERNAL_API_TOKEN</code> on the Vercel project (Production only) and redeploy.'
                 : kind === 'empty'
                 ? ''
                 : 'Nothing is shown, because showing the last-known numbers here would read as current state.';

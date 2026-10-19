@@ -439,7 +439,7 @@
                 : 'Backend unreachable';
         const hint =
             kind === 'not_configured'
-                ? 'The serverless proxy at <code>/api/agent-ops</code> has no <code>INTERNAL_API_TOKEN</code>. Set it on the Vercel project (Production + Preview) and redeploy.'
+                ? 'The serverless proxy at <code>/api/agent-ops</code> has no <code>INTERNAL_API_TOKEN</code>. Set it on the Vercel project (Production only) and redeploy.'
                 : kind === 'unauthenticated' || kind === 'forbidden'
                 ? 'This view reads a token-gated backend route. Sign in with an admin Google account using the button in the header.'
                 : 'Nothing below is being shown, because showing the last-known numbers here would read as current health.';

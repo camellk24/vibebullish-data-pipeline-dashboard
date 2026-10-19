@@ -36,7 +36,7 @@ const MAX_BLOB_BYTES = 2 * 1024 * 1024;
 
 const NOT_CONFIGURED_MESSAGE =
     'No Vercel Blob store is connected to this project. Create a PRIVATE Blob store, connect it to ' +
-    'the vibebullish-dashboard project for Production + Preview (this sets BLOB_READ_WRITE_TOKEN, or ' +
+    'the vibebullish-dashboard project for Production only (this sets BLOB_READ_WRITE_TOKEN, or ' +
     'BLOB_STORE_ID for OIDC auth), and redeploy.';
 
 function trimmed(v) {

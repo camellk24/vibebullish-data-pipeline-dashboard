@@ -246,7 +246,7 @@ async function verifiedProxy(req, res, upstreamPath, opts) {
             error: 'not_configured',
             message:
                 'INTERNAL_API_TOKEN is not set on this Vercel project. Set it under ' +
-                'Project Settings → Environment Variables (Production + Preview) and redeploy.',
+                'Project Settings → Environment Variables (Production only) and redeploy.',
         });
     }
 

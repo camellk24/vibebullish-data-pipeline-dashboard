@@ -342,7 +342,7 @@
         const hint =
             k === 'unauthenticated' ? 'Sign in with an admin Google account using the button in the header.'
             : k === 'forbidden' ? 'Only VibeBullish admins can see the harness board.'
-            : k === 'not_configured' ? 'Connect a <strong>private</strong> Vercel Blob store to the <code>vibebullish-dashboard</code> project (Production + Preview) and redeploy. See README → Harness tab.'
+            : k === 'not_configured' ? 'Connect a <strong>private</strong> Vercel Blob store to the <code>vibebullish-dashboard</code> project (Production only) and redeploy. See README → Harness tab.'
             : 'Nothing is shown, because the last-known board would read as current.' +
               (lastSuccessAt ? ` Last successful read: ${esc(pt(new Date(lastSuccessAt).toISOString()))}.` : '');
         showBoard(false);
