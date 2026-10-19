@@ -6,8 +6,8 @@
 // The one real secret in this project, INTERNAL_API_TOKEN, is NEVER returned
 // here and never leaves api/_verified_proxy.js.
 //
-// Vercel env (Production + Preview): FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN,
-// FIREBASE_APP_ID. projectId / messagingSenderId are fixed for VibeBullish.
+// Vercel env (Production; Preview carries no sign-in config): FIREBASE_WEB_API_KEY,
+// FIREBASE_AUTH_DOMAIN, FIREBASE_APP_ID. projectId / messagingSenderId are fixed for VibeBullish.
 
 const PROJECT_ID = 'vibebullish';
 const MESSAGING_SENDER_ID = '718084292276';

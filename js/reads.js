@@ -107,7 +107,7 @@ function esc(s) {
         var hint = kind === 'not_found'
             ? 'The endpoint is not deployed on this backend. Nothing is shown rather than something stale.'
             : kind === 'not_configured'
-            ? 'Set INTERNAL_API_TOKEN on the Vercel project (Production + Preview) and redeploy.'
+            ? 'Set INTERNAL_API_TOKEN on the Vercel project (Production only) and redeploy.'
             : kind === 'unauthenticated' || kind === 'forbidden' || kind === 'empty'
             ? ''
             : 'Nothing is shown, because the last-known numbers here would read as current state.';

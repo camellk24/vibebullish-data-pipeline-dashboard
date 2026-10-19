@@ -61,7 +61,8 @@ serverless function in this project — reads the token server-side and proxies 
 the browser only ever talks to the same-origin `/api/agent-ops`.
 
 Set on the Vercel project (`vibebullish-dashboard`) → Settings → Environment Variables,
-for **Production and Preview**, then redeploy:
+for **Production only**, then redeploy. Preview deployments carry no secrets (the harness
+opens `harness/*` PRs whose previews must not reach the backend or the Blob store):
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
@@ -120,7 +121,9 @@ breaks and never leaves stale numbers on screen.
 ### Vercel environment variables
 
 Set on the Vercel project (`vibebullish-dashboard`) → Settings → Environment Variables for
-**Production and Preview**, then redeploy:
+**Production only**, then redeploy. Preview deployments carry no secrets: the only one of
+these on Preview is the public `FIREBASE_WEB_API_KEY`, and without `FIREBASE_AUTH_DOMAIN` and
+`FIREBASE_APP_ID` a preview cannot sign in (`/api/config` answers 503).
 
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
@@ -135,7 +138,7 @@ Set on the Vercel project (`vibebullish-dashboard`) → Settings → Environment
 `api/config.js`, not env vars.
 
 **Also required, outside Vercel:** add the dashboard origin
-(`vibebullish-dashboard.vercel.app`, plus any preview origin you sign in from) to the
+(`vibebullish-dashboard.vercel.app`; previews have no sign-in config) to the
 Firebase console → Authentication → Settings → **Authorized domains**. Without it the
 Google popup fails with `auth/unauthorized-domain`.
 
@@ -221,7 +224,7 @@ done | stopped | vetoed`. `harness/vetoes.json` (written by this dashboard):
 ### Setup (owner, once)
 
 1. Vercel → Storage → create a **private** Blob store, then connect it to the
-   `vibebullish-dashboard` project for **Production and Preview**. Connecting sets the
+   `vibebullish-dashboard` project for **Production only**. Connecting sets the
    credentials the route uses — `BLOB_READ_WRITE_TOKEN`, or `BLOB_STORE_ID` with Vercel OIDC
    (`@vercel/blob` prefers OIDC + `BLOB_STORE_ID` when both exist). Redeploy.
 2. On the Mac that runs the harness, put the store's read-write token in the harness's
@@ -230,7 +233,7 @@ done | stopped | vetoed`. `harness/vetoes.json` (written by this dashboard):
 
 | Variable | Where | Notes |
 | --- | --- | --- |
-| `BLOB_READ_WRITE_TOKEN` | Vercel (Production + Preview) and the harness Mac | Private store read-write token. Server-side only. |
+| `BLOB_READ_WRITE_TOKEN` | Vercel (Production only) and the harness Mac | Private store read-write token. Server-side only. |
 | `BLOB_STORE_ID` | Vercel (alternative) | With Vercel OIDC instead of the token. |
 
 ### harness-push (what the harness calls)
