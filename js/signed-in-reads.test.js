@@ -456,6 +456,63 @@ test('Overview tab: opened through the real router it reads /api/ops/overview an
     assert.equal(panel.innerHTML, '', 'late reply discarded after sign-out');
 });
 
+test('Overview tab: a kept view that expired while closed re-renders stale at once on reopen, before the pending read lands', async () => {
+    const sb = await page();
+    const OV = JSON.parse(fs.readFileSync(path.join(JS, 'fixtures', 'ops-overview.sample.json'), 'utf8'));
+    OV.generated_at = new Date().toISOString();
+    OV.status = 'PASS';
+    sb.state.responses['/api/ops/overview'] = OV;
+    await sb.signIn();
+    sb.clickTab('ops-overview'); await sb.flush();
+    const panel = sb.byId.get('ops-ov-panel');
+    assert.match(panel.innerHTML, /<div class="ov-overall"><span class="ops-chip ops-chip-ok">PASS/);
+    sb.clickTab('ops-strategies'); await sb.flush();
+
+    const RealDate = sb.ctx.Date;
+    const shifted = Date.now() + 6 * 60 * 1000;
+    sb.ctx.Date = class extends RealDate { static now() { return shifted; } };
+    sb.state.deferOps = /^\/api\/ops\/overview/;
+    sb.clickTab('ops-overview'); // synchronous: no flush before the assertion
+    assert.match(panel.innerHTML, /<div class="ov-overall"><span class="ops-chip ops-chip-unknown">UNKNOWN/, 'expired view greyed before the read resolves');
+    assert.match(panel.innerHTML, /stale/);
+    sb.ctx.Date = RealDate;
+    sb.releasePending(); await sb.flush();
+});
+
+test('Overview tab: "Open tab" follows only a literal tab id — a crafted target cannot click another control', async () => {
+    const sb = await page();
+    const OV = JSON.parse(fs.readFileSync(path.join(JS, 'fixtures', 'ops-overview.sample.json'), 'utf8'));
+    OV.generated_at = new Date().toISOString();
+    sb.state.responses['/api/ops/overview'] = OV;
+    await sb.signIn();
+    sb.clickTab('ops-overview'); await sb.flush();
+    const panel = sb.byId.get('ops-ov-panel');
+    assert.equal(typeof panel.onclick, 'function', 'tile clicks are delegated on the panel');
+    const fakeBtn = (target) => ({ closest: () => ({ getAttribute: () => target }) });
+
+    const evil = 'missing"], #auth-signout, .tab[data-tab="missing';
+    panel.onclick({ target: fakeBtn(evil) });
+    await sb.flush();
+    assert.equal(sb.adapter.signOutCalls, 0, 'crafted target did not reach the sign-out control');
+    assert.equal(sb.activeTab(), 'ops-overview', 'crafted target clicked nothing');
+    panel.onclick({ target: fakeBtn('x"]:not([') }); // malformed selector text must not throw
+    assert.equal(sb.activeTab(), 'ops-overview');
+
+    panel.onclick({ target: fakeBtn('ops-strategies') });
+    await sb.flush();
+    assert.equal(sb.activeTab(), 'ops-strategies', 'a literal tab id opens that tab');
+});
+
+test('Overview tab: an upstream 503 with nothing on screen shows the typed unavailable state, never a verdict', async () => {
+    const sb = await page();
+    sb.state.fail['/api/ops/overview'] = { status: 502, body: { error: 'upstream_error', message: 'Upstream returned 503.', upstream_status: 503 } };
+    await sb.signIn();
+    sb.clickTab('ops-overview'); await sb.flush();
+    const panel = sb.byId.get('ops-ov-panel');
+    assert.match(panel.innerHTML, /ops-unavailable/);
+    assert.doesNotMatch(panel.innerHTML, /ops-chip-ok|ops-chip-bad|ops-chip-warn/);
+});
+
 // ── renderer hardening ──────────────────────────────────────────────────────
 
 function evilPayloads() {

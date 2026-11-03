@@ -212,6 +212,7 @@ function createSandbox(opts) {
             if (state.responses[key]) return ok(200, state.responses[key]);
             return ok(200, { generated_at: new Date().toISOString(), summary: {}, roles: [] });
         }
+        if (state.fail[p]) return ok(state.fail[p].status, state.fail[p].body);
         if (state.responses[p]) return ok(200, state.responses[p]);
         if (p.startsWith('/api/ops/')) return ok(200, { rows: [], routines: [], items: [] });
         return ok(404, { error: 'not_found' });

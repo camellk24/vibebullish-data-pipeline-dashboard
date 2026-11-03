@@ -1881,3 +1881,13 @@ body {
 .ov-unmeasured { margin-top: 0.7rem; font-size: 0.78rem; color: var(--text-secondary); }
 .ov-unmeasured ul { margin: 0.3rem 0 0; padding-left: 1rem; }
 .ov-unmeasured li { padding: 1px 0; }
+/* Readable grey: small status and freshness text at 4.5:1 or better. */
+#tab-ops-overview .ops-chip-unknown,
+#tab-ops-overview .ops-unknown,
+.ov-generated,
+.ov-paging-h,
+.ov-reason,
+.ov-asof,
+.ov-empty {
+    color: var(--text-secondary);
+}

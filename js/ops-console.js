@@ -1223,7 +1223,10 @@
         if (!window.VBAuth || !window.VBAuth.isAdmin) return;
         leaveOverview();
         const el = document.getElementById('ops-ov-panel');
-        if (el && !overviewLast) el.innerHTML = LOADING;
+        // Re-render a kept view at once so one that expired while the tab was
+        // closed shows stale (grey) before the new read lands or fails.
+        if (overviewLast) renderOverview();
+        else if (el) el.innerHTML = LOADING;
         fetchOverview();
         overviewRefresh = setInterval(fetchOverview, OVERVIEW_REFRESH_MS);
         overviewStaleTick = setInterval(renderOverview, OVERVIEW_STALE_TICK_MS);
@@ -1233,7 +1236,12 @@
     function onOverviewClick(e) {
         const btn = e.target && e.target.closest ? e.target.closest('.ov-open[data-target]') : null;
         if (!btn) return;
-        const tab = document.querySelector(`.tab[data-tab="${btn.getAttribute('data-target')}"]`);
+        // Literal attribute match, never a selector built from payload text:
+        // getAttribute returns the decoded value, which could otherwise steer
+        // the click to an unrelated control.
+        const target = btn.getAttribute('data-target');
+        const tab = Array.from(document.querySelectorAll('.tab[data-tab]'))
+            .find(candidate => candidate.getAttribute('data-tab') === target);
         if (tab) tab.click();
     }
 
