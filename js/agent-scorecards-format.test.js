@@ -46,6 +46,19 @@ test('risk-flagger: 0% effective coverage says it may be a failed query', () => 
     assert.equal(out.badgeBad, true);
 });
 
+test('risk-flagger: empty samples with a positive high count do not claim there are none', () => {
+    const out = riskFlagger({ effective_coverage_pct: 60, high_severity_count: 4, high_severity_samples: [] }, esc);
+    assert.match(out.html, /No high-severity samples returned; this can mean no matching rows or a failed sample query/);
+    assert.ok(!/No high-severity flag/.test(out.html));
+});
+
+test('risk-flagger: empty eligible universe renders raw coverage as no data, not 0.0%', () => {
+    const out = riskFlagger({ total_latest: 0, evaluated: 0, pct_coverage: 0, effective_coverage_pct: 55 }, esc);
+    const raw = out.html.split('Raw is_latest coverage')[1].split('</div>')[1];
+    assert.match(raw, /no data/);
+    assert.ok(!/0\.0%/.test(raw));
+});
+
 test('risk-flagger: ticker, reason and recommendation are escaped', () => {
     const out = riskFlagger({
         effective_coverage_pct: 10, gate_recommendation: EVIL, gate_recommendation_reason: EVIL,
@@ -84,8 +97,15 @@ for (const body of [{ scorecard: null }, { scorecard: [] }, {}, null]) {
     });
 }
 
+test('curated-picks: a row with no count makes the badge total unknown, never an understated sum', () => {
+    const out = curatedPicks({ scorecard: [PICK, { source: 'quant' }] }, esc);
+    assert.equal(out.badge, 'graded count unknown');
+    assert.equal(out.badgeBad, true);
+});
+
 test('curated-picks: missing numbers are unknown, and source is escaped', () => {
     const out = curatedPicks({ scorecard: [{ source: EVIL }] }, esc);
+    assert.equal(out.badge, 'graded count unknown');
     assert.ok(!out.html.includes('<img'));
     assert.ok((out.html.match(/unknown/g) || []).length >= 7);
 });
@@ -124,6 +144,12 @@ test('tripwire: empty scorecard names the grader version and is not a zero', () 
     assert.match(out.html, /Not a score of zero/);
     assert.equal(out.badgeBad, true);
     assert.match(tripwire({}, esc).html, /grader version <span class="ao-unknown-val">unknown/);
+});
+
+test('tripwire: a cell with no fire count makes the badge total unknown', () => {
+    const out = tripwire({ grader_version: 'v', scorecard: [CELL, Object.assign({}, CELL, { fires: undefined })] }, esc);
+    assert.equal(out.badge, 'fire count unknown');
+    assert.equal(out.badgeBad, true);
 });
 
 test('tripwire: version, prompt and event type are escaped', () => {

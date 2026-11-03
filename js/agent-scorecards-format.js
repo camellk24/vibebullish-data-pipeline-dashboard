@@ -90,7 +90,7 @@
             ),
             metric(
                 'Raw is_latest coverage',
-                isNum(b.pct_coverage) ? esc(pct(b.pct_coverage)) : UNKNOWN,
+                b.total_latest === 0 ? NO_DATA : isNum(b.pct_coverage) ? esc(pct(b.pct_coverage)) : UNKNOWN,
                 (evaluated !== null && total !== null ? `${esc(evaluated)} of ${esc(total)} latest rows evaluated · ` : '') +
                     'low by design (the hourly roll orphans flags)'
             ),
@@ -115,7 +115,7 @@
             ? `<div class="ao-sc-note">Latest high-severity bullish rows: ${samples
                   .map((s) => `<code>${esc(s && s.ticker)}</code>`)
                   .join(' ')}</div>`
-            : `<div class="ao-sc-note ao-dimnote">No high-severity flag on a bullish latest row.</div>`;
+            : `<div class="ao-sc-note ao-dimnote">No high-severity samples returned; this can mean no matching rows or a failed sample query.</div>`;
 
         return {
             html: `<div class="ao-sc-metrics">${metrics}</div>${recoHtml}${sampleHtml}`,
@@ -167,15 +167,16 @@
                 </tr>`;
             })
             .join('');
-        const graded = rows.reduce((a, r) => a + (isNum(r && r.n) ? r.n : 0), 0);
+        // A row with no count makes the total unknown, never an understated sum.
+        const graded = rows.every((r) => isNum(r && r.n)) ? rows.reduce((a, r) => a + r.n, 0) : null;
         return {
             html:
                 head +
                 body2 +
                 '</tbody></table>' +
                 '<div class="ao-sc-note ao-dimnote">Split-adjusted forward returns of each picker’s logged picks; “vs SPY” is the return minus SPY over the same window. Exploratory — no pre-registered threshold.</div>',
-            badge: `${int(graded)} graded rows`,
-            badgeBad: false,
+            badge: graded === null ? 'graded count unknown' : `${int(graded)} graded rows`,
+            badgeBad: graded === null,
         };
     }
 
@@ -230,15 +231,15 @@
                 </tr>`;
             })
             .join('');
-        const fires = rows.reduce((a, r) => a + (isNum(r && r.fires) ? r.fires : 0), 0);
+        const fires = rows.every((r) => isNum(r && r.fires)) ? rows.reduce((a, r) => a + r.fires, 0) : null;
         return {
             html:
                 head +
                 body2 +
                 '</tbody></table>' +
                 `<div class="ao-sc-note ao-dimnote">Grader ${vtxt}. Grounding grades the LLM-written copy; precision and recall grade the decision at 5 complete sessions. Dimmed rows (<code>pre-gate</code>: fired before decisions were persisted) are the counterfactual series.</div>`,
-            badge: `${int(fires)} fires graded`,
-            badgeBad: false,
+            badge: fires === null ? 'fire count unknown' : `${int(fires)} fires graded`,
+            badgeBad: fires === null,
         };
     }
 

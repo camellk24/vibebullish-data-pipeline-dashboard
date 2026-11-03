@@ -30,7 +30,9 @@
     let expanded = new Set(); // role ids whose detail row is open
     let inFlight = false;
     let scorecardsAt = 0;     // ms epoch of the last scorecard read (any outcome)
-    let scorecardGen = 0;     // bumps on every roster failure: late scorecard replies are dropped
+    let scorecardGen = 0;     // bumps on every scorecard batch, roster failure and auth change: older replies are dropped
+    let authEpoch = 0;        // bumps on every auth change: a roster reply from an older identity is discarded
+    let reloadQueued = false; // an auth change arrived while a roster read was in flight
 
     // ?fixture=1 | unreachable | notconfigured | upstream  — dev only.
     // ?fixture=harness… belongs to the Harness tab (js/harness.js), not here.
@@ -571,7 +573,7 @@
         const fmt = window.AgentScorecardsFormat;
         if (!fmt) return;
         scorecardsAt = Date.now();
-        const gen = scorecardGen;
+        const gen = ++scorecardGen; // a newer batch supersedes this one
         await Promise.all(
             SCORECARDS.map(async (s) => {
                 const box = scorecardBox(s.el);
@@ -596,6 +598,7 @@
     async function load() {
         if (inFlight) return;
         inFlight = true;
+        const epoch = authEpoch;
         try {
             let status, body;
 
@@ -618,6 +621,10 @@
                 }
             }
 
+            // Access changed while this read was in flight: its answer belongs to
+            // the old identity. Drop it; the queued reload repaints.
+            if (epoch !== authEpoch) return;
+
             if (status !== 200 || (body && body.error)) {
                 renderError((body && body.error) || 'unreachable', body && body.message);
                 return;
@@ -631,9 +638,13 @@
             setUpdatedLabel();
             if (!scorecardsAt || Date.now() - scorecardsAt >= SCORECARD_REFRESH_MS) loadScorecards();
         } catch (err) {
-            renderError('unreachable', String((err && err.message) || err));
+            if (epoch === authEpoch) renderError('unreachable', String((err && err.message) || err));
         } finally {
             inFlight = false;
+            if (reloadQueued) {
+                reloadQueued = false;
+                load();
+            }
         }
     }
 
@@ -656,8 +667,15 @@
         // shows "Admin sign-in required". Retry once access changes.
         window.addEventListener('vb-auth-change', () => {
             const active = document.querySelector('.tab.active');
-            scorecardsAt = 0; // access changed: re-read the scorecards with the roster
-            if (active && active.dataset.tab === 'agent-ops') load();
+            // Access changed: nothing read under the old identity may stay on
+            // screen or land later. Clear the scorecards now (also invalidates
+            // their pending replies) and re-read once any in-flight roster read ends.
+            authEpoch++;
+            clearScorecards();
+            if (active && active.dataset.tab === 'agent-ops') {
+                if (inFlight) reloadQueued = true;
+                else load();
+            }
         });
 
         const tabs = document.querySelector('.dashboard-tabs');

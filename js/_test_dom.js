@@ -235,6 +235,10 @@ function createSandbox(opts) {
             const call = { url: String(url), opts: o || {}, headers: (o && o.headers) || {} };
             fetchCalls.push(call);
             const resp = respondFor(call.url);
+            // deferAgentOps: a RegExp over /api/agent-ops URLs whose replies are held in `pending`.
+            if (state.deferAgentOps && /^\/api\/agent-ops/.test(call.url) && state.deferAgentOps.test(call.url)) {
+                return new Promise((resolve) => pending.push({ call, resolve: () => resolve(resp) }));
+            }
             if (state.deferReads && /\/api\/ops\/reads/.test(call.url)) {
                 return new Promise((resolve) => pending.push({ call, resolve: () => resolve(resp) }));
             }

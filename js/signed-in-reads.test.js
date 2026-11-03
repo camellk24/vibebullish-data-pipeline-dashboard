@@ -314,6 +314,46 @@ test('Agents tab reads the three scorecards through /api/agent-ops?view= with th
     assert.deepEqual(sb.errors, []);
 });
 
+test('Agents scorecards: sign-out while the roster read is in flight clears them at once, and the late roster reply is discarded', async () => {
+    const sb = await page();
+    sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 789 }] };
+    await sb.signIn('tok-A');
+    sb.clickTab('agent-ops'); await sb.flush();
+    assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /789/);
+    sb.state.deferAgentOps = /^\/api\/agent-ops$/;          // hold the next roster reply
+    sb.tickIntervals(); await sb.flush();
+    assert.equal(sb.pending.length, 1, 'roster read in flight');
+    await sb.signOut();
+    assert.equal(sb.byId.get('ao-sc-curated-picks').innerHTML, '', 'cleared on the auth change itself');
+    sb.state.deferAgentOps = null;
+    sb.releasePending(); await sb.flush();
+    assert.ok(!sb.allHtml().includes('789'), 'nothing from the old identity lands later');
+    assert.deepEqual(sb.errors, []);
+});
+
+test('Agents scorecards: after an account switch an older pending batch never overwrites the newer one', async () => {
+    const sb = await page();
+    sb.state.deferAgentOps = /view=/;                         // hold every scorecard reply
+    sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 111 }] };
+    await sb.signIn('tok-A');
+    sb.clickTab('agent-ops'); await sb.flush();
+    const batchA = sb.pending.splice(0);
+    assert.ok(batchA.length >= 3);
+    sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 222 }] };
+    await sb.signIn('tok-B');
+    const batchB = sb.pending.splice(0);
+    // Sign-in emits more than one auth change (token, then admin check); each re-reads.
+    assert.ok(batchB.length >= 3 && batchB.length % 3 === 0, 'the auth change re-read the scorecards');
+    for (const p of batchB) p.resolve();
+    await sb.flush();
+    assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /222/);
+    for (const p of batchA) p.resolve();
+    await sb.flush();
+    assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /222/);
+    assert.ok(!sb.byId.get('ao-sc-curated-picks').innerHTML.includes('111'));
+    assert.deepEqual(sb.errors, []);
+});
+
 test('Agents and ops tabs keep their own behaviour; sign-out while an ops tab is active falls back to the first public tab with zero recovered reads', async () => {
     const sb = await page();
     await sb.signIn();
