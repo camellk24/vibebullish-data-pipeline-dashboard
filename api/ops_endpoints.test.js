@@ -21,6 +21,7 @@ const dqReadiness = require('./ops/dq-readiness.js');
 const whoami = require('./ops/whoami.js');
 const config = require('./config.js');
 const shadow = require('./ops/shadow.js');
+const agentOps = require('./agent-ops.js');
 
 const adminOK = () => upstreamResponse(200, { uid: 'admin-uid', email: 'a@b.c' });
 
@@ -411,6 +412,90 @@ test('strategy-diagnostics: POST → 405 before any network call', async () => {
         const calls = installFetch({});
         const res = fakeRes();
         await strategyDiagnostics(fakeReq({ method: 'POST', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
+        assert.strictEqual(res.statusCode, 405);
+        assert.strictEqual(calls.length, 0);
+    });
+});
+
+// ── api/agent-ops.js ?view= (Agents tab roster + three scorecards) ─────────
+
+
+const AUTH = { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' };
+
+const CASES = [
+    [undefined, '/api/internal/agent-ops'],
+    ['', '/api/internal/agent-ops'],
+    ['roles', '/api/internal/agent-ops'],
+    ['risk-flagger', '/api/internal/risk-flagger-stats'],
+    ['curated-picks', '/api/internal/curated-picks-scorecard'],
+    ['tripwire', '/api/internal/tripwire-scorecard'],
+];
+
+for (const [view, path] of CASES) {
+    test(`agent-ops: view=${JSON.stringify(view)} → ${path} with the internal token, no query`, async () => {
+        await withEnv(async () => {
+            const calls = installFetch({
+                '/api/admin/whoami': adminOK,
+                [path]: () => upstreamResponse(200, { ok: true }),
+            });
+            const query = view === undefined ? {} : { view, since: '2020-01-01', limit: '9999' };
+            const res = fakeRes();
+            await agentOps(fakeReq({ url: '/api/agent-ops', query, headers: AUTH }), res);
+
+            assert.strictEqual(res.statusCode, 200);
+            const fwd = calls.find(c => c.url.includes('/api/internal/'));
+            assert.strictEqual(fwd.url, 'https://backend.test' + path);
+            assert.strictEqual(fwd.opts.headers['X-Internal-Token'], TOKEN);
+            assert.ok(!fwd.opts.headers.Authorization, 'machine class: no bearer forwarded');
+            assert.ok(!responseSurface(res).includes(TOKEN));
+        });
+    });
+}
+
+test('agent-ops: view read from the URL when req.query is absent', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/tripwire-scorecard': () => upstreamResponse(200, { scorecard: [] }),
+        });
+        const res = fakeRes();
+        await agentOps(fakeReq({ url: '/api/agent-ops?view=tripwire&x=../y', headers: AUTH }), res);
+        assert.strictEqual(res.statusCode, 200);
+        const fwd = calls.find(c => c.url.includes('/api/internal/'));
+        assert.strictEqual(fwd.url, 'https://backend.test/api/internal/tripwire-scorecard');
+    });
+});
+
+for (const evil of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', '../internal/r4/label', 'ROLES']) {
+    test(`agent-ops: view=${evil} → 400 before any network call`, async () => {
+        await withEnv(async () => {
+            const calls = installFetch({});
+            const res = fakeRes();
+            await agentOps(fakeReq({ query: { view: evil }, headers: AUTH }), res);
+            assert.strictEqual(res.statusCode, 400);
+            assert.strictEqual(JSON.parse(res.body).error, 'bad_request');
+            assert.strictEqual(calls.length, 0);
+        });
+    });
+}
+
+test('agent-ops: scorecard view, non-admin → 403 and the upstream is never contacted', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': () => upstreamResponse(403, { error: 'not_admin' }),
+        });
+        const res = fakeRes();
+        await agentOps(fakeReq({ query: { view: 'curated-picks' }, headers: AUTH }), res);
+        assert.strictEqual(res.statusCode, 403);
+        assert.strictEqual(calls.length, 1);
+    });
+});
+
+test('agent-ops: scorecard view, POST → 405', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({});
+        const res = fakeRes();
+        await agentOps(fakeReq({ method: 'POST', query: { view: 'tripwire' }, headers: AUTH }), res);
         assert.strictEqual(res.statusCode, 405);
         assert.strictEqual(calls.length, 0);
     });

@@ -206,7 +206,12 @@ function createSandbox(opts) {
             if (state.fail[view]) return ok(state.fail[view].status, state.fail[view].body);
             return ok(200, state.responses[view] || DEFAULT_RESPONSES[view] || { ok: true, view });
         }
-        if (p === '/api/agent-ops') return ok(200, { generated_at: new Date().toISOString(), summary: {}, roles: [] });
+        if (p === '/api/agent-ops') {
+            const key = 'agent-ops:' + (u.searchParams.get('view') || 'roles');
+            if (state.fail[key]) return ok(state.fail[key].status, state.fail[key].body);
+            if (state.responses[key]) return ok(200, state.responses[key]);
+            return ok(200, { generated_at: new Date().toISOString(), summary: {}, roles: [] });
+        }
         if (p.startsWith('/api/ops/')) return ok(200, { rows: [], routines: [], items: [] });
         return ok(404, { error: 'not_found' });
     }
@@ -230,6 +235,10 @@ function createSandbox(opts) {
             const call = { url: String(url), opts: o || {}, headers: (o && o.headers) || {} };
             fetchCalls.push(call);
             const resp = respondFor(call.url);
+            // deferAgentOps: a RegExp over /api/agent-ops URLs whose replies are held in `pending`.
+            if (state.deferAgentOps && /^\/api\/agent-ops/.test(call.url) && state.deferAgentOps.test(call.url)) {
+                return new Promise((resolve) => pending.push({ call, resolve: () => resolve(resp) }));
+            }
             if (state.deferReads && /\/api\/ops\/reads/.test(call.url)) {
                 return new Promise((resolve) => pending.push({ call, resolve: () => resolve(resp) }));
             }

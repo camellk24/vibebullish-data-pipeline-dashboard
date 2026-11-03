@@ -1096,6 +1096,52 @@ body {
     line-height: 1.45;
 }
 
+/* ── Agents scorecards ────────────────────────────────────────────────────── */
+
+.ao-sc-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--s-md);
+    margin-bottom: var(--s-md);
+}
+
+.ao-sc-metric { min-width: 0; }
+
+.ao-sc-value {
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    margin: 2px 0;
+}
+
+.ao-sc-note {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-top: var(--s-sm);
+}
+
+.ao-sc-note code,
+.ao-sc-table code {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+}
+
+.ao-sc-tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--bg-tint);
+}
+
+.ao-sc-badge-bad { color: var(--warning); }
+
 /* ── Error / empty states ─────────────────────────────────────────────────── */
 
 .ao-error {

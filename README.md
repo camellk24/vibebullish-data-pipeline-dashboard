@@ -53,6 +53,15 @@ so a role that has never been graded looks different from one that was graded an
 zero. Unhealthy and trade-gating rows sort to the top; dormant roles render dimmed at the
 bottom. The panel auto-refreshes every 45s and shows "updated Ns ago".
 
+Below the roster, three scorecard cards surface the grades the backend already computes:
+**risk-flagger coverage** (`/api/internal/risk-flagger-stats`), the **curated-picks
+scorecard** (`/api/internal/curated-picks-scorecard`) and the **tripwire push-copy
+scorecard** (`/api/internal/tripwire-scorecard`). They are read through the same function as
+`/api/agent-ops?view=risk-flagger|curated-picks|tripwire`, re-read every 5 minutes, and
+cleared whenever the roster read fails. An empty scorecard, a missing number and a rate with
+no denominator each render as their own state; where the backend cannot tell "no rows" from
+"query failed", the card says so.
+
 ### Required environment variable
 
 The Agents tab reads the backend's token-gated `GET /api/internal/agent-ops`. **This site
@@ -83,6 +92,8 @@ http://localhost:3000/?fixture=1                 full roster (every status)
 http://localhost:3000/?fixture=unreachable       backend down
 http://localhost:3000/?fixture=notconfigured     missing env var
 http://localhost:3000/?fixture=upstream          backend rejected the token
+http://localhost:3000/?fixture=scempty           roster + every scorecard empty / unknown
+http://localhost:3000/?fixture=scerror           roster + scorecards 502 / 404
 http://localhost:3000/?fixture=1&expand=<role_id>[,<role_id>]   pre-open detail rows
 ```
 

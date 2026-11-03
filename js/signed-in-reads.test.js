@@ -284,6 +284,103 @@ test('sign-out with Firebase deferred: a timer tick and a manual reload issue NO
     assert.deepEqual(sb.errors, []);
 });
 
+test('Agents tab reads the three scorecards through /api/agent-ops?view= with the bearer; a roster failure clears them', async () => {
+    const sb = await page();
+    sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 7, mean_forward_pct: 1, mean_excess_pct: 0.5, hit_rate_pct: 57, beat_spy_rate_pct: 50, median_forward_pct: 0.4 }] };
+    sb.state.responses['agent-ops:tripwire'] = { grader_version: 'tripwire_grader_v1', scorecard: [] };
+    sb.state.fail['agent-ops:risk-flagger'] = { status: 502, body: { error: 'upstream_error', message: 'Backend returned HTTP 503 for /api/internal/risk-flagger-stats.' } };
+    await sb.signIn('tok-S');
+    sb.resetCalls();
+    sb.clickTab('agent-ops'); await sb.flush();
+    const sc = sb.fetchCalls.filter(c => c.url.startsWith('/api/agent-ops?view='));
+    assert.deepEqual(sc.map(c => c.url).sort(), ['/api/agent-ops?view=curated-picks', '/api/agent-ops?view=risk-flagger', '/api/agent-ops?view=tripwire']);
+    for (const c of sc) assert.equal(c.headers.Authorization || c.headers.authorization, 'Bearer tok-S');
+    assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /7/);
+    assert.match(sb.byId.get('ao-sc-tripwire').innerHTML, /No grades for grader version/);
+    assert.match(sb.byId.get('ao-sc-risk-flagger').innerHTML, /Scorecard unavailable/);
+    assert.equal(sb.byId.get('ao-sc-risk-flagger-badge').textContent, 'unavailable');
+
+    // The next 45s roster poll does not re-read the scorecards (5-minute cadence).
+    sb.resetCalls();
+    sb.tickIntervals(); await sb.flush();
+    assert.ok(sb.fetchCalls.some(c => c.url === '/api/agent-ops'));
+    assert.ok(!sb.fetchCalls.some(c => c.url.startsWith('/api/agent-ops?view=')));
+
+    // Roster fails → no scorecard numbers left on screen.
+    sb.state.fail['agent-ops:roles'] = { status: 502, body: { error: 'unreachable', message: 'Backend is unreachable.' } };
+    sb.tickIntervals(); await sb.flush();
+    assert.equal(sb.byId.get('ao-sc-curated-picks').innerHTML, '');
+    assert.equal(sb.byId.get('ao-sc-tripwire-badge').textContent, '');
+    assert.deepEqual(sb.errors, []);
+});
+
+test('Agents scorecards: sign-out while the roster read is in flight clears roster and scorecards at once; the late reply is discarded', async () => {
+    const sb = await page();
+    sb.state.responses['agent-ops:roles'] = { generated_at: new Date().toISOString(), summary: { live: 3 }, roles: [{ id: 'role_x', display_name: 'Role X', status: 'healthy', lifecycle: 'live' }] };
+    sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 789 }] };
+    await sb.signIn('tok-A');
+    sb.clickTab('agent-ops'); await sb.flush();
+    assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /789/);
+    assert.match(sb.byId.get('ao-table').innerHTML, /ao-row/, 'roster rendered');
+    sb.state.deferAgentOps = /^\/api\/agent-ops$/;          // hold the next roster reply
+    sb.tickIntervals(); await sb.flush();
+    assert.equal(sb.pending.length, 1, 'roster read in flight');
+    // The real proxy refuses a signed-out caller.
+    sb.state.fail['agent-ops:roles'] = { status: 401, body: { error: 'unauthenticated', message: 'Sign in.' } };
+    await sb.signOut();
+    // Before the held reply completes, nothing from the old identity is on screen.
+    assert.equal(sb.byId.get('ao-sc-curated-picks').innerHTML, '');
+    assert.equal(sb.byId.get('ao-summary').innerHTML, '');
+    assert.ok(!/ao-row/.test(sb.byId.get('ao-table').innerHTML), 'roster cleared on the auth change itself');
+    sb.state.deferAgentOps = null;
+    sb.resetCalls();
+    sb.releasePending(); await sb.flush();
+    assert.equal(sb.byId.get('ao-sc-curated-picks').innerHTML, '');
+    assert.ok(!/ao-row/.test(sb.byId.get('ao-table').innerHTML));
+    assert.match(sb.byId.get('ao-table').innerHTML, /ao-error/, 'the signed-out read renders its error panel (title text is escaped by the DOM esc, empty in this fake DOM)');
+    assert.ok(
+        !sb.fetchCalls.some(c => c.url.startsWith('/api/agent-ops?view=')),
+        'the discarded roster reply must not launch another scorecard batch'
+    );
+    assert.deepEqual(sb.errors, []);
+});
+
+test('Agents scorecards: sign-out while another tab is active clears the Agents roster too', async () => {
+    const sb = await page();
+    sb.state.responses['agent-ops:roles'] = { generated_at: new Date().toISOString(), summary: { live: 3 }, roles: [{ id: 'role_x', display_name: 'Role X', status: 'healthy', lifecycle: 'live' }] };
+    await sb.signIn('tok-A');
+    sb.clickTab('agent-ops'); await sb.flush();
+    assert.match(sb.byId.get('ao-table').innerHTML, /ao-row/, 'roster rendered');
+    sb.clickTab('ops-shadow'); await sb.flush();
+    await sb.signOut();
+    assert.ok(!/ao-row/.test(sb.byId.get('ao-table').innerHTML));
+    assert.equal(sb.byId.get('ao-summary').innerHTML, '');
+    assert.deepEqual(sb.errors, []);
+});
+
+test('Agents scorecards: after an account switch an older pending batch never overwrites the newer one', async () => {
+    const sb = await page();
+    sb.state.deferAgentOps = /view=/;                         // hold every scorecard reply
+    sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 111 }] };
+    await sb.signIn('tok-A');
+    sb.clickTab('agent-ops'); await sb.flush();
+    const batchA = sb.pending.splice(0);
+    assert.ok(batchA.length >= 3);
+    sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 222 }] };
+    await sb.signIn('tok-B');
+    const batchB = sb.pending.splice(0);
+    // Sign-in emits more than one auth change (token, then admin check); each re-reads.
+    assert.ok(batchB.length >= 3 && batchB.length % 3 === 0, 'the auth change re-read the scorecards');
+    for (const p of batchB) p.resolve();
+    await sb.flush();
+    assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /222/);
+    for (const p of batchA) p.resolve();
+    await sb.flush();
+    assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /222/);
+    assert.ok(!sb.byId.get('ao-sc-curated-picks').innerHTML.includes('111'));
+    assert.deepEqual(sb.errors, []);
+});
+
 test('Agents and ops tabs keep their own behaviour; sign-out while an ops tab is active falls back to the first public tab with zero recovered reads', async () => {
     const sb = await page();
     await sb.signIn();

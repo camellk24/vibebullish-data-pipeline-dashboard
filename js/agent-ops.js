@@ -13,6 +13,14 @@
 (function () {
     const ENDPOINT = '/api/agent-ops';
     const REFRESH_MS = 45_000;
+    // The scorecards are slow-moving aggregates (graded nightly); re-read them
+    // every 5 minutes, not on every 45s roster poll.
+    const SCORECARD_REFRESH_MS = 300_000;
+    const SCORECARDS = [
+        { view: 'risk-flagger', el: 'ao-sc-risk-flagger', render: 'riskFlagger' },
+        { view: 'curated-picks', el: 'ao-sc-curated-picks', render: 'curatedPicks' },
+        { view: 'tripwire', el: 'ao-sc-tripwire', render: 'tripwire' },
+    ];
     const TICK_MS = 1_000;
 
     let refreshTimer = null;
@@ -21,6 +29,10 @@
     let errored = false;      // last attempt failed — the ticker must keep saying so
     let expanded = new Set(); // role ids whose detail row is open
     let inFlight = false;
+    let scorecardsAt = 0;     // ms epoch of the last scorecard read (any outcome)
+    let scorecardGen = 0;     // bumps on every scorecard batch, roster failure and auth change: older replies are dropped
+    let authEpoch = 0;        // bumps on every auth change: a roster reply from an older identity is discarded
+    let reloadQueued = false; // an auth change arrived while a roster read was in flight
 
     // ?fixture=1 | unreachable | notconfigured | upstream  — dev only.
     // ?fixture=harness… belongs to the Harness tab (js/harness.js), not here.
@@ -446,6 +458,7 @@
 
         // Never leave stale numbers on screen pretending to be current.
         if (summary) summary.innerHTML = '';
+        clearScorecards();
         if (table) {
             table.innerHTML = `
             <div class="ao-error">
@@ -491,9 +504,101 @@
         });
     }
 
+    // ── scorecards ───────────────────────────────────────────────────────────
+
+    // The scorecards use the project's one attribute-safe escaper (js/reads.js).
+    function scEsc(s) {
+        return window.VBReads && window.VBReads.esc ? window.VBReads.esc(s) : esc(s);
+    }
+
+    function scorecardBox(id) {
+        const el = document.getElementById(id);
+        return el ? { body: el, badge: document.getElementById(id + '-badge') } : null;
+    }
+
+    function setScorecard(box, html, badge, bad) {
+        box.body.innerHTML = html;
+        if (box.badge) {
+            box.badge.textContent = badge || '';
+            box.badge.className = 'card-badge' + (bad ? ' ao-sc-badge-bad' : '');
+        }
+    }
+
+    function clearScorecards() {
+        scorecardGen++;
+        scorecardsAt = 0;
+        for (const s of SCORECARDS) {
+            const box = scorecardBox(s.el);
+            if (box) setScorecard(box, '', '', false);
+        }
+    }
+
+    function scorecardError(kind, message) {
+        const title =
+            kind === 'unauthenticated' || kind === 'forbidden'
+                ? 'Admin sign-in required'
+                : kind === 'not_found'
+                ? 'Backend does not serve this scorecard'
+                : kind === 'not_configured'
+                ? 'Proxy not configured'
+                : 'Scorecard unavailable';
+        return `<div class="ao-error">
+                <div class="ao-error-title">${scEsc(title)}</div>
+                <div class="ao-error-msg">${scEsc(message || '')}</div>
+                <div class="ao-error-hint">No numbers are shown: a last-known grade here would read as current.</div>
+            </div>`;
+    }
+
+    async function readScorecard(view) {
+        if (FIXTURE) {
+            const f = window.__AGENT_OPS_FIXTURE__(FIXTURE, view);
+            return { status: f.__status, body: f.body };
+        }
+        // Admin-verified upstream: without the auth helper there is no way in,
+        // so say so instead of sending a request that can only be refused.
+        if (!window.VBAuth) {
+            return { status: 401, body: { error: 'unauthenticated', message: 'Sign-in is not available on this page.' } };
+        }
+        const res = await window.VBAuth.fetch(ENDPOINT + '?view=' + encodeURIComponent(view));
+        let body;
+        try {
+            body = await res.json();
+        } catch (_e) {
+            body = { error: 'bad_response', message: `Proxy returned HTTP ${res.status} with a non-JSON body.` };
+        }
+        return { status: res.status, body };
+    }
+
+    async function loadScorecards() {
+        const fmt = window.AgentScorecardsFormat;
+        if (!fmt) return;
+        scorecardsAt = Date.now();
+        const gen = ++scorecardGen; // a newer batch supersedes this one
+        await Promise.all(
+            SCORECARDS.map(async (s) => {
+                const box = scorecardBox(s.el);
+                if (!box) return;
+                let r;
+                try {
+                    r = await readScorecard(s.view);
+                } catch (err) {
+                    r = { status: 0, body: { error: 'unreachable', message: String((err && err.message) || err) } };
+                }
+                if (gen !== scorecardGen) return; // the roster failed meanwhile: stay cleared
+                if (r.status !== 200 || !r.body || r.body.error) {
+                    setScorecard(box, scorecardError(r.body && r.body.error, r.body && r.body.message), 'unavailable', true);
+                    return;
+                }
+                const out = fmt[s.render](r.body, scEsc);
+                setScorecard(box, out.html, out.badge, out.badgeBad);
+            })
+        );
+    }
+
     async function load() {
         if (inFlight) return;
         inFlight = true;
+        const epoch = authEpoch;
         try {
             let status, body;
 
@@ -516,6 +621,10 @@
                 }
             }
 
+            // Access changed while this read was in flight: its answer belongs to
+            // the old identity. Drop it; the queued reload repaints.
+            if (epoch !== authEpoch) return;
+
             if (status !== 200 || (body && body.error)) {
                 renderError((body && body.error) || 'unreachable', body && body.message);
                 return;
@@ -527,10 +636,15 @@
             renderSummary(body.summary);
             renderTable(body.roles);
             setUpdatedLabel();
+            if (!scorecardsAt || Date.now() - scorecardsAt >= SCORECARD_REFRESH_MS) loadScorecards();
         } catch (err) {
-            renderError('unreachable', String((err && err.message) || err));
+            if (epoch === authEpoch) renderError('unreachable', String((err && err.message) || err));
         } finally {
             inFlight = false;
+            if (reloadQueued) {
+                reloadQueued = false;
+                load();
+            }
         }
     }
 
@@ -553,7 +667,24 @@
         // shows "Admin sign-in required". Retry once access changes.
         window.addEventListener('vb-auth-change', () => {
             const active = document.querySelector('.tab.active');
-            if (active && active.dataset.tab === 'agent-ops') load();
+            // Access changed: nothing read under the old identity may stay on
+            // screen or land later. Clear the roster and scorecards now (which
+            // also invalidates pending scorecard replies) and re-read once any
+            // in-flight roster read ends.
+            authEpoch++;
+            lastPayload = null;
+            lastSuccessAt = null;
+            errored = false;
+            clearScorecards();
+            const summary = document.getElementById('ao-summary');
+            const table = document.getElementById('ao-table');
+            if (summary) summary.innerHTML = '';
+            if (table) table.innerHTML = '<div class="ao-empty">Access changed; waiting for a fresh roster read.</div>';
+            setUpdatedLabel();
+            if (active && active.dataset.tab === 'agent-ops') {
+                if (inFlight) reloadQueued = true;
+                else load();
+            }
         });
 
         const tabs = document.querySelector('.dashboard-tabs');
