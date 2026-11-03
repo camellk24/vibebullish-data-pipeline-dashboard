@@ -314,20 +314,47 @@ test('Agents tab reads the three scorecards through /api/agent-ops?view= with th
     assert.deepEqual(sb.errors, []);
 });
 
-test('Agents scorecards: sign-out while the roster read is in flight clears them at once, and the late roster reply is discarded', async () => {
+test('Agents scorecards: sign-out while the roster read is in flight clears roster and scorecards at once; the late reply is discarded', async () => {
     const sb = await page();
+    sb.state.responses['agent-ops:roles'] = { generated_at: new Date().toISOString(), summary: { live: 3 }, roles: [{ id: 'role_x', display_name: 'Role X', status: 'healthy', lifecycle: 'live' }] };
     sb.state.responses['agent-ops:curated-picks'] = { scorecard: [{ source: 'quant', horizon_sessions: 5, n: 789 }] };
     await sb.signIn('tok-A');
     sb.clickTab('agent-ops'); await sb.flush();
     assert.match(sb.byId.get('ao-sc-curated-picks').innerHTML, /789/);
+    assert.match(sb.byId.get('ao-table').innerHTML, /ao-row/, 'roster rendered');
     sb.state.deferAgentOps = /^\/api\/agent-ops$/;          // hold the next roster reply
     sb.tickIntervals(); await sb.flush();
     assert.equal(sb.pending.length, 1, 'roster read in flight');
+    // The real proxy refuses a signed-out caller.
+    sb.state.fail['agent-ops:roles'] = { status: 401, body: { error: 'unauthenticated', message: 'Sign in.' } };
     await sb.signOut();
-    assert.equal(sb.byId.get('ao-sc-curated-picks').innerHTML, '', 'cleared on the auth change itself');
+    // Before the held reply completes, nothing from the old identity is on screen.
+    assert.equal(sb.byId.get('ao-sc-curated-picks').innerHTML, '');
+    assert.equal(sb.byId.get('ao-summary').innerHTML, '');
+    assert.ok(!/ao-row/.test(sb.byId.get('ao-table').innerHTML), 'roster cleared on the auth change itself');
     sb.state.deferAgentOps = null;
+    sb.resetCalls();
     sb.releasePending(); await sb.flush();
-    assert.ok(!sb.allHtml().includes('789'), 'nothing from the old identity lands later');
+    assert.equal(sb.byId.get('ao-sc-curated-picks').innerHTML, '');
+    assert.ok(!/ao-row/.test(sb.byId.get('ao-table').innerHTML));
+    assert.match(sb.byId.get('ao-table').innerHTML, /ao-error/, 'the signed-out read renders its error panel (title text is escaped by the DOM esc, empty in this fake DOM)');
+    assert.ok(
+        !sb.fetchCalls.some(c => c.url.startsWith('/api/agent-ops?view=')),
+        'the discarded roster reply must not launch another scorecard batch'
+    );
+    assert.deepEqual(sb.errors, []);
+});
+
+test('Agents scorecards: sign-out while another tab is active clears the Agents roster too', async () => {
+    const sb = await page();
+    sb.state.responses['agent-ops:roles'] = { generated_at: new Date().toISOString(), summary: { live: 3 }, roles: [{ id: 'role_x', display_name: 'Role X', status: 'healthy', lifecycle: 'live' }] };
+    await sb.signIn('tok-A');
+    sb.clickTab('agent-ops'); await sb.flush();
+    assert.match(sb.byId.get('ao-table').innerHTML, /ao-row/, 'roster rendered');
+    sb.clickTab('ops-shadow'); await sb.flush();
+    await sb.signOut();
+    assert.ok(!/ao-row/.test(sb.byId.get('ao-table').innerHTML));
+    assert.equal(sb.byId.get('ao-summary').innerHTML, '');
     assert.deepEqual(sb.errors, []);
 });
 

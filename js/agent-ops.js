@@ -668,10 +668,19 @@
         window.addEventListener('vb-auth-change', () => {
             const active = document.querySelector('.tab.active');
             // Access changed: nothing read under the old identity may stay on
-            // screen or land later. Clear the scorecards now (also invalidates
-            // their pending replies) and re-read once any in-flight roster read ends.
+            // screen or land later. Clear the roster and scorecards now (which
+            // also invalidates pending scorecard replies) and re-read once any
+            // in-flight roster read ends.
             authEpoch++;
+            lastPayload = null;
+            lastSuccessAt = null;
+            errored = false;
             clearScorecards();
+            const summary = document.getElementById('ao-summary');
+            const table = document.getElementById('ao-table');
+            if (summary) summary.innerHTML = '';
+            if (table) table.innerHTML = '<div class="ao-empty">Access changed; waiting for a fresh roster read.</div>';
+            setUpdatedLabel();
             if (active && active.dataset.tab === 'agent-ops') {
                 if (inFlight) reloadQueued = true;
                 else load();
