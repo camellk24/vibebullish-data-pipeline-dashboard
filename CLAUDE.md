@@ -4,7 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-LLM usage dashboard for VibeBullish. Single-page static app showing daily and weekly LLM call breakdowns, cost estimation, and per-ticker usage. Dark theme matching the iOS app. Deployed on Vercel, no build step.
+Monitoring and ops console for VibeBullish (see `README.md`). Single-page static app, dark theme
+matching the iOS app, deployed on Vercel with no build step. It has eleven tabs (`index.html`):
+
+- **Signed-in tabs** (personal research mode, admin-verified reads via `api/ops/reads.js`):
+  LLM Usage, System Health, Action Engine, Quant Quality, Data Collector, Catalyst Accuracy.
+- **Agents** — agent-role health, accountability and the risk-flagger / curated-picks / tripwire
+  scorecards (`api/agent-ops.js`, internal token server-side).
+- **Ops console** (admin only, hidden until the admin check passes): Harness, Shadow book,
+  Heartbeats, Strategies.
+
+The LLM Usage tab is the original dashboard; its sections are listed at the end of this file.
 
 ## Commands
 
@@ -81,7 +91,7 @@ historical date).
 
 A date picker in the header allows navigating to any historical date with arrow buttons, a date input, and a Today button.
 
-### Sections
+### LLM Usage tab sections
 
 - **Hero metrics** — total calls, models used, unique tickers, estimated cost
 - **7-day trend** — bar chart of daily totals
