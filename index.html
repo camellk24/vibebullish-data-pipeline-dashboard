@@ -38,6 +38,7 @@
             <button class="tab" data-tab="data-collector">Data Collector</button>
             <button class="tab" data-tab="catalyst-accuracy">Catalyst Accuracy</button>
             <button class="tab" data-tab="agent-ops">Agents</button>
+            <button class="tab" data-tab="ops-overview" data-ops-tab style="display:none">Overview</button>
             <button class="tab" data-tab="harness" data-ops-tab style="display:none">Harness</button>
             <button class="tab" data-tab="ops-shadow" data-ops-tab style="display:none">Shadow book</button>
             <button class="tab" data-tab="ops-heartbeats" data-ops-tab style="display:none">Heartbeats</button>
@@ -443,6 +444,28 @@
             </section>
         </div><!-- /tab-agent-ops -->
 
+        <!-- Tab: Overview (admin only) — one chip per pipeline stage from
+             /api/ops/overview (js/ops-console.js loadOverview, rendered by
+             js/ops-overview-format.js). -->
+        <div id="tab-ops-overview" style="display:none">
+            <div class="ao-head">
+                <p class="ao-intro">
+                    One status per stage, computed by the backend from each source's own verdict.
+                    <strong>Grey is not green</strong>: UNKNOWN means a source could not be read,
+                    NOT BUILT means no verdict source exists yet. Nothing on this tab pages; a FAIL
+                    says whether it would.
+                </p>
+            </div>
+
+            <section class="card">
+                <div class="card-header">
+                    <h2>Overview</h2>
+                    <span class="card-badge" id="ops-ov-summary"></span>
+                </div>
+                <div id="ops-ov-panel"></div>
+            </section>
+        </div><!-- /tab-ops-overview -->
+
         <!-- Tab: Harness (admin only) — the agent harness board, read from the private
              Vercel Blob store through /api/ops/harness (js/harness.js). -->
         <div id="tab-harness" style="display:none">
@@ -640,6 +663,7 @@
     <script src="js/dq-readiness-format.js"></script>
     <script src="js/model-health.js"></script>
     <script src="js/strategy-diagnostics-format.js"></script>
+    <script src="js/ops-overview-format.js"></script>
     <script src="js/ops-console.js"></script>
     <script src="js/r4-audit.js"></script>
     <script src="js/harness.js"></script>

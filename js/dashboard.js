@@ -627,7 +627,7 @@ function initTabs() {
     // router can hide them like any other. The six signed-in tabs load through
     // VBTabs.activate; the Agents tab and the ops tabs keep their own
     // listeners and the dispatches below, exactly as before.
-    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-r4', 'tab-ops-strategies'];
+    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-r4', 'tab-ops-strategies', 'tab-ops-overview'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
@@ -642,6 +642,10 @@ function initTabs() {
             if (tabId === 'ops-heartbeats' && window.OpsConsole) window.OpsConsole.loadHeartbeats();
             if (tabId === 'ops-r4' && window.R4Audit) window.R4Audit.load();
             if (tabId === 'ops-strategies' && window.OpsConsole) window.OpsConsole.loadStrategies();
+            if (window.OpsConsole) {
+                if (tabId === 'ops-overview') window.OpsConsole.loadOverview();
+                else window.OpsConsole.leaveOverview();
+            }
         });
     });
 }

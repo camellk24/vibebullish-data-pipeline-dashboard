@@ -500,3 +500,54 @@ test('agent-ops: scorecard view, POST → 405', async () => {
         assert.strictEqual(calls.length, 0);
     });
 });
+
+// ── api/ops/overview.js ──────────────────────────────────────────────────────
+
+const overview = require('./ops/overview.js');
+
+test('overview: admin → forwards to the fixed internal path with the internal token, no query string', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': adminOK,
+            '/api/internal/ops/overview': () => upstreamResponse(200, { status: 'WARN', stages: [] }),
+        });
+        const res = fakeRes();
+        await overview(
+            fakeReq({
+                url: '/api/ops/overview?stage=../../secret',
+                query: { stage: '../../secret' },
+                headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' },
+            }),
+            res
+        );
+        assert.strictEqual(res.statusCode, 200);
+        assert.strictEqual(JSON.parse(res.body).status, 'WARN');
+        const fwd = calls.find(c => c.url.includes('/api/internal/'));
+        assert.strictEqual(fwd.url, 'https://backend.test/api/internal/ops/overview');
+        assert.strictEqual(fwd.opts.headers['X-Internal-Token'], TOKEN);
+        assert.ok(!('Authorization' in fwd.opts.headers), 'machine-class route: the bearer is not forwarded');
+        assert.ok(!responseSurface(res).includes(TOKEN));
+    });
+});
+
+test('overview: non-admin → 403 and the upstream is never contacted', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({
+            '/api/admin/whoami': () => upstreamResponse(403, { error: 'not_admin' }),
+        });
+        const res = fakeRes();
+        await overview(fakeReq({ headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
+        assert.strictEqual(res.statusCode, 403);
+        assert.strictEqual(calls.length, 1);
+    });
+});
+
+test('overview: POST → 405 before any network call', async () => {
+    await withEnv(async () => {
+        const calls = installFetch({});
+        const res = fakeRes();
+        await overview(fakeReq({ method: 'POST', headers: { authorization: 'Bearer test-id-token-9a7f3c1e5b2d' } }), res);
+        assert.strictEqual(res.statusCode, 405);
+        assert.strictEqual(calls.length, 0);
+    });
+});

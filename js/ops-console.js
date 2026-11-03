@@ -17,7 +17,7 @@
 (function () {
     'use strict';
 
-    const OPS_TABS = ['ops-shadow', 'ops-heartbeats', 'ops-r4', 'ops-strategies'];
+    const OPS_TABS = ['ops-overview', 'ops-shadow', 'ops-heartbeats', 'ops-r4', 'ops-strategies'];
     const LOADING = '<div class="ops-loading">Loading…</div>';
 
     let bookId = null; // null = let the backend default to the shadow book
@@ -182,6 +182,18 @@
             message: (body && body.message) || `HTTP ${res.status}`,
             upstreamStatus: body && body.upstream_status,
         };
+    }
+
+    // A dev-only fixture from js/fixtures/, in opsGet's result shape. The one
+    // native fetch the console makes besides VBAuth.fetch (pinned by
+    // js/signed-in-reads.test.js).
+    async function fixtureGet(FIXTURE) {
+        try {
+            const res = await fetch(`js/fixtures/${FIXTURE}.sample.json`);
+            return { ok: true, body: await res.json() };
+        } catch (err) {
+            return { ok: false, kind: 'unreachable', message: String((err && err.message) || err) };
+        }
     }
 
     // ── Shadow book tab ──────────────────────────────────────────────────────
@@ -1053,17 +1065,9 @@
 
         // ?fixture=dq-readiness | dq-readiness-failed — dev only.
         const FIXTURE = new URLSearchParams(location.search).get('fixture');
-        let r;
-        if (FIXTURE === 'dq-readiness' || FIXTURE === 'dq-readiness-failed') {
-            try {
-                const res = await fetch(`js/fixtures/${FIXTURE}.sample.json`);
-                r = { ok: true, body: await res.json() };
-            } catch (err) {
-                r = { ok: false, kind: 'unreachable', message: String((err && err.message) || err) };
-            }
-        } else {
-            r = await opsGet('/api/ops/dq-readiness');
-        }
+        const r = FIXTURE === 'dq-readiness' || FIXTURE === 'dq-readiness-failed'
+            ? await fixtureGet(FIXTURE)
+            : await opsGet('/api/ops/dq-readiness');
 
         if (!r.ok) {
             if (r.upstreamStatus === 503) {
@@ -1155,6 +1159,84 @@
         }
     }
 
+    // ── Overview tab ─────────────────────────────────────────────────────────
+    // One chip per stage from GET /api/ops/overview (spec 2026-11-03-ops-overview
+    // -tab-spec.md §5). Rendering lives in js/ops-overview-format.js (pure,
+    // tested under node). While the tab is open it re-reads every 60 s and
+    // re-renders every 30 s, so a view the backend stopped refreshing turns
+    // "stale" after 5 minutes without another successful fetch. leaveOverview
+    // stops both timers and bumps overviewSeq, so a response that lands after
+    // the tab was left, or after sign-out, is dropped.
+    const OVERVIEW_REFRESH_MS = 60 * 1000;
+    const OVERVIEW_STALE_TICK_MS = 30 * 1000;
+    let overviewSeq = 0;
+    let overviewRefresh = null;
+    let overviewStaleTick = null;
+    let overviewLast = null; // { body, receivedAt }
+
+    function renderOverview() {
+        const el = document.getElementById('ops-ov-panel');
+        const sum = document.getElementById('ops-ov-summary');
+        if (!el || !overviewLast || !window.OpsOverviewFormat) return;
+        const out = window.OpsOverviewFormat.render(overviewLast.body, esc, {
+            receivedAt: overviewLast.receivedAt,
+            now: Date.now(),
+        });
+        el.innerHTML = out.html;
+        el.onclick = onOverviewClick;
+        if (sum) {
+            sum.textContent = out.badge;
+            sum.className = 'card-badge' + (out.badgeBad ? ' ops-badge-bad' : '');
+        }
+    }
+
+    async function fetchOverview() {
+        if (!window.VBAuth || !window.VBAuth.isAdmin) return;
+        const el = document.getElementById('ops-ov-panel');
+        if (!el) return;
+        const seq = ++overviewSeq;
+        // ?fixture=ops-overview — dev only.
+        const FIXTURE = new URLSearchParams(location.search).get('fixture');
+        const r = FIXTURE === 'ops-overview' ? await fixtureGet(FIXTURE) : await opsGet('/api/ops/overview');
+        if (seq !== overviewSeq || !window.VBAuth || !window.VBAuth.isAdmin) return;
+        if (!r.ok) {
+            // Keep a view already on screen (it goes stale on its own); with
+            // nothing to show, say why.
+            if (!overviewLast) unavailable(el, r.kind, r.message);
+            return;
+        }
+        if (!window.OpsOverviewFormat) {
+            return unavailable(el, 'unreachable', 'The Overview renderer did not load.');
+        }
+        overviewLast = { body: r.body, receivedAt: Date.now() };
+        renderOverview();
+    }
+
+    function leaveOverview() {
+        overviewSeq++;
+        if (overviewRefresh) clearInterval(overviewRefresh);
+        if (overviewStaleTick) clearInterval(overviewStaleTick);
+        overviewRefresh = overviewStaleTick = null;
+    }
+
+    function loadOverview() {
+        if (!window.VBAuth || !window.VBAuth.isAdmin) return;
+        leaveOverview();
+        const el = document.getElementById('ops-ov-panel');
+        if (el && !overviewLast) el.innerHTML = LOADING;
+        fetchOverview();
+        overviewRefresh = setInterval(fetchOverview, OVERVIEW_REFRESH_MS);
+        overviewStaleTick = setInterval(renderOverview, OVERVIEW_STALE_TICK_MS);
+    }
+
+    // "Open tab" on a stage tile clicks that stage's own tab button.
+    function onOverviewClick(e) {
+        const btn = e.target && e.target.closest ? e.target.closest('.ov-open[data-target]') : null;
+        if (!btn) return;
+        const tab = document.querySelector(`.tab[data-tab="${btn.getAttribute('data-target')}"]`);
+        if (tab) tab.click();
+    }
+
     // ── tab visibility, driven by the auth state ─────────────────────────────
 
     function setOpsVisible(visible) {
@@ -1166,6 +1248,8 @@
 
         if (!visible) {
             strategiesSeq++; // an in-flight Strategies read must not land after sign-out
+            leaveOverview(); // likewise an Overview read, and its timers stop
+            overviewLast = null;
             // If an ops tab was open when access went away, fall back to the
             // first public tab rather than leaving a stale panel on screen.
             const active = document.querySelector('.tab.active');
@@ -1178,7 +1262,7 @@
                  'ops-shadow-diffs', 'ops-shadow-alerts', 'ops-hb-table',
                  'ops-sleeve-select-wrap', 'ops-diffs-comparison-wrap',
                  'ops-dq-readiness', 'ops-dq-summary', 'r4-item', 'r4-status',
-                 'ops-sd-panel', 'ops-sd-summary'].forEach(pid => {
+                 'ops-sd-panel', 'ops-sd-summary', 'ops-ov-panel', 'ops-ov-summary'].forEach(pid => {
                     const el = document.getElementById(pid);
                     if (el) el.innerHTML = '';
                 });
@@ -1208,6 +1292,8 @@
         loadShadow,
         loadHeartbeats,
         loadStrategies,
+        loadOverview,
+        leaveOverview,
         setBookId(id) {
             bookId = id;
             bookGeneration++;

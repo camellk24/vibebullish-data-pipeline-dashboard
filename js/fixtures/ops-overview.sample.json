@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-11-03T22:05:00Z",
+  "cache_ttl_seconds": 60,
+  "status": "FAIL",
+  "counts": { "stages": 9, "measured": 6, "unmeasured_lines": 11 },
+  "stages": [
+    { "stage": "data_substrate", "status": "FAIL", "tab": "data-collector", "lines": [
+      { "id": "substrate_freshness", "status": "FAIL", "source_status": "FAIL", "as_of": "2026-11-03T22:04:58Z", "threshold_owner": "signed_spec", "authority": "2026-10-11-substrate-freshness-per-family-spec.md; registry A42.2", "reason": null, "routes_to": "system_health", "routing_active": false },
+      { "id": "available_at_lag", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "undefined", "authority": "", "reason": "no source on main", "routes_to": null, "routing_active": false },
+      { "id": "extractor_liveness", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "undefined", "authority": "", "reason": "no source on main", "routes_to": null, "routing_active": false }
+    ]},
+    { "stage": "data_quality", "status": "WARN", "tab": "ops-heartbeats", "lines": [
+      { "id": "dq_readiness", "status": "WARN", "source_status": "ready", "as_of": "2026-11-03", "threshold_owner": "signed_spec", "authority": "ops-overview spec Q3 (Log v4.85)", "reason": "quarantining_episode", "routes_to": null, "routing_active": false },
+      { "id": "dq_history", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "signed_spec", "authority": "2026-10-11-data-quality-tab-spec.md; registry A42.3", "reason": "no source on main", "routes_to": "system_health", "routing_active": false }
+    ]},
+    { "stage": "model", "status": "UNKNOWN", "tab": "ops-heartbeats", "lines": [
+      { "id": "inference_health", "status": "UNKNOWN", "source_status": null, "as_of": null, "threshold_owner": "registry", "authority": "registry A42.4", "reason": "timeout", "routes_to": "system_health", "routing_active": false },
+      { "id": "rank_ic", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "registry", "authority": "registry A40", "reason": "no source on main", "routes_to": null, "routing_active": false },
+      { "id": "calibration_bias", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "registry", "authority": "registry A42.6", "reason": "no source on main", "routes_to": null, "routing_active": false }
+    ]},
+    { "stage": "strategies", "status": "PASS", "tab": "ops-strategies", "lines": [
+      { "id": "correlation_cap", "status": "DIAGNOSTIC", "source_status": "DIAGNOSTIC", "as_of": "2026-11-03T21:59:12Z", "threshold_owner": "registry", "authority": "StrategyCorrelationCap (unset)", "reason": null, "routes_to": "system_health", "routing_active": false },
+      { "id": "books_paused", "status": "PASS", "source_status": null, "as_of": null, "threshold_owner": "signed_spec", "authority": "ops-overview spec Q6 (Log v4.85)", "reason": null, "routes_to": null, "routing_active": false }
+    ]},
+    { "stage": "execution", "status": "NOT_BUILT", "tab": "", "lines": [
+      { "id": "halt_feed", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "signed_spec", "authority": "2026-10-12-fail-closed-halt-guard-design.md V5", "reason": "no source on main", "routes_to": null, "routing_active": false },
+      { "id": "execution_audit", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "undefined", "authority": "", "reason": "no source on main", "routes_to": null, "routing_active": false }
+    ]},
+    { "stage": "agents", "status": "WARN", "tab": "agent-ops", "lines": [
+      { "id": "agent_roles", "status": "WARN", "source_status": null, "as_of": "2026-11-03T22:04:30Z", "threshold_owner": "signed_spec", "authority": "ops-overview spec Q5 (Log v4.85)", "reason": "insufficient_sample", "routes_to": null, "routing_active": false },
+      { "id": "llm_budget", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "undefined", "authority": "", "reason": "no source on main", "routes_to": null, "routing_active": false }
+    ]},
+    { "stage": "registry_research", "status": "NOT_BUILT", "tab": "", "lines": [
+      { "id": "read_dates", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "undefined", "authority": "", "reason": "no source on main", "routes_to": null, "routing_active": false }
+    ]},
+    { "stage": "cost_usage", "status": "NOT_BUILT", "tab": "llm-usage", "lines": [
+      { "id": "daily_spend", "status": "NOT_BUILT", "source_status": null, "as_of": null, "threshold_owner": "undefined", "authority": "", "reason": "no source on main", "routes_to": null, "routing_active": false }
+    ]},
+    { "stage": "routines", "status": "PASS", "tab": "ops-heartbeats", "lines": [
+      { "id": "heartbeats", "status": "PASS", "source_status": null, "as_of": null, "threshold_owner": "registry", "authority": "registry A42.5; ops-overview spec Q4", "reason": null, "routes_to": null, "routing_active": false }
+    ]}
+  ],
+  "unmeasured": [
+    { "stage": "data_substrate", "line": "available_at_lag", "status": "NOT_BUILT" },
+    { "stage": "data_substrate", "line": "extractor_liveness", "status": "NOT_BUILT" },
+    { "stage": "data_quality", "line": "dq_history", "status": "NOT_BUILT" },
+    { "stage": "model", "line": "rank_ic", "status": "NOT_BUILT" },
+    { "stage": "model", "line": "calibration_bias", "status": "NOT_BUILT" },
+    { "stage": "strategies", "line": "correlation_cap", "status": "DIAGNOSTIC" },
+    { "stage": "execution", "line": "halt_feed", "status": "NOT_BUILT" },
+    { "stage": "execution", "line": "execution_audit", "status": "NOT_BUILT" },
+    { "stage": "agents", "line": "llm_budget", "status": "NOT_BUILT" },
+    { "stage": "registry_research", "line": "read_dates", "status": "NOT_BUILT" },
+    { "stage": "cost_usage", "line": "daily_spend", "status": "NOT_BUILT" }
+  ],
+  "errors": ["timeout"]
+}

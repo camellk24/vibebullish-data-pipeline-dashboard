@@ -44,7 +44,7 @@ test('native fetch inventory: exactly auth.js (transport + /api/config), agent-o
     }
 });
 
-test('index.html: reads.js loads before every tab script, no personal-mode remains, six gates, twelve tab buttons', () => {
+test('index.html: reads.js loads before every tab script, no personal-mode remains, six gates, thirteen tab buttons', () => {
     const html = read('index.html');
     assert.equal(SCRIPTS[0], 'js/reads.js');
     assert.ok(SCRIPTS.indexOf('js/dashboard.js') < SCRIPTS.indexOf('js/quant.js'));
@@ -52,8 +52,8 @@ test('index.html: reads.js loads before every tab script, no personal-mode remai
     assert.ok(!/personal-mode/.test(html));
     const gates = [...html.matchAll(/<div id="tab-([a-z0-9-]+)"[^>]*>\s*<div class="vb-gate" role="status" hidden><\/div>/g)].map(m => m[1]);
     assert.deepEqual(gates, ['llm-usage', 'system-health', 'action-engine', 'quant-quality', 'data-collector', 'catalyst-accuracy']);
-    for (const kept of ['agent-ops', 'harness', 'ops-shadow', 'ops-heartbeats', 'ops-r4', 'ops-strategies']) assert.ok(!new RegExp(`id="tab-${kept}"[^>]*>\\s*<div class="vb-gate"`).test(html), kept);
-    assert.equal([...html.matchAll(/<button class="tab[^"]*" data-tab=/g)].length, 12);
+    for (const kept of ['agent-ops', 'ops-overview', 'harness', 'ops-shadow', 'ops-heartbeats', 'ops-r4', 'ops-strategies']) assert.ok(!new RegExp(`id="tab-${kept}"[^>]*>\\s*<div class="vb-gate"`).test(html), kept);
+    assert.equal([...html.matchAll(/<button class="tab[^"]*" data-tab=/g)].length, 13);
     const css = read('styles/dashboard.css');
     assert.match(css, /\.vb-gated > :not\(\.vb-gate\) \{ display: none !important; \}/);
     assert.ok(!/personal-mode/.test(css));
@@ -411,6 +411,49 @@ test('Agents and ops tabs keep their own behaviour; sign-out while an ops tab is
     assert.equal(sb.tabButton('ops-shadow').style.display, 'none');
     assert.equal(gated(sb, 'llm-usage'), true);
     assert.deepEqual(sb.readCalls(), []);
+});
+
+test('Overview tab: opened through the real router it reads /api/ops/overview and runs its timers; leaving stops them; a stale view greys; sign-out drops a late reply', async () => {
+    const sb = await page();
+    const OV = JSON.parse(fs.readFileSync(path.join(JS, 'fixtures', 'ops-overview.sample.json'), 'utf8'));
+    OV.generated_at = new Date().toISOString();
+    sb.state.responses['/api/ops/overview'] = OV;
+    const ovTimers = () => sb.timers.intervals.filter(t => t.fn.name === 'fetchOverview' || t.fn.name === 'renderOverview');
+    await sb.signIn();
+    assert.equal(sb.tabButton('ops-overview').style.display, '', 'Overview button revealed for an admin');
+    assert.equal(ovTimers().length, 0, 'no Overview timer before the tab opens');
+    sb.resetCalls();
+    sb.clickTab('ops-overview'); await sb.flush();
+    assert.equal(sb.activeTab(), 'ops-overview');
+    assert.ok(sb.fetchCalls.some(c => c.url === '/api/ops/overview'), 'Overview dispatched through OpsConsole');
+    assert.deepEqual(sb.readCalls(), []);
+    const panel = sb.byId.get('ops-ov-panel');
+    assert.match(panel.innerHTML, /6 of 9 measured/);
+    assert.deepEqual(ovTimers().map(t => t.ms).sort(), [30000, 60000], 'refresh + staleness timers while open');
+
+    // A fresh view turns stale after 5 minutes with no further fetch.
+    const RealDate = sb.ctx.Date;
+    const shifted = Date.now() + 6 * 60 * 1000;
+    sb.ctx.Date = class extends RealDate { static now() { return shifted; } };
+    sb.resetCalls();
+    ovTimers().find(t => t.fn.name === 'renderOverview').fn();
+    assert.match(panel.innerHTML, /stale/);
+    assert.equal(sb.fetchCalls.length, 0, 'staleness came from the tick, not a fetch');
+    sb.ctx.Date = RealDate;
+
+    // Leaving the tab stops both timers.
+    sb.clickTab('ops-strategies'); await sb.flush();
+    assert.equal(ovTimers().length, 0, 'Overview timers cleared on leave');
+
+    // Sign-out while an Overview read is outstanding: the late reply is dropped.
+    sb.state.deferOps = /^\/api\/ops\/overview/;
+    sb.clickTab('ops-overview'); await sb.flush();
+    assert.ok(sb.pending.length >= 1, 'Overview read held');
+    await sb.signOut();
+    assert.equal(panel.innerHTML, '', 'panel cleared on sign-out');
+    assert.equal(ovTimers().length, 0, 'no Overview timer survives sign-out');
+    sb.releasePending(); await sb.flush();
+    assert.equal(panel.innerHTML, '', 'late reply discarded after sign-out');
 });
 
 // ── renderer hardening ──────────────────────────────────────────────────────

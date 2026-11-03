@@ -212,6 +212,7 @@ function createSandbox(opts) {
             if (state.responses[key]) return ok(200, state.responses[key]);
             return ok(200, { generated_at: new Date().toISOString(), summary: {}, roles: [] });
         }
+        if (state.responses[p]) return ok(200, state.responses[p]);
         if (p.startsWith('/api/ops/')) return ok(200, { rows: [], routines: [], items: [] });
         return ok(404, { error: 'not_found' });
     }
@@ -237,6 +238,10 @@ function createSandbox(opts) {
             const resp = respondFor(call.url);
             // deferAgentOps: a RegExp over /api/agent-ops URLs whose replies are held in `pending`.
             if (state.deferAgentOps && /^\/api\/agent-ops/.test(call.url) && state.deferAgentOps.test(call.url)) {
+                return new Promise((resolve) => pending.push({ call, resolve: () => resolve(resp) }));
+            }
+            // deferOps: a RegExp over other /api/ops/* URLs whose replies are held in `pending`.
+            if (state.deferOps && state.deferOps.test(call.url)) {
                 return new Promise((resolve) => pending.push({ call, resolve: () => resolve(resp) }));
             }
             if (state.deferReads && /\/api\/ops\/reads/.test(call.url)) {
