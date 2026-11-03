@@ -59,9 +59,13 @@
             body = null;
         }
         if (res.status === 200 && body && !body.error) return { ok: true, body };
+        // The proxy passes a POST's 423 through as kind 'locked' but wraps a
+        // GET's 423 (closed round on view=next) as upstream_error; both mean
+        // the same thing here.
+        const locked = body && body.upstream_status === 423;
         return {
             ok: false,
-            kind: (body && body.error) || (res.status === 404 ? 'not_found' : 'unreachable'),
+            kind: locked ? 'locked' : (body && body.error) || (res.status === 404 ? 'not_found' : 'unreachable'),
             message: (body && body.message) || `HTTP ${res.status}`,
         };
     }
@@ -159,12 +163,11 @@
         if (!n.ok) {
             current = null;
             if (box) box.innerHTML = '';
-            setStatus(
-                n.kind === 'locked' || /not open/.test(n.message)
-                    ? 'This round is closed. Nothing is shown until it is opened on the backend.'
-                    : `${n.kind}: ${n.message}`,
-                true
-            );
+            if (n.kind === 'locked' || /not open/.test(n.message)) {
+                setStatus('This round is closed. Nothing is shown until it is opened on the backend.');
+            } else {
+                setStatus(`${n.kind}: ${n.message}`, true);
+            }
             return;
         }
         if (n.body.done) {
