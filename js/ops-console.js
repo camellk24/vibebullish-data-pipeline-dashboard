@@ -17,7 +17,7 @@
 (function () {
     'use strict';
 
-    const OPS_TABS = ['ops-shadow', 'ops-heartbeats', 'ops-r4', 'ops-strategies'];
+    const OPS_TABS = ['ops-shadow', 'ops-heartbeats', 'ops-strategies'];
     const LOADING = '<div class="ops-loading">Loading…</div>';
 
     let bookId = null; // null = let the backend default to the shadow book
@@ -1177,7 +1177,7 @@
                 ['ops-shadow-status', 'ops-shadow-evidence', 'ops-shadow-attribution',
                  'ops-shadow-diffs', 'ops-shadow-alerts', 'ops-hb-table',
                  'ops-sleeve-select-wrap', 'ops-diffs-comparison-wrap',
-                 'ops-dq-readiness', 'ops-dq-summary', 'r4-item', 'r4-status',
+                 'ops-dq-readiness', 'ops-dq-summary',
                  'ops-sd-panel', 'ops-sd-summary'].forEach(pid => {
                     const el = document.getElementById(pid);
                     if (el) el.innerHTML = '';
