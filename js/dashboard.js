@@ -220,6 +220,12 @@ async function loadLLMUsage(ctx) {
         renderLLMUnavailable(failed.kind, failed.message);
         return;
     }
+    // A summary that could not read every call source is a floor; never show it as complete.
+    const missing = LLMUsageCompleteness.missingUsageSources(today.body, week.body);
+    if (missing.length) {
+        renderLLMUnavailable('upstream_error', `Incomplete usage data; unavailable sources: ${missing.join(', ')}`);
+        return;
+    }
     try {
         renderHero(today.body, date);
         renderModelBreakdown(today.body);
