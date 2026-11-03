@@ -32,12 +32,17 @@ backend host.
 index.html          → Single page with all sections
 js/reads.js         → VBReads: the one client read path for the six signed-in tabs (+ esc())
 js/dashboard.js     → VBTabs controller, LLM Usage / System Health / Action Engine loaders + renderers
-js/agent-ops.js     → Agents tab (agent-role health + accountability)
+js/agent-ops.js     → Agents tab (agent-role health + accountability) + scorecard loader
+js/agent-scorecards-format.js → Agents tab scorecard cards (risk-flagger coverage, curated-picks,
+                      tripwire push copy): pure renderer, tests in js/agent-scorecards-format.test.js
 js/harness.js       → Harness tab (admin only): agent-harness board; fixture js/harness-fixture.js
 js/strategy-diagnostics-format.js → Strategies tab (admin only) book diagnostics card: pure renderer
                       (correlation, turnover, capacity); loader in js/ops-console.js
 api/ops/reads.js    → admin-verified proxy for the six tabs' 14 reads (bearer forwarding)
-api/agent-ops.js    → Vercel serverless proxy (holds INTERNAL_API_TOKEN)
+api/agent-ops.js    → Agents-tab proxy (admin-verified, INTERNAL_API_TOKEN server-side); ?view= allow-list:
+                      roles (default) | risk-flagger | curated-picks | tripwire → the fixed backend
+                      /api/internal/{agent-ops,risk-flagger-stats,curated-picks-scorecard,tripwire-scorecard};
+                      one function for all four (functions cap), no caller params forwarded
 api/ops/strategy-diagnostics.js → admin-verified proxy for GET /api/internal/ops/strategy-diagnostics
                       (machine class, internal token; no caller params forwarded)
 api/ops/harness.js  → Harness tab data: admin-verified read of private Vercel Blob harness/state.json

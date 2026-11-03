@@ -206,7 +206,12 @@ function createSandbox(opts) {
             if (state.fail[view]) return ok(state.fail[view].status, state.fail[view].body);
             return ok(200, state.responses[view] || DEFAULT_RESPONSES[view] || { ok: true, view });
         }
-        if (p === '/api/agent-ops') return ok(200, { generated_at: new Date().toISOString(), summary: {}, roles: [] });
+        if (p === '/api/agent-ops') {
+            const key = 'agent-ops:' + (u.searchParams.get('view') || 'roles');
+            if (state.fail[key]) return ok(state.fail[key].status, state.fail[key].body);
+            if (state.responses[key]) return ok(200, state.responses[key]);
+            return ok(200, { generated_at: new Date().toISOString(), summary: {}, roles: [] });
+        }
         if (p.startsWith('/api/ops/')) return ok(200, { rows: [], routines: [], items: [] });
         return ok(404, { error: 'not_found' });
     }
