@@ -422,6 +422,7 @@ body {
 .model-dot.gpt      { background: #10B981; }
 .model-dot.claude    { background: #D97706; }
 .model-dot.deepseek  { background: #3B82F6; }
+.model-dot.jev       { background: #8B5CF6; }
 .model-dot.unknown   { background: var(--text-quaternary); }
 
 /* Cost colors */
@@ -488,6 +489,10 @@ body {
 
 .model-bar-fill.deepseek {
     background: linear-gradient(90deg, #2563EB, #3B82F6);
+}
+
+.model-bar-fill.jev {
+    background: linear-gradient(90deg, #7C3AED, #8B5CF6);
 }
 
 .model-pct {
