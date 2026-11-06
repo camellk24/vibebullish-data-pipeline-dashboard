@@ -14,8 +14,13 @@
 //
 // Only an explicit allow-list of query parameters is forwarded, each validated
 // here; everything else — including the client's cache-buster `t` — is dropped.
+//
+// One view has no upstream: `changelog` answers from api/_changelog.md after the
+// same admin check. It lives here rather than in its own function because the
+// Hobby plan caps a deployment at 12 functions.
 
-const { verifiedProxy, send } = require('../_verified_proxy.js');
+const { verifiedProxy, verifyAdmin, send } = require('../_verified_proxy.js');
+const { readChangelog } = require('../_changelog.js');
 
 // Object.create(null): a plain literal would make `__proto__`, `constructor`
 // and `toString` resolve to inherited values. The hasOwnProperty guard below
@@ -76,6 +81,19 @@ function queryOf(req) {
     return out;
 }
 
+// The admin check comes first, so a non-admin never causes the file to be read.
+async function serveChangelog(req, res) {
+    const verdict = await verifyAdmin(req);
+    if (!verdict.ok) return send(res, verdict.status, verdict.body);
+    let releases;
+    try {
+        releases = readChangelog();
+    } catch (_e) {
+        return send(res, 500, { error: 'changelog_unavailable', message: 'The changelog file could not be read.' });
+    }
+    return send(res, 200, { releases });
+}
+
 module.exports = async function handler(req, res) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
         return send(res, 405, { error: 'method_not_allowed', message: 'GET only.' });
@@ -83,11 +101,12 @@ module.exports = async function handler(req, res) {
 
     const q = queryOf(req);
     const view = String(q.view == null ? '' : q.view).trim();
-    const spec = Object.prototype.hasOwnProperty.call(VIEWS, view) ? VIEWS[view] : null;
+    if (view === 'changelog') return serveChangelog(req, res);
+    const spec =Object.prototype.hasOwnProperty.call(VIEWS, view) ? VIEWS[view] : null;
     if (!spec) {
         return send(res, 400, {
             error: 'bad_request',
-            message: `Unknown view "${view}". Expected one of: ${Object.keys(VIEWS).join(', ')}.`,
+            message: `Unknown view "${view}". Expected one of: ${Object.keys(VIEWS).join(', ')}, changelog.`,
         });
     }
 

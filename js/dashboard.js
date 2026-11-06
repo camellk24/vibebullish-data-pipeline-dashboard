@@ -640,7 +640,7 @@ function initTabs() {
     // router can hide them like any other. The six signed-in tabs load through
     // VBTabs.activate; the Agents tab and the ops tabs keep their own
     // listeners and the dispatches below, exactly as before.
-    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-strategies'];
+    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-changelog', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-strategies'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
