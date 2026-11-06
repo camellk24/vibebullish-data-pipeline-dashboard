@@ -17,7 +17,7 @@ let selectedDate = null; // null = today (live), string = 'YYYY-MM-DD'
 // here (LLM Usage, System Health, Action Engine, Quant Quality, Data
 // Collector, Catalyst Accuracy). The Agents tab and the admin ops tabs keep
 // their own listeners, timers and dispatches (js/agent-ops.js,
-// js/ops-console.js, js/r4-audit.js) — this controller never touches them.
+// js/ops-console.js) — this controller never touches them.
 //
 // Every load runs under a context {tab, seq, gen}; a result is rendered only
 // while ctx.live(): same request sequence (no newer load/reload/departure),
@@ -163,6 +163,11 @@ const MODELS = {
     'deepseek-flash':     { input: 0.00030,  output: 0.00120, label: 'DeepSeek V4.1 Flash (peak rate)', fam: 'deepseek' },
     'deepseek-v4-flash':  { input: 0.00014,  output: 0.00028, label: 'DeepSeek V4 Flash',   fam: 'deepseek' },
     'deepseek-v4-pro':    { input: 0.000435, output: 0.00087, label: 'DeepSeek V4 Pro',     fam: 'deepseek' },
+    // jev-1.13.0 = TypeSafe Jev, the registry R6 catalyst shadow (backend reads its llm_calls
+    // attempts into the usage summary). $0.042 per M input tokens, output free — the list price
+    // the shadow's own $5/month budget uses. Mirrors backend llm_cost_model.go. noWhatIf: a
+    // single-purpose extractor, not a drop-in for other roles, so it stays out of the what-if table.
+    'jev-1.13.0':         { input: 0.000042, output: 0,       label: 'Jev 1.13.0 (TypeSafe)', fam: 'jev', noWhatIf: true },
     'deepseek-chat':      { input: 0.00014,  output: 0.00028, label: 'DeepSeek Chat (legacy alias)',     fam: 'deepseek', alias: true },
     'deepseek-reasoner':  { input: 0.00014,  output: 0.00028, label: 'DeepSeek Reasoner (legacy alias)', fam: 'deepseek', alias: true },
 };
@@ -185,6 +190,7 @@ function modelFamily(name) {
     if (name.startsWith('gpt'))    return 'gpt';
     if (name.startsWith('claude')) return 'claude';
     if (name.includes('deepseek')) return 'deepseek';
+    if (name.startsWith('jev'))    return 'jev';
     return 'unknown';
 }
 
@@ -212,6 +218,12 @@ async function loadLLMUsage(ctx) {
     const failed = [today, week, scanner].find(r => !r.ok);
     if (failed) {
         renderLLMUnavailable(failed.kind, failed.message);
+        return;
+    }
+    // A summary that could not read every call source is a floor; never show it as complete.
+    const missing = LLMUsageCompleteness.missingUsageSources(today.body, week.body);
+    if (missing.length) {
+        renderLLMUnavailable('upstream_error', `Incomplete usage data; unavailable sources: ${missing.join(', ')}`);
         return;
     }
     try {
@@ -471,9 +483,10 @@ function renderCost(data) {
         </tr></tfoot>
     </table>`;
 
-    // What-if table (skip legacy alias entries — same pricing as their canonical model)
+    // What-if table (skip legacy alias entries — same pricing as their canonical model — and
+    // single-purpose models that cannot stand in for other roles)
     const total = VBReads.num(data.total_calls) || 0;
-    const whatIfRows = Object.entries(MODELS).filter(([, m]) => !m.alias).map(([key, m]) => {
+    const whatIfRows = Object.entries(MODELS).filter(([, m]) => !m.alias && !m.noWhatIf).map(([key, m]) => {
         const cost = costFor(total, key);
         const diff = cost - currentTotal;
         const cls = diff > 0 ? 'cost-up' : 'cost-down';
@@ -627,7 +640,7 @@ function initTabs() {
     // router can hide them like any other. The six signed-in tabs load through
     // VBTabs.activate; the Agents tab and the ops tabs keep their own
     // listeners and the dispatches below, exactly as before.
-    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-r4', 'tab-ops-strategies', 'tab-ops-overview'];
+    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-strategies', 'tab-ops-overview'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
@@ -640,7 +653,6 @@ function initTabs() {
             VBTabs.activate(tabId);
             if (tabId === 'ops-shadow' && window.OpsConsole) window.OpsConsole.loadShadow();
             if (tabId === 'ops-heartbeats' && window.OpsConsole) window.OpsConsole.loadHeartbeats();
-            if (tabId === 'ops-r4' && window.R4Audit) window.R4Audit.load();
             if (tabId === 'ops-strategies' && window.OpsConsole) window.OpsConsole.loadStrategies();
             if (window.OpsConsole) {
                 if (tabId === 'ops-overview') window.OpsConsole.loadOverview();

@@ -139,7 +139,7 @@ these on Preview is the public `FIREBASE_WEB_API_KEY`, and without `FIREBASE_AUT
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `INTERNAL_API_TOKEN` | yes | — | Backend internal-route secret. Server-side only; never referenced from `js/`. |
-| `R4_OWNER_UID` | for the Label audit tab | — | Firebase UID of the ONE registered human grader (registry R4). The `/api/ops/r4` route answers 403 to every other admin and 503 while unset. |
+| `R4_OWNER_UID` | for the `/api/ops/r4` route (Label audit tab removed 2026-11-03; route kept) | — | Firebase UID of the ONE registered human grader (registry R4). The `/api/ops/r4` route answers 403 to every other admin and 503 while unset. |
 | `FIREBASE_WEB_API_KEY` | yes | — | Public Firebase web API key, served by `/api/config`. |
 | `FIREBASE_AUTH_DOMAIN` | yes | — | e.g. `vibebullish.firebaseapp.com`. |
 | `FIREBASE_APP_ID` | yes | — | Public Firebase web app id. |
