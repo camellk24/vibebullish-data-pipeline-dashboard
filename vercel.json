@@ -3,7 +3,12 @@
   "outputDirectory": ".",
   "redirects": [
     {
-      "source": "/(.*)_changelog\\.md",
+      "source": "/(.*)_changelog\\.md(/.*)?",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/(.*)%(.*)",
       "destination": "/",
       "permanent": false
     }

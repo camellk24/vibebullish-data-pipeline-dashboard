@@ -69,7 +69,9 @@ vercel.json         → Vercel deployment config (zero-config + rewrites)
 section at the top once a change has shipped, in the format the file's header describes. The view
 answers it after the admin check. `outputDirectory: "."` would also serve the file statically, under
 `/api/`, `/dashboard/api/` and `/data-pipeline-dashboard/api/`, so `vercel.json` redirects those
-requests to `/`; redirects run before the filesystem and do not affect the function's own read. The
+requests to `/`, along with any path containing `%` (routing matches the raw path but the filesystem
+decodes it). Redirects run before the filesystem and do not affect the function's own read. This
+hides a file that holds no secrets; it is not an access control, and nothing secret belongs in it. The
 `changelog` view has no backend upstream, so it is not in the `VIEWS` table.
 
 ### Secrets
