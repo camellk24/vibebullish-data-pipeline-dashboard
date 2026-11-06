@@ -76,3 +76,10 @@ test('changelog view: admin → 200 from the file, only whoami goes upstream', a
         assert.strictEqual(calls.length, 1);
     });
 });
+
+test('vercel.json redirects direct requests for the source file, before the filesystem can serve it', () => {
+    const config = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'vercel.json'), 'utf8'));
+    assert.deepStrictEqual(config.redirects, [
+        { source: '/(.*)_changelog\\.md', destination: '/', permanent: false },
+    ]);
+});

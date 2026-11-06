@@ -1,4 +1,4 @@
-// js/reads.js — the ONE client path for the six recovered tabs' data reads.
+// js/reads.js — the ONE client path for the seven signed-in tabs' data reads.
 //
 // Every read goes to the same-origin, admin-verified proxy GET /api/ops/reads
 // (api/ops/reads.js) through VBAuth.fetch(…, { requireAuth: true }), which

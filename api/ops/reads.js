@@ -1,8 +1,8 @@
 // GET /api/ops/reads?view=<name>[&allow-listed params]
 //
-// The signed-in read path for the six recovered dashboard tabs (LLM Usage,
+// The signed-in read path for the seven signed-in dashboard tabs (LLM Usage,
 // System Health, Action Engine, Quant Quality, Data Collector, Catalyst
-// Accuracy). Each view maps to exactly one backend route; the browser never
+// Accuracy, Changelog). Each backend view maps to exactly one backend route; the browser never
 // names a path, a header, or a forwarding mode.
 //
 // Why bearer: these upstreams are HUMAN-class routes (admin sign-in) — today

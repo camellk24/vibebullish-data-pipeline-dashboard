@@ -40,7 +40,7 @@ backend host.
 
 ```
 index.html          → Single page with all sections
-js/reads.js         → VBReads: the one client read path for the six signed-in tabs (+ esc())
+js/reads.js         → VBReads: the one client read path for the seven signed-in tabs (+ esc())
 js/dashboard.js     → VBTabs controller, LLM Usage / System Health / Action Engine loaders + renderers
 js/agent-ops.js     → Agents tab (agent-role health + accountability) + scorecard loader
 js/agent-scorecards-format.js → Agents tab scorecard cards (risk-flagger coverage, curated-picks,
@@ -48,7 +48,7 @@ js/agent-scorecards-format.js → Agents tab scorecard cards (risk-flagger cover
 js/harness.js       → Harness tab (admin only): agent-harness board; fixture js/harness-fixture.js
 js/strategy-diagnostics-format.js → Strategies tab (admin only) book diagnostics card: pure renderer
                       (correlation, turnover, capacity); loader in js/ops-console.js
-api/ops/reads.js    → admin-verified proxy for the six tabs' 14 reads (bearer forwarding)
+api/ops/reads.js    → admin-verified proxy for the seven tabs' reads: 14 backend views + changelog (bearer forwarding)
 api/agent-ops.js    → Agents-tab proxy (admin-verified, INTERNAL_API_TOKEN server-side); ?view= allow-list:
                       roles (default) | risk-flagger | curated-picks | tripwire → the fixed backend
                       /api/internal/{agent-ops,risk-flagger-stats,curated-picks-scorecard,tripwire-scorecard};
@@ -66,8 +66,10 @@ vercel.json         → Vercel deployment config (zero-config + rewrites)
 
 `api/_changelog.md` is the Changelog tab's source (`js/changelog.js`, rendered from
 `GET /api/ops/reads?view=changelog`, parsed by `api/_changelog.js`). It is hand-written: add a
-section at the top once a change has shipped, in the format the file's header describes. It lives
-under `api/` because the view answers it after the admin check, not as a public static file; the
+section at the top once a change has shipped, in the format the file's header describes. The view
+answers it after the admin check. `outputDirectory: "."` would also serve the file statically, under
+`/api/`, `/dashboard/api/` and `/data-pipeline-dashboard/api/`, so `vercel.json` redirects those
+requests to `/`; redirects run before the filesystem and do not affect the function's own read. The
 `changelog` view has no backend upstream, so it is not in the `VIEWS` table.
 
 ### Secrets
@@ -83,7 +85,7 @@ admin-verified proxy `GET /api/ops/reads?view=<name>` (`api/ops/reads.js`, 14 al
 with validated params), reached from the browser via `VBReads.get()` (`js/reads.js`) →
 `VBAuth.fetch(…, {requireAuth:true})`. The proxy verifies the Firebase admin, then forwards the
 same bearer (`forwardAuth: 'bearer'`; these are human-class backend routes under backend PR #449),
-for all 14 views (`ws-status` forwarded `'both'` until backend #449 deployed). Signed out, the six tabs are
+for all 14 views (`ws-status` forwarded `'both'` until backend #449 deployed). Signed out, the seven tabs are
 gated (`.vb-gated`, no request); `VBTabs` in `js/dashboard.js` owns activation, the single poll
 timer and request invalidation (auth generation + per-tab sequence). Never add a bare `fetch()` to
 a tab script: `js/signed-in-reads.test.js` pins the exact native-fetch inventory, drives the whole

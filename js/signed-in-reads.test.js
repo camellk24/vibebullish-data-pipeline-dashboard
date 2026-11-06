@@ -1,5 +1,5 @@
 'use strict';
-// The six recovered tabs read ONLY through VBReads → VBAuth.fetch(requireAuth)
+// The seven signed-in tabs read ONLY through VBReads → VBAuth.fetch(requireAuth)
 // → /api/ops/reads, only while an admin is signed in, and never leave a stale
 // number behind. Pins: the native-fetch inventory, index.html/CSS wiring, and a
 // full lifecycle drive of the real scripts (incl. the real js/auth.js bound to
@@ -163,7 +163,7 @@ test('timers: at most one recovered-tab interval at a time, only while admin and
     assert.deepEqual(views(sb), ['data-collector-health']);
     sb.clickTab('action-engine'); await sb.flush(); // no poll for this tab
     assert.equal(recoveredIntervals().length, 0);
-    sb.clickTab('agent-ops'); await sb.flush();     // leaving the six: no recovered interval
+    sb.clickTab('agent-ops'); await sb.flush();     // leaving the seven: no recovered interval
     assert.equal(recoveredIntervals().length, 0);
 });
 
@@ -249,7 +249,7 @@ test('catalyst: Refresh and the window selector reload through the controller wi
     assert.deepEqual(sb.errors, []);
 });
 
-test('sign-out with Firebase deferred: a timer tick and a manual reload issue NO recovered read; timers cleared; six tabs gated and cleared; late responses dropped; re-sign-in loads again', async () => {
+test('sign-out with Firebase deferred: a timer tick and a manual reload issue NO recovered read; timers cleared; seven tabs gated and cleared; late responses dropped; re-sign-in loads again', async () => {
     const sb = await page();
     await sb.signIn('tok-A');
     sb.clickTab('quant-quality'); await sb.flush();
