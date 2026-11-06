@@ -1882,3 +1882,27 @@ body {
 .ov-empty {
     color: var(--text-secondary);
 }
+
+/* ── Changelog ─────────────────────────────────────────────────────────────── */
+
+.cl-release { margin-bottom: var(--s-md); }
+.cl-meta { display: flex; align-items: center; gap: var(--s-sm); margin-bottom: var(--s-xs); }
+.cl-date { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-tertiary); }
+.cl-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin-bottom: var(--s-md); }
+.cl-items { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.cl-item { display: flex; align-items: baseline; gap: 10px; }
+.cl-surface {
+    flex: 0 0 4.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--neutral);
+}
+.cl-text { min-width: 0; overflow-wrap: anywhere; font-size: 0.85rem; line-height: 1.55; color: var(--text-secondary); }
+.cl-text strong { font-weight: 600; color: var(--text-primary); }
+.cl-text code { font-family: var(--font-mono); font-size: 0.8em; }
+.cl-text a { color: var(--accent); text-decoration: none; }
+.cl-text a:hover { text-decoration: underline; }
+@media (max-width: 480px) {
+    .cl-item { flex-direction: column; gap: 2px; }
+    .cl-surface { flex-basis: auto; }
+}

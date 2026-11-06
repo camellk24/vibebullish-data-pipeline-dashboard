@@ -44,16 +44,16 @@ test('native fetch inventory: exactly auth.js (transport + /api/config), agent-o
     }
 });
 
-test('index.html: reads.js loads before every tab script, no personal-mode remains, six gates, twelve tab buttons', () => {
+test('index.html: reads.js loads before every tab script, no personal-mode remains, seven gates, thirteen tab buttons', () => {
     const html = read('index.html');
     assert.equal(SCRIPTS[0], 'js/reads.js');
     assert.ok(SCRIPTS.indexOf('js/dashboard.js') < SCRIPTS.indexOf('js/quant.js'));
     assert.ok(!SCRIPTS.includes('js/personal-mode.js'));
     assert.ok(!/personal-mode/.test(html));
     const gates = [...html.matchAll(/<div id="tab-([a-z0-9-]+)"[^>]*>\s*<div class="vb-gate" role="status" hidden><\/div>/g)].map(m => m[1]);
-    assert.deepEqual(gates, ['llm-usage', 'system-health', 'action-engine', 'quant-quality', 'data-collector', 'catalyst-accuracy']);
+    assert.deepEqual(gates, ['llm-usage', 'system-health', 'action-engine', 'quant-quality', 'data-collector', 'catalyst-accuracy', 'changelog']);
     for (const kept of ['agent-ops', 'ops-overview', 'harness', 'ops-shadow', 'ops-heartbeats', 'ops-strategies']) assert.ok(!new RegExp(`id="tab-${kept}"[^>]*>\\s*<div class="vb-gate"`).test(html), kept);
-    assert.equal([...html.matchAll(/<button class="tab[^"]*" data-tab=/g)].length, 12);
+    assert.equal([...html.matchAll(/<button class="tab[^"]*" data-tab=/g)].length, 13);
     const css = read('styles/dashboard.css');
     assert.match(css, /\.vb-gated > :not\(\.vb-gate\) \{ display: none !important; \}/);
     assert.ok(!/personal-mode/.test(css));
@@ -69,9 +69,10 @@ const VIEWS_BY_TAB = {
     'quant-quality': ['quant-health', 'quant-training-runs', 'quant-backtests', 'ae-stats', 'quant-live-predictions', 'quantile-report'],
     'data-collector': ['data-collector-health'],
     'catalyst-accuracy': ['catalyst-accuracy'],
+    'changelog': ['changelog'],
 };
 const ALL_VIEWS = [
-    'ae-stats', 'ae-trend', 'catalyst-accuracy', 'data-collector-health', 'llm-scanner', 'llm-today', 'llm-week',
+    'ae-stats', 'ae-trend', 'catalyst-accuracy', 'changelog', 'data-collector-health', 'llm-scanner', 'llm-today', 'llm-week',
     'quant-backtests', 'quant-health', 'quant-live-predictions', 'quant-training-runs', 'quantile-report', 'scanner-metrics', 'ws-status',
 ];
 
@@ -121,7 +122,7 @@ test('sign-in loads exactly the active tab through the proxy with the bearer; ea
     assert.deepEqual(sb.readCalls().find(c => c.view === 'llm-today').params, {});
 
     const seen = new Set(views(sb));
-    for (const tab of ['system-health', 'action-engine', 'quant-quality', 'data-collector', 'catalyst-accuracy']) {
+    for (const tab of ['changelog', 'system-health', 'action-engine', 'quant-quality', 'data-collector', 'catalyst-accuracy']) {
         sb.resetCalls();
         sb.clickTab(tab);
         await sb.flush();
@@ -642,4 +643,20 @@ test('success followed by failure: every independently rendered panel replaces i
         assert.equal(sb.byId.get(id).textContent, '', id + ' summary cleared on failure');
     }
     assert.deepEqual(sb.errors, []);
+});
+
+// ── Changelog tab ───────────────────────────────────────────────────────────
+
+test('changelog renderer: entry text cannot inject markup, and only the entry syntax becomes markup', async () => {
+    const sb = await page();
+    const html = sb.ctx.VBChangelog.itemHTML({ surface: 'web', text: '**<img src=x onerror=1>**: `<b>` "q" (#12)' });
+    assert.ok(!/<img|<b>/.test(html), html);
+    assert.match(html, /<strong>&lt;img src=x onerror=1&gt;<\/strong>/);
+    assert.match(html, /<code>&lt;b&gt;<\/code>/);
+    assert.match(html, /href="https:\/\/github\.com\/camellk24\/vibebullish-web\/pull\/12"/);
+    // An unknown surface gets no link and is escaped like everything else.
+    const odd = sb.ctx.VBChangelog.itemHTML({ surface: '<x>', text: '(#12)' });
+    assert.ok(!/href=|<x>/.test(odd), odd);
+    const titled = sb.ctx.VBChangelog.releasesHTML([{ date: '<d>', title: '<t>', items: 'nope' }]);
+    assert.ok(!/<d>|<t>/.test(titled), titled);
 });

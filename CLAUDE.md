@@ -5,10 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 Monitoring and ops console for VibeBullish (see `README.md`). Single-page static app, dark theme
-matching the iOS app, deployed on Vercel with no build step. It has twelve tabs (`index.html`):
+matching the iOS app, deployed on Vercel with no build step. It has thirteen tabs (`index.html`):
 
 - **Signed-in tabs** (personal research mode, admin-verified reads via `api/ops/reads.js`):
-  LLM Usage, System Health, Action Engine, Quant Quality, Data Collector, Catalyst Accuracy.
+  LLM Usage, System Health, Action Engine, Quant Quality, Data Collector, Catalyst Accuracy, Changelog.
 - **Agents** — agent-role health, accountability and the risk-flagger / curated-picks / tripwire
   scorecards (`api/agent-ops.js`, internal token server-side).
 - **Ops console** (admin only, hidden until the admin check passes): Overview, Harness,
@@ -61,6 +61,14 @@ scripts/harness-push.mjs → uploader the harness runs on the owner's Mac (BLOB_
 styles/dashboard.css → Dark theme (matches iOS app Theme.swift)
 vercel.json         → Vercel deployment config (zero-config + rewrites)
 ```
+
+### Changelog
+
+`api/_changelog.md` is the Changelog tab's source (`js/changelog.js`, rendered from
+`GET /api/ops/reads?view=changelog`, parsed by `api/_changelog.js`). It is hand-written: add a
+section at the top once a change has shipped, in the format the file's header describes. It lives
+under `api/` because the view answers it after the admin check, not as a public static file; the
+`changelog` view has no backend upstream, so it is not in the `VIEWS` table.
 
 ### Secrets
 

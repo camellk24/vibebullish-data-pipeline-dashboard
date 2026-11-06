@@ -37,6 +37,7 @@
             <button class="tab" data-tab="quant-quality">Quant Quality</button>
             <button class="tab" data-tab="data-collector">Data Collector</button>
             <button class="tab" data-tab="catalyst-accuracy">Catalyst Accuracy</button>
+            <button class="tab" data-tab="changelog">Changelog</button>
             <button class="tab" data-tab="agent-ops">Agents</button>
             <button class="tab" data-tab="ops-overview" data-ops-tab style="display:none">Overview</button>
             <button class="tab" data-tab="harness" data-ops-tab style="display:none">Harness</button>
@@ -389,6 +390,19 @@
             </section>
         </div><!-- /tab-catalyst-accuracy -->
 
+        <!-- Tab: Changelog — hand-written from api/_changelog.md, read through
+             /api/ops/reads?view=changelog (js/changelog.js). -->
+        <div id="tab-changelog" style="display:none">
+            <div class="vb-gate" role="status" hidden></div>
+            <div class="ao-head">
+                <p class="ao-intro">
+                    What shipped, in plain language. Web, dashboard, backend and pipeline entries are live
+                    in production. iOS entries are merged, and reach phones with the next TestFlight upload.
+                </p>
+            </div>
+            <div id="changelog-panel"></div>
+        </div><!-- /tab-changelog -->
+
 
         <!-- Tab: Agents -->
         <div id="tab-agent-ops" style="display:none">
@@ -634,6 +648,7 @@
     <script src="js/fundamentals-coverage-format.js"></script>
     <script src="js/data-collector.js"></script>
     <script src="js/catalyst-accuracy.js"></script>
+    <script src="js/changelog.js"></script>
     <script src="js/scanner-metrics.js"></script>
     <script src="js/agent-scorecards-format.js"></script>
     <script src="js/agent-ops.js"></script>

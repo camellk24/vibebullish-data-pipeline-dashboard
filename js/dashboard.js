@@ -634,13 +634,13 @@ function initDatePicker() {
 
 function initTabs() {
     const tabs = document.querySelectorAll('.tab');
-    // Navigation covers all twelve tabs. The ops-* tabs are admin-only: their
+    // Navigation covers all thirteen tabs. The ops-* tabs are admin-only: their
     // BUTTONS are hidden until /api/ops/whoami confirms an admin
     // (js/ops-console.js), but their sections must still be listed here so the
     // router can hide them like any other. The six signed-in tabs load through
     // VBTabs.activate; the Agents tab and the ops tabs keep their own
     // listeners and the dispatches below, exactly as before.
-    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-strategies', 'tab-ops-overview'];
+    const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-changelog', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-strategies', 'tab-ops-overview'];
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             tabs.forEach(b => b.classList.remove('active'));
