@@ -44,7 +44,7 @@ test('native fetch inventory: exactly auth.js (transport + /api/config), agent-o
     }
 });
 
-test('index.html: reads.js loads before every tab script, no personal-mode remains, six gates, thirteen tab buttons', () => {
+test('index.html: reads.js loads before every tab script, no personal-mode remains, six gates, twelve tab buttons', () => {
     const html = read('index.html');
     assert.equal(SCRIPTS[0], 'js/reads.js');
     assert.ok(SCRIPTS.indexOf('js/dashboard.js') < SCRIPTS.indexOf('js/quant.js'));

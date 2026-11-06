@@ -5,14 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 Monitoring and ops console for VibeBullish (see `README.md`). Single-page static app, dark theme
-matching the iOS app, deployed on Vercel with no build step. It has eleven tabs (`index.html`):
+matching the iOS app, deployed on Vercel with no build step. It has twelve tabs (`index.html`):
 
 - **Signed-in tabs** (personal research mode, admin-verified reads via `api/ops/reads.js`):
   LLM Usage, System Health, Action Engine, Quant Quality, Data Collector, Catalyst Accuracy.
 - **Agents** — agent-role health, accountability and the risk-flagger / curated-picks / tripwire
   scorecards (`api/agent-ops.js`, internal token server-side).
-- **Ops console** (admin only, hidden until the admin check passes): Harness, Shadow book,
-  Heartbeats, Strategies.
+- **Ops console** (admin only, hidden until the admin check passes): Overview, Harness,
+  Shadow book, Heartbeats, Strategies.
 
 The LLM Usage tab is the original dashboard; its sections are listed at the end of this file.
 
