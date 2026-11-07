@@ -1847,6 +1847,42 @@ body {
 .sd-ci { color: var(--text-quaternary); font-size: 0.76rem; }
 .sd-grey td { opacity: 0.55; }
 
+/* ── Ops Overview tab (js/ops-overview-format.js) ─────────────────────────── */
+.ov-overall { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+.ov-overall .ops-chip { font-size: 0.8rem; padding: 3px 12px; }
+.ov-measured { font-size: 0.85rem; color: var(--text-secondary); }
+.ov-generated { font-size: 0.75rem; color: var(--text-tertiary); font-family: var(--font-mono); }
+.ov-stale { font-size: 0.8rem; color: var(--warning); margin: 0 0 0.6rem; }
+.ov-paging { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0 0 0.7rem; font-size: 0.78rem; }
+.ov-paging-h { color: var(--text-tertiary); }
+.ov-paging-item { font-family: var(--font-mono); color: var(--negative); border: 1px solid rgba(255, 181, 181, 0.25); border-radius: 6px; padding: 1px 6px; }
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 0.6rem; }
+.ov-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.7rem; min-width: 0; }
+.ov-tile-head { display: flex; align-items: center; gap: 0.5rem; }
+.ov-stage { font-weight: 600; font-size: 0.85rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-open { font-size: 0.7rem; background: transparent; border: 1px solid var(--border); color: var(--text-secondary); border-radius: 6px; padding: 1px 6px; cursor: pointer; }
+.ov-lines { list-style: none; margin: 0.45rem 0 0; padding: 0; }
+.ov-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; font-size: 0.75rem; padding: 2px 0; }
+.ov-line-id { font-family: var(--font-mono); color: var(--text-secondary); overflow-wrap: anywhere; }
+.ov-reason { color: var(--text-tertiary); overflow-wrap: anywhere; }
+.ov-not-paged { color: var(--negative); font-size: 0.7rem; }
+.ov-paged { color: var(--text-secondary); font-size: 0.7rem; }
+.ov-asof { margin-left: auto; color: var(--text-tertiary); font-family: var(--font-mono); font-size: 0.7rem; }
+.ov-empty { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.4rem; }
+.ov-unmeasured { margin-top: 0.7rem; font-size: 0.78rem; color: var(--text-secondary); }
+.ov-unmeasured ul { margin: 0.3rem 0 0; padding-left: 1rem; }
+.ov-unmeasured li { padding: 1px 0; }
+/* Readable grey: small status and freshness text at 4.5:1 or better. */
+#tab-ops-overview .ops-chip-unknown,
+#tab-ops-overview .ops-unknown,
+.ov-generated,
+.ov-paging-h,
+.ov-reason,
+.ov-asof,
+.ov-empty {
+    color: var(--text-secondary);
+}
+
 /* ── Changelog ─────────────────────────────────────────────────────────────── */
 
 .cl-release { margin-bottom: var(--s-md); }
