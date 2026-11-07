@@ -38,21 +38,74 @@ test('renders every status with the right class; nothing but PASS is green', () 
 
 test('shows the unmeasured count beside the overall chip', () => {
     const out = render(FIXTURE, esc, fresh);
-    assert.match(out.html, /6 of 9 measured · 11 unmeasured/);
-    assert.match(out.html, /<details class="ov-unmeasured"><summary>Unmeasured \(11\)<\/summary>/);
+    assert.match(out.html, /6 of 9 stages measured · 11 lines unmeasured/);
+    assert.match(out.html, /<details class="ov-unmeasured"><summary>Unmeasured lines \(11\)<\/summary>/);
     assert.equal(out.stale, false);
-    assert.equal(out.badgeBad, true);
+});
+
+test('the status appears once: the card header stays empty unless the view is stale', () => {
+    const out = render(FIXTURE, esc, fresh);
+    assert.equal(out.badge, '');
+    assert.equal(out.badgeBad, false);
+});
+
+test('times are Pacific, in both offsets; a session date stays a date', () => {
+    const p = JSON.parse(JSON.stringify(FIXTURE));
+    p.generated_at = '2026-11-07T08:51:00Z'; // PST
+    const line = p.stages[0].lines[0];
+    line.as_of = '2026-10-03T21:52:05Z'; // PDT
+    const gen = Date.parse(p.generated_at);
+    const out = render(p, esc, { receivedAt: gen, now: gen });
+    assert.match(out.html, /generated 2026-11-07 00:51 PT/);
+    assert.match(out.html, /2026-10-03 14:52 PT/);
+    assert.doesNotMatch(out.html, /\d{2}:\d{2}Z/);
+    assert.match(out.html, /<span class="ov-asof">2026-11-03<\/span>/);
+});
+
+test('a reading a day or more old says its age; a newer one and a session date do not', () => {
+    const p = JSON.parse(JSON.stringify(FIXTURE));
+    const line = p.stages[0].lines[0];
+    const at = (ms) => {
+        line.as_of = new Date(GEN - ms).toISOString();
+        return render(p, esc, fresh).html;
+    };
+    const DAY = 24 * 60 * 60 * 1000;
+    assert.match(at(34 * DAY), /PT · 34 d old<\/span>/);
+    assert.doesNotMatch(at(DAY / 2), /d old/);
+    line.as_of = '2026-01-01';
+    assert.doesNotMatch(render(p, esc, fresh).html, /d old/);
+    line.as_of = 'not a time';
+    assert.match(render(p, esc, fresh).html, /<span class="ov-asof">not a time<\/span>/);
+});
+
+test('names read as words; an unlisted id or reason is still shown', () => {
+    const p = JSON.parse(JSON.stringify(FIXTURE));
+    const line = p.stages[0].lines[0];
+    line.status = 'UNKNOWN';
+    line.reason = 'snapshot_stale';
+    assert.match(render(p, esc, fresh).html, /Substrate freshness<\/span>.*snapshot stale/s);
+    line.id = 'brand_new_line';
+    line.reason = 'brand_new_reason';
+    const html = render(p, esc, fresh).html;
+    assert.match(html, /brand new line/);
+    assert.match(html, /brand new reason/);
+});
+
+test('no timestamp is plain text, not a pill that reads like a status', () => {
+    const out = render(FIXTURE, esc, fresh);
+    assert.match(out.html, /<span class="ov-asof">no timestamp<\/span>/);
+    assert.doesNotMatch(out.html, /ops-unknown/);
 });
 
 test('lists FAIL lines as not paged', () => {
     const out = render(FIXTURE, esc, fresh);
-    assert.match(out.html, /substrate_freshness · not paged/);
+    assert.match(out.html, /Substrate freshness · not paged/);
     assert.match(out.html, /<span class="ov-not-paged">not paged<\/span>/);
 });
 
 test('a timed-out line keeps its reason and says it has no timestamp', () => {
     const out = render(FIXTURE, esc, fresh);
-    assert.match(out.html, /inference_health<\/span> <span class="ops-chip ops-chip-unknown">UNKNOWN<\/span> <span class="ov-reason">timeout<\/span>/);
+    assert.match(out.html, /Inference health<\/span> <span class="ops-chip ops-chip-unknown">UNKNOWN<\/span> <span class="ov-reason">timed out<\/span>/);
     assert.match(out.html, /no timestamp/);
 });
 
@@ -82,7 +135,6 @@ test('a PASS view is green only when fresh', () => {
     const p = JSON.parse(JSON.stringify(FIXTURE));
     p.status = 'PASS';
     assert.match(render(p, esc, fresh).html, /<div class="ov-overall"><span class="ops-chip ops-chip-ok">PASS/);
-    assert.equal(render(p, esc, fresh).badgeBad, false);
     assert.equal(isStale(p, {}), true, 'missing clocks are never fresh');
 });
 

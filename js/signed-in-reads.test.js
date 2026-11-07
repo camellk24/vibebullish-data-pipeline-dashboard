@@ -427,7 +427,7 @@ test('Overview tab: opened through the real router it reads /api/ops/overview an
     assert.ok(sb.fetchCalls.some(c => c.url === '/api/ops/overview'), 'Overview dispatched through OpsConsole');
     assert.deepEqual(sb.readCalls(), []);
     const panel = sb.byId.get('ops-ov-panel');
-    assert.match(panel.innerHTML, /6 of 9 measured/);
+    assert.match(panel.innerHTML, /6 of 9 stages measured/);
     assert.deepEqual(ovTimers().map(t => t.ms).sort(), [30000, 60000], 'refresh + staleness timers while open');
 
     // A fresh view turns stale after 5 minutes with no further fetch.
