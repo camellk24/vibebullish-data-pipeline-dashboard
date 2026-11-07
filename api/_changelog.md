@@ -18,6 +18,7 @@ off. Never put secrets, tokens or credentials here.
 - [ios] **Buy and Sell bar**: on iOS 26, tiles on the ticker page now blur behind the Buy and Sell buttons instead of running straight behind them. (#135)
 
 ## 2026-11-06 · Flat ticker page, prices that say what they are
+- [backend] **Measured books under SUPERVISE**: when a measured book (63, 64) is in supervise mode, a buy that was waiting to fill is now cancelled at fill time, a failed dispatch step no longer skips fills or risk checks, and a missing or stale session run now reads as supervise. (#578)
 - [dashboard] **Changelog tab**: this tab, a hand-written list of what shipped, newest first, for signed-in admins. (#40)
 - [dashboard] **Overview tab**: the first ops tab shows the status of each monitored stage, with the time of each reading and whether a failure paged anyone. A view older than 5 minutes turns grey. Admin only. (#35)
 - [dashboard] **Changelog source file**: direct requests for `_changelog.md` now redirect to the home page, so the tab is the way to read it. (#41)
