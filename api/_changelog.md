@@ -14,7 +14,8 @@ reach phones with the next TestFlight upload. A merged backend PR that is still
 waiting for its deploy lane does not count. Say so when a change ships switched
 off. Never put secrets, tokens or credentials here.
 
-## 2026-11-07 · Blurred Buy and Sell bar
+## 2026-11-07 · Buy and Sell bar, cleaner Overview
+- [ios] **Buy and Sell bar, standard material**: the bar now sits on the standard iOS toolbar material on every version, replacing the iOS 26 blur from #135, which read as too blurry. Reaches phones with the next TestFlight upload. (#136)
 - [dashboard] **Overview reads cleanly**: times are in Pacific, each reading's time sits on its own row and says its age once it's a day old, the status appears once instead of twice, the counts say stages and lines, and names read as words. No status changed. (#46)
 - [ios] **Buy and Sell bar**: on iOS 26, tiles on the ticker page now blur behind the Buy and Sell buttons instead of running straight behind them. (#135)
 
