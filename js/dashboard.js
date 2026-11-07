@@ -4,25 +4,25 @@
 
 // NOTE: this is a public static site — it must NEVER embed INTERNAL_API_TOKEN
 // (the backend admin secret), and no script under js/ calls the backend
-// directly. Every data read of the six signed-in tabs goes through
+// directly. Every data read of the seven signed-in tabs goes through
 // VBReads.get() (js/reads.js) → the admin-verified proxy /api/ops/reads.
 const REFRESH_MS = 60_000;
 const WS_STATUS_REFRESH_MS = 30_000;
 let selectedDate = null; // null = today (live), string = 'YYYY-MM-DD'
 
-// ── Tab controller: the six recovered, signed-in tabs ─────────────────────
+// ── Tab controller: the seven signed-in tabs ─────────────────────
 //
 // ONE activation path for a tab click, the transition to admin, a date or
 // filter change, and the per-tab poll timer. Scoped to the tabs that register
 // here (LLM Usage, System Health, Action Engine, Quant Quality, Data
-// Collector, Catalyst Accuracy). The Agents tab and the admin ops tabs keep
+// Collector, Catalyst Accuracy, Changelog). The Agents tab and the admin ops tabs keep
 // their own listeners, timers and dispatches (js/agent-ops.js,
 // js/ops-console.js) — this controller never touches them.
 //
 // Every load runs under a context {tab, seq, gen}; a result is rendered only
 // while ctx.live(): same request sequence (no newer load/reload/departure),
 // same auth generation, still admin, and the tab still active. Leaving admin
-// stops the timer, invalidates in-flight loads, clears all six tabs' data and
+// stops the timer, invalidates in-flight loads, clears all seven tabs' data and
 // shows the sign-in gate; access returns only through vb-auth-change → admin.
 const VBTabs = (function () {
     const defs = Object.create(null);
@@ -637,7 +637,7 @@ function initTabs() {
     // Navigation covers all thirteen tabs. The ops-* tabs are admin-only: their
     // BUTTONS are hidden until /api/ops/whoami confirms an admin
     // (js/ops-console.js), but their sections must still be listed here so the
-    // router can hide them like any other. The six signed-in tabs load through
+    // router can hide them like any other. The seven signed-in tabs load through
     // VBTabs.activate; the Agents tab and the ops tabs keep their own
     // listeners and the dispatches below, exactly as before.
     const tabIds = ['tab-llm-usage', 'tab-system-health', 'tab-action-engine', 'tab-quant-quality', 'tab-data-collector', 'tab-catalyst-accuracy', 'tab-changelog', 'tab-agent-ops', 'tab-harness', 'tab-ops-shadow', 'tab-ops-heartbeats', 'tab-ops-strategies', 'tab-ops-overview'];

@@ -1,6 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": ".",
+  "redirects": [
+    {
+      "source": "/(.*)_changelog\\.md(/.*)?",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/(.*)%(.*)",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/dashboard",
