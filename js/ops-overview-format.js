@@ -34,6 +34,52 @@
         routines: 'Routines',
     };
 
+    // Display names only: the status of a line is never derived from these. An
+    // id or reason not listed here is still shown, with underscores as spaces.
+    const LINE_LABEL = {
+        substrate_freshness: 'Substrate freshness',
+        available_at_lag: 'Available-at lag',
+        extractor_liveness: 'Extractor liveness',
+        dq_readiness: 'DQ readiness',
+        dq_history: 'DQ history',
+        inference_health: 'Inference health',
+        rank_ic: 'Rank IC',
+        calibration_bias: 'Calibration bias',
+        correlation_cap: 'Correlation cap',
+        books_paused: 'Books paused',
+        halt_feed: 'Halt feed',
+        execution_audit: 'Execution audit',
+        agent_roles: 'Agent roles',
+        llm_budget: 'LLM budget',
+        read_dates: 'Read dates',
+        daily_spend: 'Daily spend',
+        heartbeats: 'Heartbeats',
+    };
+
+    const REASON_LABEL = {
+        timeout: 'timed out',
+        no_result: 'no result for this session', // the backend's ET session, not the PT day
+        beat_warn: 'a routine warned',
+        beat_fail: 'a routine failed',
+        late: 'a routine is late',
+        never_beaten: 'a routine has never reported',
+        missing: 'no snapshot',
+        evidence_unavailable: 'source unavailable',
+        panic: 'source crashed',
+        unmapped_value: 'unrecognised value',
+        execution_failed: 'run failed',
+        gating_ungraded: 'gating trades ungraded',
+        insufficient_sample: 'too few samples',
+    };
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    const PT_FORMAT = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    });
+
     function asArray(v) {
         return Array.isArray(v) ? v : [];
     }
@@ -42,12 +88,41 @@
         return typeof v === 'string' && v ? v : null;
     }
 
-    // '2026-11-03 22:05Z'; an unparseable value is returned as given.
+    // Own keys only, so an id like `constructor` falls through instead of
+    // resolving to an inherited Object property.
+    function label(map, key) {
+        return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : String(key).replace(/_/g, ' ');
+    }
+
+    function lineLabel(id) {
+        return label(LINE_LABEL, id);
+    }
+
+    function reasonLabel(reason) {
+        return label(REASON_LABEL, reason);
+    }
+
+    function isDateOnly(v) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(v);
+    }
+
+    // '2026-11-03 14:05 PT'; an unparseable value is returned as given.
     function shortTs(iso) {
         const t = new Date(iso);
         if (isNaN(t.getTime())) return String(iso);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso; // a session date stays a date
-        return t.toISOString().replace('T', ' ').slice(0, 16) + 'Z';
+        if (isDateOnly(iso)) return iso; // a session date stays a date
+        const p = {};
+        PT_FORMAT.formatToParts(t).forEach(x => { p[x.type] = x.value; });
+        return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute} PT`;
+    }
+
+    // ' · 34 d old' once a reading is a day old, so an old date doesn't read
+    // like a fresh one. Text only: the verdict stays the backend's.
+    function ageNote(iso, now) {
+        if (isDateOnly(iso) || !Number.isFinite(now)) return '';
+        const t = new Date(iso).getTime();
+        if (!Number.isFinite(t) || now - t < DAY_MS) return '';
+        return ` · ${Math.floor((now - t) / DAY_MS)} d old`;
     }
 
     // A chip for a backend status. Anything not PASS/WARN/FAIL — UNKNOWN,
@@ -72,24 +147,24 @@
         return ageMs(payload, opts) > STALE_AFTER_MS;
     }
 
-    function lineRow(l, esc) {
-        const asOf = str(l.as_of) ? esc(shortTs(l.as_of)) : '<span class="ops-unknown">no timestamp</span>';
-        const reason = str(l.reason) ? ` <span class="ov-reason">${esc(l.reason)}</span>` : '';
+    function lineRow(l, esc, now) {
+        const asOf = str(l.as_of) ? esc(shortTs(l.as_of) + ageNote(l.as_of, now)) : 'no timestamp';
+        const reason = str(l.reason) ? ` <span class="ov-reason">${esc(reasonLabel(l.reason))}</span>` : '';
         const paged = l.status === 'FAIL'
             ? (l.routing_active ? ' <span class="ov-paged">paged</span>' : ' <span class="ov-not-paged">not paged</span>')
             : '';
-        return `<li class="ov-line"><span class="ov-line-id">${esc(l.id)}</span> ${chip(l.status, esc)}${paged}${reason}` +
+        return `<li class="ov-line"><span class="ov-line-id">${esc(lineLabel(l.id))}</span> ${chip(l.status, esc)}${paged}${reason}` +
             `<span class="ov-asof">${asOf}</span></li>`;
     }
 
-    function stageTile(st, esc) {
+    function stageTile(st, esc, now) {
         const label = STAGE_LABEL[st.stage] || st.stage;
         const lines = asArray(st.lines).filter(l => l.status !== 'NOT_BUILT');
         const link = str(st.tab)
             ? `<button type="button" class="ov-open" data-target="${esc(st.tab)}">Open tab</button>`
             : '';
         const body = lines.length
-            ? `<ul class="ov-lines">${lines.map(l => lineRow(l, esc)).join('')}</ul>`
+            ? `<ul class="ov-lines">${lines.map(l => lineRow(l, esc, now)).join('')}</ul>`
             : '<div class="ov-empty">No verdict source yet.</div>';
         return `<div class="ov-tile">
             <div class="ov-tile-head"><span class="ov-stage">${esc(label)}</span>${chip(st.status, esc)}${link}</div>
@@ -121,7 +196,7 @@
         }));
         const paging = failing.length
             ? `<div class="ov-paging"><span class="ov-paging-h">FAIL lines</span>${failing.map(l =>
-                `<span class="ov-paging-item">${esc(l.id)} · ${l.routing_active ? 'paged' : 'not paged'}</span>`).join('')}</div>`
+                `<span class="ov-paging-item">${esc(lineLabel(l.id))} · ${l.routing_active ? 'paged' : 'not paged'}</span>`).join('')}</div>`
             : '';
 
         const staleNote = stale
@@ -129,26 +204,30 @@
             : '';
 
         const unmeasuredList = unmeasured.length
-            ? `<details class="ov-unmeasured"><summary>Unmeasured (${unmeasured.length})</summary><ul>${unmeasured.map(u =>
-                `<li>${esc(STAGE_LABEL[u.stage] || u.stage)} · ${esc(u.line)} ${chip(u.status, esc)}</li>`).join('')}</ul></details>`
+            ? `<details class="ov-unmeasured"><summary>Unmeasured lines (${unmeasured.length})</summary><ul>${unmeasured.map(u =>
+                `<li>${esc(STAGE_LABEL[u.stage] || u.stage)} · ${esc(lineLabel(u.line))} ${chip(u.status, esc)}</li>`).join('')}</ul></details>`
             : '';
 
+        // Stages and lines are different counts: 9 stages, each with its own lines.
         const measuredText = measured == null
             ? 'measured count unknown'
-            : `${measured} of ${total} measured · ${unmeasured.length} unmeasured`;
+            : `${measured} of ${total} stages measured · ${unmeasured.length} ${unmeasured.length === 1 ? 'line' : 'lines'} unmeasured`;
 
+        const now = opts && opts.now;
         const html = `
             <div class="ov-overall">${chip(overall, esc)}<span class="ov-measured">${esc(measuredText)}</span>
                 <span class="ov-generated">generated ${esc(shortTs(payload.generated_at))}</span></div>
             ${staleNote}
             ${paging}
-            <div class="ov-grid">${stages.map(st => stageTile(st, esc)).join('')}</div>
+            <div class="ov-grid">${stages.map(st => stageTile(st, esc, now)).join('')}</div>
             ${unmeasuredList}`;
 
+        // The overall chip in the panel carries the status and counts, so the
+        // card header stays empty unless the view itself can't be trusted.
         return {
             html,
-            badge: stale ? 'stale' : `${str(payload.status) || 'UNKNOWN'} · ${measuredText}`,
-            badgeBad: stale || payload.status !== 'PASS',
+            badge: stale ? 'stale' : '',
+            badgeBad: stale,
             stale,
         };
     }
