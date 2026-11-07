@@ -18,6 +18,10 @@ off. Never put secrets, tokens or credentials here.
 - [ios] **Buy and Sell bar**: on iOS 26, tiles on the ticker page now blur behind the Buy and Sell buttons instead of running straight behind them. (#135)
 
 ## 2026-11-06 · Flat ticker page, prices that say what they are
+- [dashboard] **Changelog tab**: this tab, a hand-written list of what shipped, newest first, for signed-in admins. (#40)
+- [dashboard] **Overview tab**: the first ops tab shows the status of each monitored stage, with the time of each reading and whether a failure paged anyone. A view older than 5 minutes turns grey. Admin only. (#35)
+- [dashboard] **Changelog source file**: direct requests for `_changelog.md` now redirect to the home page, so the tab is the way to read it. (#41)
+- [ios] **Live prices, inactive**: the app can read live price ticks for Watchlist, ticker details, Portfolio and Quant from the admin-only socket, and does nothing until the backend switch is on. Reaches phones with the next TestFlight upload. (#130)
 - [web] **Admin pages during a backend failure**: when the backend answers with a 5xx, `/internal` and the `/v2` docs pages say they're unavailable instead of "Admin only". Access stays refused. (#105)
 - [ios] **Flat ticker page**: ticker details is now one flat scroll of tiles in the style of the Weather app, with no pushed screens or "›" rows. (#129)
 - [ios] **Price caption**: the ticker header says when the price was observed, for example "After hours · Nov 5, 2:45 PM". It stays hidden for a fresh regular-session trade, and a snapshot's fetch time reads "Last checked". (#132)
