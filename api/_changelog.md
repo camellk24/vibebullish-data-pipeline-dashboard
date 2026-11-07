@@ -14,6 +14,9 @@ reach phones with the next TestFlight upload. A merged backend PR that is still
 waiting for its deploy lane does not count. Say so when a change ships switched
 off. Never put secrets, tokens or credentials here.
 
+## 2026-11-07 · Blurred Buy and Sell bar
+- [ios] **Buy and Sell bar**: on iOS 26, tiles on the ticker page now blur behind the Buy and Sell buttons instead of running straight behind them. (#135)
+
 ## 2026-11-06 · Flat ticker page, prices that say what they are
 - [web] **Admin pages during a backend failure**: when the backend answers with a 5xx, `/internal` and the `/v2` docs pages say they're unavailable instead of "Admin only". Access stays refused. (#105)
 - [ios] **Flat ticker page**: ticker details is now one flat scroll of tiles in the style of the Weather app, with no pushed screens or "›" rows. (#129)
