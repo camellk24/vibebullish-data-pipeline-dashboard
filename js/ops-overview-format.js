@@ -58,7 +58,7 @@
 
     const REASON_LABEL = {
         timeout: 'timed out',
-        no_result: 'no result today',
+        no_result: 'no result for this session', // the backend's ET session, not the PT day
         beat_warn: 'a routine warned',
         beat_fail: 'a routine failed',
         late: 'a routine is late',
@@ -88,12 +88,18 @@
         return typeof v === 'string' && v ? v : null;
     }
 
+    // Own keys only, so an id like `constructor` falls through instead of
+    // resolving to an inherited Object property.
+    function label(map, key) {
+        return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : String(key).replace(/_/g, ' ');
+    }
+
     function lineLabel(id) {
-        return LINE_LABEL[id] || String(id).replace(/_/g, ' ');
+        return label(LINE_LABEL, id);
     }
 
     function reasonLabel(reason) {
-        return REASON_LABEL[reason] || String(reason).replace(/_/g, ' ');
+        return label(REASON_LABEL, reason);
     }
 
     function isDateOnly(v) {

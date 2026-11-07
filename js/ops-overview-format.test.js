@@ -89,6 +89,40 @@ test('names read as words; an unlisted id or reason is still shown', () => {
     const html = render(p, esc, fresh).html;
     assert.match(html, /brand new line/);
     assert.match(html, /brand new reason/);
+    for (const key of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+        line.id = key;
+        line.reason = key;
+        const h = render(p, esc, fresh).html;
+        assert.match(h, new RegExp(`<span class="ov-line-id">${key.replace(/_/g, ' ')}</span>`), key);
+        assert.match(h, new RegExp(`<span class="ov-reason">${key.replace(/_/g, ' ')}</span>`), key);
+        assert.doesNotMatch(h, /native code|\[object Object\]/, key);
+    }
+});
+
+test('no_result names the ET session, not the Pacific day, across Pacific midnight', () => {
+    const p = JSON.parse(JSON.stringify(FIXTURE));
+    p.generated_at = '2026-11-07T05:30:00Z'; // Nov 6, 21:30 PT; already the Nov 7 session in ET
+    const line = p.stages[1].lines[0];
+    line.status = 'UNKNOWN';
+    line.reason = 'no_result';
+    line.as_of = '2026-11-07';
+    const gen = Date.parse(p.generated_at);
+    const html = render(p, esc, { receivedAt: gen, now: gen }).html;
+    assert.match(html, /generated 2026-11-06 21:30 PT/);
+    assert.match(html, /<span class="ov-reason">no result for this session<\/span><span class="ov-asof">2026-11-07<\/span>/);
+    assert.doesNotMatch(html, /today/);
+});
+
+test('the age note starts at exactly 24 hours and never shows for a future time', () => {
+    const p = JSON.parse(JSON.stringify(FIXTURE));
+    const line = p.stages[0].lines[0];
+    const DAY = 24 * 60 * 60 * 1000;
+    line.as_of = new Date(fresh.now - DAY).toISOString();
+    assert.match(render(p, esc, fresh).html, /PT · 1 d old/);
+    line.as_of = new Date(fresh.now - DAY + 1000).toISOString();
+    assert.doesNotMatch(render(p, esc, fresh).html, /d old/);
+    line.as_of = new Date(fresh.now + DAY).toISOString();
+    assert.doesNotMatch(render(p, esc, fresh).html, /d old/);
 });
 
 test('no timestamp is plain text, not a pill that reads like a status', () => {
